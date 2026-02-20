@@ -21,7 +21,6 @@ def build_email_body(
         f"vakansiyası ilə maraqlanıram.\n\n"
         f"Təcrübəm və bacarıqlarım barədə ətraflı məlumatı CV-də qeyd etmişəm.{cv_line}\n\n"
         f"Əlaqə məlumatlarım:\n"
-        f"Telefon: {profile.phone}\n"
         f"Email: {profile.email}\n\n"
         f"Hörmətlə,\n{name_full}"
     )

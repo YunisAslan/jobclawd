@@ -6,7 +6,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers import jobs
 from routers import applications
 from routers import stats
-from routers import settings_router
 from routers import auth_router
 from scraper import shutdown_browser
 from db.database import init_db
@@ -36,7 +35,6 @@ app.add_middleware(
 app.include_router(jobs.router, prefix="/api")
 app.include_router(applications.router, prefix="/api")
 app.include_router(stats.router, prefix="/api")
-app.include_router(settings_router.router, prefix="/api")
 app.include_router(auth_router.router, prefix="/api")
 
 

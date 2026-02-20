@@ -47,7 +47,6 @@ class CVLink(BaseModel):
 class UserProfile(BaseModel):
     name: str
     surname: str = ""
-    phone: str
     email: str
     current_employer: str = ""
     work_modes: list[WorkMode] = [WorkMode.hybrid]
