@@ -16,7 +16,6 @@ export interface CVLink {
 export interface UserProfile {
   name: string;
   surname: string;
-  phone: string;
   email: string;
   current_employer: string;
   work_modes: WorkMode[];

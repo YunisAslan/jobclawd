@@ -1,26 +1,30 @@
 "use client";
 
+import Image from "next/image";
+import logo from "@/assets/logo/jobclawd-logo.svg";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Search, Inbox, User, Settings } from "lucide-react";
-import { useProfile } from "@/contexts/ProfileContext";
+import { Search, BarChart2, Inbox, User, Settings, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSidebarShell } from "@/contexts/SidebarShellContext";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/Tooltip";
+import { Button } from "@/components/ui/Button";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard",    icon: <LayoutDashboard className="size-4.5 shrink-0" /> },
-  { href: "/feed",        label: "Job Feed",    icon: <Search          className="size-4.5 shrink-0" /> },
-  { href: "/applications",label: "Applications",icon: <Inbox           className="size-4.5 shrink-0" /> },
-  { href: "/profile",     label: "Profile",     icon: <User            className="size-4.5 shrink-0" /> },
-  { href: "/settings",    label: "Settings",    icon: <Settings        className="size-4.5 shrink-0" /> },
+  { href: "/dashboard/feed",         label: "Job Feed",     icon: <Search    className="size-4.5 shrink-0" /> },
+  { href: "/dashboard/analytics",    label: "Analytics",    icon: <BarChart2 className="size-4.5 shrink-0" /> },
+  { href: "/dashboard/profile",      label: "Profile",      icon: <User      className="size-4.5 shrink-0" /> },
+  { href: "/dashboard/applications", label: "Applications", icon: <Inbox     className="size-4.5 shrink-0" /> },
+  { href: "/dashboard/settings",     label: "Settings",     icon: <Settings  className="size-4.5 shrink-0" /> },
 ];
 
 function NavItem({ href, label, icon, collapsed }: {
   href: string; label: string; icon: React.ReactNode; collapsed: boolean;
 }) {
   const pathname = usePathname();
-  const isActive = pathname === href || (href !== "/" && pathname.startsWith(href));
+  const isActive = pathname === href || pathname.startsWith(href + "/");
 
   const inner = (
     <Link
@@ -29,16 +33,14 @@ function NavItem({ href, label, icon, collapsed }: {
         "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 w-full",
         isActive
           ? "bg-primary/15 text-primary"
-          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          : "text-sidebar-foreground dark:text-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
       )}
     >
       <span className="shrink-0">{icon}</span>
-      <span
-        className={cn(
-          "whitespace-nowrap overflow-hidden transition-all duration-200",
-          collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
-        )}
-      >
+      <span className={cn(
+        "whitespace-nowrap overflow-hidden transition-all duration-200",
+        collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+      )}>
         {label}
       </span>
     </Link>
@@ -58,83 +60,67 @@ function NavItem({ href, label, icon, collapsed }: {
 
 export default function AppSidebar() {
   const { open } = useSidebarShell();
-  const { profile } = useProfile();
-
-  const initials =
-    `${profile.name?.[0] ?? ""}${profile.surname?.[0] ?? ""}`.toUpperCase() || "?";
-  const displayName =
-    [profile.name, profile.surname].filter(Boolean).join(" ") || "Guest";
-
+  const { logout } = useAuth();
+  const router = useRouter();
   const collapsed = !open;
 
-  return (
-    <aside
+  function handleLogout() {
+    logout();
+    router.push("/auth/login");
+  }
+
+  const logoutBtn = (
+    <Button
+      onClick={handleLogout}
+      variant="ghost"
       className={cn(
-        "flex flex-col h-screen sticky top-0 shrink-0 border-r border-border overflow-hidden transition-[width] duration-200 ease-in-out",
-        "bg-sidebar",
-        collapsed ? "w-14" : "w-56"
+        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full justify-start h-auto",
+        "text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive transition-colors duration-150"
       )}
     >
-      {/* Logo */}
-      <div className={cn(
-        "flex items-center h-14.25 shrink-0 border-b border-border/20 px-3 gap-3",
+      <LogOut className="size-4.5 shrink-0" />
+      <span className={cn(
+        "whitespace-nowrap overflow-hidden transition-all duration-200",
+        collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
       )}>
-        <div className="size-8 rounded-lg flex items-center justify-center bg-primary text-primary-foreground font-bold text-xs shrink-0">
-          JC
-        </div>
-        <span
-          className={cn(
-            "font-bold text-base tracking-tight text-white whitespace-nowrap overflow-hidden transition-all duration-200",
-            collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
-          )}
-        >
-          Job<span className="text-primary">Clawd</span>
+        Log out
+      </span>
+    </Button>
+  );
+
+  return (
+    <aside className={cn(
+      "flex flex-col h-screen sticky top-0 shrink-0 border-r border-sidebar-border overflow-hidden transition-[width] duration-200 ease-in-out bg-sidebar",
+      collapsed ? "w-14" : "w-56"
+    )}>
+      {/* Logo */}
+      <div className="flex items-center h-14.25 shrink-0 border-b border-sidebar-border px-3 gap-3">
+        <Image src={logo} alt="JobClawd" width={34} height={34} className="brightness-0 invert shrink-0" />
+        <span className={cn(
+          "font-bold text-lg tracking-tight text-sidebar-foreground dark:text-foreground whitespace-nowrap overflow-hidden transition-all duration-200",
+          collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+        )}>
+          Job<span className="text-sidebar-primary">Clawd</span>
         </span>
       </div>
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2 space-y-0.5">
         {NAV_ITEMS.map((item) => (
-          <NavItem
-            key={item.href}
-            href={item.href}
-            label={item.label}
-            icon={item.icon}
-            collapsed={collapsed}
-          />
+          <NavItem key={item.href} href={item.href} label={item.label} icon={item.icon} collapsed={collapsed} />
         ))}
       </nav>
 
-      {/* Profile */}
-      <div className="border-t border-border/20 p-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link
-              href="/profile"
-              className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors w-full"
-            >
-              <div className="size-8 rounded-full flex items-center justify-center bg-primary text-primary-foreground text-[11px] font-bold shrink-0">
-                {initials}
-              </div>
-              <div
-                className={cn(
-                  "flex flex-col min-w-0 overflow-hidden transition-all duration-200",
-                  collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
-                )}
-              >
-                <span className="text-sm font-medium text-white truncate leading-none mb-0.5">
-                  {displayName}
-                </span>
-                <span className="text-xs text-muted-foreground truncate">
-                  {profile.email || "Fill your profile"}
-                </span>
-              </div>
-            </Link>
-          </TooltipTrigger>
-          {collapsed && (
-            <TooltipContent side="right" sideOffset={8}>{displayName}</TooltipContent>
-          )}
-        </Tooltip>
+      {/* Logout footer */}
+      <div className="border-t border-sidebar-border p-2">
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>{logoutBtn}</TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>Log out</TooltipContent>
+          </Tooltip>
+        ) : (
+          logoutBtn
+        )}
       </div>
     </aside>
   );

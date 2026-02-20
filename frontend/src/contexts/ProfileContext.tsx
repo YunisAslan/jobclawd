@@ -1,19 +1,12 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { UserProfile } from "@/types";
-import { loadProfile, saveProfile } from "@/lib/localStorage";
+import { useAuth } from "@/contexts/AuthContext";
 
 const DEFAULT_PROFILE: UserProfile = {
   name: "",
   surname: "",
-  phone: "",
   email: "",
   current_employer: "",
   work_modes: ["hybrid"],
@@ -35,16 +28,23 @@ const ProfileContext = createContext<ProfileContextValue>({
 });
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [profile, setProfileState] = useState<UserProfile>(DEFAULT_PROFILE);
 
+  // Seed from auth user when it becomes available
   useEffect(() => {
-    const stored = loadProfile();
-    if (stored) setProfileState(stored);
-  }, []);
+    if (user) {
+      setProfileState((prev) => ({
+        ...prev,
+        email: user.email,
+        name: prev.name || user.name || "",
+      }));
+    }
+  }, [user]);
 
   const setProfile = (p: UserProfile) => {
-    setProfileState(p);
-    saveProfile(p);
+    // Always keep email in sync with auth
+    setProfileState({ ...p, email: user?.email ?? p.email });
   };
 
   return (

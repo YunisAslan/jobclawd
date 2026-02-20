@@ -16,8 +16,8 @@ export default function MatchBadge({ score, level }: MatchBadgeProps) {
       <Badge
         className={cn(
           "gap-1 border",
-          "bg-primary/15 text-primary border-primary/30",
-          "hover:bg-primary/15"
+          "bg-match-high/15 text-match-high border-match-high/30",
+          "hover:bg-match-high/15"
         )}
       >
         <CircleCheck className="size-3" />
@@ -30,8 +30,8 @@ export default function MatchBadge({ score, level }: MatchBadgeProps) {
     <Badge
       className={cn(
         "gap-1 border",
-        "bg-warning/15 text-warning border-warning/30",
-        "hover:bg-warning/15"
+        "bg-match-review/15 text-match-review border-match-review/30",
+        "hover:bg-match-review/15"
       )}
     >
       <TriangleAlert className="size-3" />

@@ -1,42 +1,53 @@
 import { useState, useCallback } from "react";
-import { searchJobsWithProfile, applyToJob } from "@/lib/api";
+import { useMutation } from "@tanstack/react-query";
+import { jobsService } from "@/services/jobs.service";
+import { applyService } from "@/services/apply.service";
 import { JobListing, JobSource } from "@/types";
 import { useProfile } from "@/contexts/ProfileContext";
 
 export const ALL_SOURCES: { value: JobSource; label: string }[] = [
   { value: "jobsearch", label: "Jobsearch" },
-  { value: "linkedin", label: "LinkedIn" },
-  { value: "indeed", label: "Indeed" },
+  { value: "linkedin",  label: "LinkedIn"  },
+  { value: "indeed",    label: "Indeed"    },
 ];
 
 export function useFeed() {
   const { profile } = useProfile();
-  const [query, setQuery] = useState("");
+  const [query, setQuery]     = useState("");
   const [sources, setSources] = useState<JobSource[]>(["jobsearch"]);
-  const [jobs, setJobs] = useState<JobListing[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [skipped, setSkipped] = useState<Set<string>>(new Set());
+  const [jobs, setJobs]       = useState<JobListing[]>([]);
+  const [skipped, setSkipped]   = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [drawerJob, setDrawerJob] = useState<JobListing | null>(null);
   const [bulkApplying, setBulkApplying] = useState(false);
 
-  const handleSearch = useCallback(async () => {
+  const searchMutation = useMutation({
+    mutationFn: ({ q, srcs }: { q: string; srcs: JobSource[] }) =>
+      jobsService.search(q, profile, srcs),
+    onSuccess: (data) => {
+      setJobs(data.jobs);
+      setSkipped(new Set());
+      setSelected(new Set());
+    },
+  });
+
+  const applyMutation = useMutation({
+    mutationFn: (job: JobListing) =>
+      applyService.apply({
+        job_url:     job.url,
+        job_title:   job.title,
+        company:     job.company,
+        source:      job.source,
+        match_score: job.match_score,
+        match_level: job.match_level,
+        profile,
+      }),
+  });
+
+  const handleSearch = useCallback(() => {
     if (!query.trim()) return;
-    setLoading(true);
-    setError(null);
-    setJobs([]);
-    setSkipped(new Set());
-    setSelected(new Set());
-    try {
-      const res = await searchJobsWithProfile(query, profile, sources);
-      setJobs(res.jobs);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Search error");
-    } finally {
-      setLoading(false);
-    }
-  }, [query, profile, sources]);
+    searchMutation.mutate({ q: query, srcs: sources });
+  }, [query, sources, searchMutation]);
 
   const toggleSource = (s: JobSource) =>
     setSources((prev) =>
@@ -65,33 +76,31 @@ export function useFeed() {
   const handleBulkApply = async () => {
     setBulkApplying(true);
     const toApply = jobs.filter((j) => selected.has(j.url));
-    for (const job of toApply) {
-      try {
-        await applyToJob({
-          job_url: job.url, job_title: job.title, company: job.company,
-          source: job.source, match_score: job.match_score, match_level: job.match_level, profile,
-        });
-      } catch { /* non-fatal */ }
-    }
+    await Promise.all(
+      toApply.map((job) => applyMutation.mutateAsync(job).catch(() => {}))
+    );
     setSkipped((prev) => new Set([...prev, ...toApply.map((j) => j.url)]));
     setSelected(new Set());
     setBulkApplying(false);
   };
 
-  const visible = jobs.filter((j) => !skipped.has(j.url));
-  const highMatch = visible.filter((j) => j.match_level === "high");
+  const visible     = jobs.filter((j) => !skipped.has(j.url));
+  const highMatch   = visible.filter((j) => j.match_level === "high");
   const needsReview = visible.filter((j) => j.match_level === "review");
-  const hasScoring = profile.name.length > 0;
+  const hasScoring  = profile.name.length > 0;
 
-  const clearSelected = () => setSelected(new Set());
+  const errorMsg = searchMutation.error
+    ? ((searchMutation.error as { response?: { data?: { detail?: string } } })
+        ?.response?.data?.detail ?? "Search error")
+    : null;
 
   return {
     query,
     setQuery,
     sources,
     jobs,
-    loading,
-    error,
+    loading:      searchMutation.isPending,
+    error:        errorMsg,
     selected,
     drawerJob,
     setDrawerJob,
@@ -102,7 +111,7 @@ export function useFeed() {
     handleSkip,
     handleApplied,
     handleBulkApply,
-    clearSelected,
+    clearSelected: () => setSelected(new Set()),
     visible,
     highMatch,
     needsReview,

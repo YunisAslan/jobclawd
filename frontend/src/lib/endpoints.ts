@@ -1,0 +1,19 @@
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+export const ENDPOINTS = {
+  // Auth
+  SEND_MAGIC_LINK: "/api/auth/send-magic-link",
+  VERIFY_MAGIC_LINK: "/api/auth/verify-magic-link",
+  GOOGLE_AUTH: "/api/auth/google",
+
+  // Jobs
+  SEARCH: "/api/search",
+  JOB_DETAILS: "/api/job-details",
+
+  // Apply
+  APPLY: "/api/apply",
+
+  // Stats
+  STATS: "/api/stats",
+} as const;

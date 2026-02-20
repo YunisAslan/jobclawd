@@ -1,17 +1,18 @@
 "use client";
 
+import Image from "next/image";
+import logo from "@/assets/logo/jobclawd-logo.svg";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/Button";
 
 export default function LandingPage() {
   const router = useRouter();
-  const { status } = useSession();
-
+  const { user } = useAuth();
   const handleGetStarted = () => {
-    if (status === "authenticated") {
-      router.push("/dashboard");
+    if (user) {
+      router.push("/dashboard/feed");
     } else {
       router.push("/auth/login");
     }
@@ -20,10 +21,8 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <nav className="flex items-center justify-between px-8 py-4 border-b border-border bg-card/70 backdrop-blur">
-        <div className="flex items-center gap-2">
-          <div className="size-8 rounded-lg flex items-center justify-center font-bold text-xs bg-primary text-primary-foreground">
-            JC
-          </div>
+        <div className="flex items-center gap-2.5">
+          <Image src={logo} alt="JobClawd" width={34} height={34} className="dark:brightness-0 dark:invert shrink-0" />
           <span className="font-bold text-lg tracking-tight text-foreground">
             Job<span className="text-primary">Clawd</span>
           </span>
@@ -34,10 +33,7 @@ export default function LandingPage() {
               Sign In
             </Link>
           </Button>
-          <Button
-            onClick={handleGetStarted}
-            className="px-4"
-          >
+          <Button onClick={handleGetStarted} className="px-4">
             Get Started
           </Button>
         </div>
@@ -59,11 +55,7 @@ export default function LandingPage() {
         </p>
 
         <div className="flex items-center gap-4 flex-wrap justify-center">
-          <Button
-            onClick={handleGetStarted}
-            size="lg"
-            className="px-6"
-          >
+          <Button onClick={handleGetStarted} size="lg" className="px-6">
             Get Started, it&apos;s free
           </Button>
           <Button asChild variant="outline" size="lg">
@@ -74,28 +66,13 @@ export default function LandingPage() {
         </div>
       </main>
 
-      <section
-        id="how-it-works"
-        className="px-8 py-20 max-w-5xl mx-auto w-full"
-      >
+      <section id="how-it-works" className="px-8 py-20 max-w-5xl mx-auto w-full">
         <h2 className="text-2xl font-bold text-center mb-12 text-foreground">How it works</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
           {[
-            {
-              step: "01",
-              title: "Set your profile",
-              desc: "Tell us your title, experience level, preferred work mode, and paste in your CV link.",
-            },
-            {
-              step: "02",
-              title: "Search & score",
-              desc: "We scan Jobsearch.az, LinkedIn, and Indeed and rank every vacancy against your profile.",
-            },
-            {
-              step: "03",
-              title: "Apply on autopilot",
-              desc: "We find the HR email, build a cover letter, and send it, or open your mail client in one click.",
-            },
+            { step: "01", title: "Set your profile",   desc: "Tell us your title, experience level, preferred work mode, and paste in your CV link." },
+            { step: "02", title: "Search & score",     desc: "We scan Jobsearch.az, LinkedIn, and Indeed and rank every vacancy against your profile." },
+            { step: "03", title: "Apply on autopilot", desc: "We find the HR email, build a cover letter, and send it, or open your mail client in one click." },
           ].map((item) => (
             <div key={item.step} className="rounded-xl p-6 border border-border bg-card">
               <div className="text-xs font-bold mb-3 tracking-widest text-secondary">{item.step}</div>

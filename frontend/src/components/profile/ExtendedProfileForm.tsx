@@ -91,13 +91,16 @@ export default function ExtendedProfileForm() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="you@email.com" value={profile.email}
-              onChange={(e) => update("email", e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
-            <Input id="phone" placeholder="+1 555 000 0000" value={profile.phone}
-              onChange={(e) => update("phone", e.target.value)} />
+            <Input
+              id="email"
+              type="email"
+              value={profile.email}
+              readOnly
+              className="bg-muted text-muted-foreground cursor-not-allowed"
+            />
+            <p className="text-xs text-muted-foreground">
+              Your login email — cannot be changed here.
+            </p>
           </div>
         </div>
       </FormSection>

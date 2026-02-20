@@ -1,12 +1,33 @@
 "use client";
 
 import { ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Separator } from "@/components/ui/Separator";
 import { Button } from "@/components/ui/Button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/DropdownMenu";
 import { cn } from "@/lib/utils";
 import { useSidebarShell } from "@/contexts/SidebarShellContext";
-import { PanelRightClose, PanelRightOpen } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/contexts/ProfileContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import {
+  PanelRightClose,
+  PanelRightOpen,
+  Sun,
+  Moon,
+  User,
+  Settings,
+  LogOut,
+} from "lucide-react";
 
 interface TopBarProps {
   title: string;
@@ -22,6 +43,28 @@ export default function TopBar({
   className,
 }: TopBarProps) {
   const { open, toggle } = useSidebarShell();
+  const { user, logout } = useAuth();
+  const { profile } = useProfile();
+  const { theme, toggleTheme } = useTheme();
+  const router = useRouter();
+
+  const initials =
+    `${profile.name?.[0] ?? ""}${profile.surname?.[0] ?? ""}`.toUpperCase() ||
+    user?.email?.[0]?.toUpperCase() ||
+    "?";
+
+  const displayName =
+    [profile.name, profile.surname].filter(Boolean).join(" ") ||
+    user?.name ||
+    user?.email ||
+    "Guest";
+
+  const email = profile.email || user?.email || "";
+
+  function handleLogout() {
+    logout();
+    router.push("/auth/login");
+  }
 
   return (
     <>
@@ -31,8 +74,8 @@ export default function TopBar({
           className
         )}
       >
+        {/* Left: sidebar toggle + page title */}
         <div className="flex items-center gap-3">
-          {/* Sidebar toggle — sits right at the edge of the content, top-left */}
           <Button
             onClick={toggle}
             variant="ghost"
@@ -56,7 +99,81 @@ export default function TopBar({
             </Badge>
           )}
         </div>
-        {action && <div className="pr-2">{action}</div>}
+
+        {/* Right: action slot + theme toggle + avatar menu */}
+        <div className="flex items-center gap-1.5">
+          {action && <div className="pr-1">{action}</div>}
+
+          {/* Theme toggle */}
+          <Button
+            onClick={toggleTheme}
+            variant="ghost"
+            size="icon-sm"
+            className="text-muted-foreground hover:text-foreground hover:bg-accent"
+            aria-label="Toggle theme"
+          >
+            {theme === "dark" ? (
+              <Sun className="size-4" />
+            ) : (
+              <Moon className="size-4" />
+            )}
+          </Button>
+
+          {/* Avatar context menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="rounded-full hover:bg-accent p-0 size-8"
+                aria-label="User menu"
+              >
+                <div className="size-7 rounded-full flex items-center justify-center bg-primary text-primary-foreground text-[11px] font-bold">
+                  {initials}
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end" sideOffset={8} className="w-52">
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-semibold text-foreground truncate">
+                    {displayName}
+                  </span>
+                  <span className="text-xs text-muted-foreground truncate">
+                    {email}
+                  </span>
+                </div>
+              </DropdownMenuLabel>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem asChild>
+                <Link href="/profile" className="cursor-pointer">
+                  <User className="size-4 mr-2" />
+                  Profile
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem asChild>
+                <Link href="/settings" className="cursor-pointer">
+                  <Settings className="size-4 mr-2" />
+                  Settings
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="text-destructive focus:text-destructive cursor-pointer"
+              >
+                <LogOut className="size-4 mr-2" />
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       <Separator />
     </>

@@ -1,13 +1,13 @@
 "use client";
 
 import { JobListing } from "@/types";
-import MatchBadge from "@/components/ui/MatchBadge";
 import SourceBadge from "@/components/ui/SourceBadge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
+import { CircleCheck, ExternalLink, X } from "lucide-react";
 
 interface FeedJobCardProps {
   job: JobListing;
@@ -31,15 +31,48 @@ function CompanyAvatar({ company, logoUrl }: { company: string; logoUrl?: string
       <img
         src={logoUrl}
         alt={company}
-        className="size-10 rounded-lg object-cover shrink-0 border"
+        className="size-11 rounded-xl object-cover shrink-0 border border-border/50 shadow-sm"
         onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
       />
     );
   }
 
   return (
-    <div className="size-10 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 bg-secondary text-secondary-foreground border">
+    <div className="size-11 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 bg-gradient-to-br from-secondary/80 to-secondary text-white shadow-sm">
       {initials || "?"}
+    </div>
+  );
+}
+
+function MatchScore({ score, level }: { score: number; level: "high" | "review" | "trash" }) {
+  if (level === "trash" || score === 0) return null;
+
+  const isHigh = level === "high";
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center rounded-xl px-3 py-2 min-w-[58px] shrink-0",
+        isHigh
+          ? "bg-match-high/10 border border-match-high/20"
+          : "bg-match-review/10 border border-match-review/20"
+      )}
+    >
+      <span
+        className={cn(
+          "text-lg font-bold leading-none tabular-nums",
+          isHigh ? "text-match-high" : "text-match-review"
+        )}
+      >
+        {score}
+      </span>
+      <span
+        className={cn(
+          "text-[10px] font-semibold mt-0.5 uppercase tracking-wide",
+          isHigh ? "text-match-high/70" : "text-match-review/70"
+        )}
+      >
+        {isHigh ? "High" : "Review"}
+      </span>
     </div>
   );
 }
@@ -63,41 +96,63 @@ export default function FeedJobCard({
   onSkip,
   onDetails,
 }: FeedJobCardProps) {
+  const isHigh = job.match_level === "high";
+
   return (
-    <Card className={cn("gap-0 py-4 transition-all", selected && "ring-2 ring-primary")}>
-      <CardContent className="px-4 space-y-3">
-        {/* Header */}
+    <Card
+      className={cn(
+        "gap-0 py-0 transition-all duration-200 overflow-hidden",
+        selected ? "ring-2 ring-primary shadow-md" : "hover:shadow-md hover:-translate-y-0.5",
+        isHigh && "border-match-high/30"
+      )}
+    >
+      {/* Match level top accent strip */}
+      <div
+        className={cn(
+          "h-[3px] w-full shrink-0",
+          job.match_level === "high"
+            ? "bg-gradient-to-r from-match-high/70 to-match-high"
+            : job.match_level === "review"
+            ? "bg-gradient-to-r from-match-review/70 to-match-review"
+            : "bg-border/40"
+        )}
+      />
+
+      <CardContent className="px-4 pt-4 pb-4 space-y-3.5">
+        {/* Header row: checkbox + avatar + info + score */}
         <div className="flex items-start gap-3">
           <Checkbox
             checked={selected}
             onCheckedChange={onToggleSelect}
-            className="mt-0.5 shrink-0"
+            className="mt-1 shrink-0"
           />
           <CompanyAvatar company={job.company} logoUrl={job.logo_url} />
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2 mb-1">
-              <h3 className="font-semibold text-sm leading-snug line-clamp-2">
-                {job.title}
-              </h3>
-              <MatchBadge score={job.match_score} level={job.match_level} />
-            </div>
+            <h3 className="font-semibold text-sm leading-snug line-clamp-2 text-foreground mb-1.5">
+              {job.title}
+            </h3>
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-xs text-muted-foreground font-medium">{job.company}</span>
+              <span className="text-muted-foreground/30 text-xs select-none">•</span>
               <SourceBadge source={job.source} />
               {job.date_posted && (
-                <span className="text-xs text-muted-foreground">{formatDate(job.date_posted)}</span>
+                <>
+                  <span className="text-muted-foreground/30 text-xs select-none">•</span>
+                  <span className="text-xs text-muted-foreground">{formatDate(job.date_posted)}</span>
+                </>
               )}
             </div>
           </div>
+          <MatchScore score={job.match_score} level={job.match_level} />
         </div>
 
-        {/* Warning flags */}
+        {/* Match flags */}
         {job.match_flags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             {job.match_flags.map((flag, i) => (
               <Badge
                 key={i}
-                className="bg-warning/10 text-warning border border-warning/30 hover:bg-warning/10 gap-1"
+                className="bg-warning/8 text-warning border border-warning/25 hover:bg-warning/8 gap-1 text-[11px] py-0.5 font-medium"
               >
                 ⚠ {flag}
               </Badge>
@@ -106,15 +161,32 @@ export default function FeedJobCard({
         )}
 
         {/* Actions */}
-        <div className="flex gap-2">
-          <Button onClick={onApply} size="sm" className="flex-1 h-8 text-xs">
+        <div className="flex items-center gap-2 pt-0.5">
+          <Button
+            onClick={onApply}
+            size="sm"
+            className="flex-1 h-8 text-xs font-medium gap-1.5"
+          >
+            <CircleCheck className="size-3.5" />
             Apply
           </Button>
-          <Button onClick={onSkip} size="sm" variant="outline" className="h-8 text-xs px-3">
-            Skip
-          </Button>
-          <Button onClick={onDetails} size="sm" variant="outline" className="h-8 text-xs px-3">
+          <Button
+            onClick={onDetails}
+            size="sm"
+            variant="outline"
+            className="flex-1 h-8 text-xs gap-1.5"
+          >
+            <ExternalLink className="size-3.5" />
             Details
+          </Button>
+          <Button
+            onClick={onSkip}
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+            title="Skip"
+          >
+            <X className="size-3.5" />
           </Button>
         </div>
       </CardContent>

@@ -4,85 +4,121 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* =====================================================
+   LIGHT MODE (default :root)
+   Cool Mist — Futuristic Minimal
+===================================================== */
 :root {
-  /* ===============================
-     EMERALD BRAND SYSTEM
-  ================================== */
+  --primary: #3F4DFF;
+  --primary-foreground: #FFFFFF;
+  --primary-hover: #3040EE;
 
-  /* Primary */
-  --primary: #10B981;                /* emerald-500 */
-  --primary-foreground: #ffffff;
+  --secondary: #8E98FF;
+  --secondary-foreground: #FFFFFF;
+  --secondary-hover: #7A85F5;
 
-  /* Secondary (Trust Blue Contrast) */
-  --secondary: #2563EB;              /* blue-600 */
-  --secondary-foreground: #ffffff;
-
-  /* Neutrals (Pure Slate System) */
-  --background: #F8FAFC;             /* slate-50 */
-  --foreground: #0F172A;             /* slate-900 */
+  --background: #F5F7FB;            /* cool mist white with blue undertone */
+  --foreground: #111827;            /* deep graphite with blue base */
 
   --card: #FFFFFF;
-  --card-foreground: #0F172A;
+  --card-foreground: #111827;
 
   --popover: #FFFFFF;
-  --popover-foreground: #0F172A;
+  --popover-foreground: #111827;
 
-  --muted: #F1F5F9;                  /* slate-100 */
-  --muted-foreground: #64748B;       /* slate-500 */
+  --muted: #EFF1F6;
+  --muted-foreground: #6B7280;      /* neutral steel gray */
 
-  /* Accent (Neutral Interaction Surface) */
-  --accent: #E2E8F0;                 /* slate-200 */
-  --accent-foreground: #0F172A;
+  --accent: #E8EBEF;
+  --accent-foreground: #111827;
 
-  --destructive: #EF4444;
+  --destructive: #DC2626;
+  --warning: #D97706;
+  --success: #059669;
+
+  --border: #D1D5DB;
+  --input: #D1D5DB;
+  --ring: #3F4DFF;
+
+  --radius: 0.5rem;
+
+  --match-high: #059669;
+  --match-review: #D97706;
+
+  --chart-1: #3F4DFF;
+  --chart-2: #059669;
+  --chart-3: #6B7280;
+  --chart-4: #D97706;
+  --chart-5: #DC2626;
+
+  /* Sidebar stays dark in both modes */
+  --sidebar: #111827;
+  --sidebar-foreground: #9AA3B2;
+  --sidebar-primary: #3F4DFF;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #1C2333;
+  --sidebar-accent-foreground: #C8D0DC;
+  --sidebar-border: #1E2535;
+  --sidebar-ring: #3F4DFF;
+
+  --font-body: var(--font-jakarta, "Inter", "Avenir Next", sans-serif);
+  --font-code: var(--font-jetbrains, "SF Mono", "Menlo", "Monaco", monospace);
+}
+
+/* =====================================================
+   DARK MODE (.dark class on <html>)
+   Deep Slate-Blue — Futuristic Precision
+===================================================== */
+.dark {
+  --primary: #5563FF;
+  --primary-foreground: #FFFFFF;
+  --primary-hover: #4452EE;
+
+  --secondary: #8E98FF;
+  --secondary-foreground: #FFFFFF;
+  --secondary-hover: #7A85F5;
+
+  --background: #11151C;            /* deep slate-blue */
+  --foreground: #E8EBF3;            /* soft cool white */
+
+  --card: #1A1F2B;
+  --card-foreground: #E8EBF3;
+
+  --popover: #1E2433;
+  --popover-foreground: #E8EBF3;
+
+  --muted: #161C27;
+  --muted-foreground: #9AA3B2;      /* balanced slate */
+
+  --accent: #1E2535;
+  --accent-foreground: #E8EBF3;
+
+  --destructive: #FF4F4F;
   --warning: #F59E0B;
-
-  --border: #E2E8F0;                 /* slate-200 */
-  --input: #E2E8F0;
-  --ring: #10B981;
-  --primary-hover: #059669;
-  --secondary-hover: #1D4ED8;
-
-  --radius: 0.625rem;
-
-  /* ===============================
-     CHARTS
-  ================================== */
-
-  --chart-1: #10B981;
-  --chart-2: #2563EB;
-  --chart-3: #64748B;
-  --chart-4: #F59E0B;
-  --chart-5: #EF4444;
-
-  /* ===============================
-     SIDEBAR (Professional Dark)
-  ================================== */
-
-  --sidebar: #0F172A;
-  --sidebar-foreground: #CBD5E1;
-  --sidebar-primary: #10B981;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1E293B;
-  --sidebar-accent-foreground: #F1F5F9;
-  --sidebar-border: #1E293B;
-  --sidebar-ring: #10B981;
-
-  /* ===============================
-     CUSTOM TOKENS
-  ================================== */
-
   --success: #10B981;
 
-  --font-body: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
-  --font-code: "SF Mono", "Menlo", "Monaco", monospace;
-
-  /* ===============================
-     MATCH COLORS
-  ================================== */
+  --border: #222A3A;
+  --input: #222A3A;
+  --ring: #5563FF;
 
   --match-high: #10B981;
   --match-review: #F59E0B;
+
+  --chart-1: #5563FF;
+  --chart-2: #10B981;
+  --chart-3: #9AA3B2;
+  --chart-4: #F59E0B;
+  --chart-5: #FF4F4F;
+
+  /* Sidebar even deeper than canvas */
+  --sidebar: #0C1018;
+  --sidebar-foreground: #9AA3B2;
+  --sidebar-primary: #5563FF;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #141A25;
+  --sidebar-accent-foreground: #C8D0DC;
+  --sidebar-border: #181E2C;
+  --sidebar-ring: #5563FF;
 }
 
 
@@ -126,11 +162,11 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --font-sans: var(--font-body);
   --font-mono: var(--font-code);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+  --radius-2xl: calc(var(--radius) + 10px);
 }
 
 @layer base {

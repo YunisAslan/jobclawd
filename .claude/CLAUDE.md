@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **JobClawd** is a full SaaS-style job application dashboard. It searches multiple job boards (jobsearch.az, LinkedIn, Indeed) using Playwright browser automation, scores vacancies against the user's profile, extracts HR emails, and either opens `mailto:` or sends via SMTP autopilot.
 
-**All UI text, error messages, and email templates must be in Azerbaijani.**
+**All UI text and error messages must be in English.**
 
 ## Architecture
 
@@ -19,13 +19,31 @@ frontend (Next.js 16, port 3000) ←→ backend (FastAPI, port 8000)
 ```
 
 **Full request flow:**
-1. User fills profile at `/profile` → saved to `localStorage` via `ProfileContext`
-2. `/feed` page calls `POST /api/search` with profile + sources → backend fans out scrapers, scores results, returns sorted jobs
-3. User clicks "Müraciət Et" / "Detallar" → `Sheet` drawer opens → `POST /api/job-details`
-4. Backend navigates to job page, extracts HR email
-5. User selects CV link, clicks "Müraciət Et" → `POST /api/apply`
-6. If autopilot ON + SMTP configured + high match: email sent via `aiosmtplib`; otherwise `mailto:` URL opens
-7. Application row inserted into SQLite `applications` table
+1. User signs in via magic link or Google OAuth → JWT stored in `jc_token` cookie (30 days)
+2. User fills profile at `/dashboard/profile` → held in-memory via `ProfileContext` (seeded from auth, not persisted)
+3. `/dashboard/feed` calls `POST /api/search` with profile + sources → backend fans out scrapers, scores results, returns sorted jobs
+4. User clicks "Apply" / "Details" → `Sheet` drawer opens → `POST /api/job-details`
+5. Backend navigates to job page, extracts HR email
+6. User selects CV link, clicks "Apply" → `POST /api/apply`
+7. If autopilot ON + SMTP configured + high match: email sent via `aiosmtplib`; otherwise `mailto:` URL opens
+8. Application row inserted into SQLite `applications` table
+
+**Auth flow (magic link):**
+1. User enters email on `/auth/login` → `POST /api/auth/send-magic-link`
+2. Backend generates one-time token (15 min TTL), saves to `auth_tokens` table, sends email via Gmail SMTP
+3. User clicks link → `/auth/verify?token=...`
+4. Frontend POSTs token to `POST /api/auth/verify-magic-link` via `authService.verifyMagicLink(token)`
+5. Backend validates token, marks as used, issues signed JWT (30 day TTL)
+6. Frontend stores JWT in `jc_token` cookie, redirects to `/dashboard/feed`
+7. `middleware.ts` protects `/dashboard/:path*` by checking `jc_token` cookie
+
+**Auth flow (Google OAuth):**
+1. User clicks "Continue with Google" → `window.location.href = ${API_BASE_URL}/api/auth/google`
+2. Backend redirects to Google consent screen
+3. Google redirects back to `GET /api/auth/callback/google`
+4. Backend exchanges code for tokens, gets user email/name, issues JWT
+5. Backend redirects browser to `/auth/google-callback?token=...`
+6. Frontend page reads `?token=`, calls `login(token)`, redirects to `/dashboard/feed`
 
 **Browser lifecycle:** Single global Chromium instance in `backend/scraper/__init__.py`, reused across requests. Each request gets an isolated context+page. Shuts down via FastAPI lifespan.
 
@@ -77,35 +95,34 @@ cd frontend && npm install
 
 | Method | Path | Purpose |
 |--------|------|---------|
+| GET | `/api/auth/google` | Redirect to Google OAuth consent screen |
+| GET | `/api/auth/callback/google` | Google OAuth callback → issues JWT, redirects to `/auth/google-callback` |
+| POST | `/api/auth/send-magic-link` | `{ email }` → sends Gmail magic link |
+| POST | `/api/auth/verify-magic-link` | `{ token }` → validates token, returns `{ access_token, user }` |
 | POST | `/api/search` | `{ query, profile?, sources[] }` → scored + sorted `jobs[]` |
 | POST | `/api/job-details` | `{ url }` → `{ title, company, description, email?, ... }` |
 | POST | `/api/apply` | Insert application row; optionally SMTP send |
-| GET | `/api/applications` | All application records ordered by date |
-| PATCH | `/api/applications/{id}` | Update status + notes |
 | GET | `/api/stats` | Dashboard stats: today, total, replies, weekly chart, CV perf |
-| GET/POST | `/api/settings/smtp` | Read/write SMTP config (password omitted from GET) |
-| GET/POST | `/api/settings/autopilot` | Read/write `autopilot_enabled` |
 | GET | `/health` | Liveness check |
-
-Error responses use Azerbaijani messages: 400 (invalid URL), 502 (scraping failure), 504 (timeout).
 
 ## Backend Structure
 
 ```
 backend/
 ├── main.py                   # FastAPI app, CORS (localhost:3000), lifespan → init_db + shutdown_browser
-├── requirements.txt          # fastapi, uvicorn, playwright, pydantic, httpx, aiosmtplib
+├── requirements.txt          # fastapi, uvicorn, playwright, pydantic, httpx, aiosmtplib, python-dotenv, PyJWT
+├── .env                      # GMAIL_USER, GMAIL_APP_PASSWORD, JWT_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI (not committed)
 ├── models/schemas.py         # All Pydantic models + enums (WorkMode, ExperienceLevel, MatchLevel, …)
 ├── db/
-│   ├── schema.sql            # applications + settings tables
+│   ├── schema.sql            # applications + settings + auth_tokens tables
 │   └── database.py           # init_db(), get_db() context manager, DB_PATH = jobclawd.db
 ├── engine/
 │   └── scoring.py            # score_job(job, profile) → JobListing with match_score/level/flags
 ├── routers/
+│   ├── auth_router.py        # Magic link + Google OAuth endpoints; issues JWT
 │   ├── jobs.py               # POST /search (multi-source + scoring), POST /job-details
-│   ├── applications.py       # POST /apply, GET/PATCH /applications
-│   ├── stats.py              # GET /stats
-│   └── settings_router.py    # GET/POST /settings/smtp + /settings/autopilot
+│   ├── applications.py       # POST /apply only
+│   └── stats.py              # GET /stats
 ├── scraper/
 │   ├── __init__.py           # get_browser() / shutdown_browser() singleton
 │   ├── search.py             # scrape_search(query) — intercepts jobsearch.az /api-az/vacancies-az
@@ -124,18 +141,28 @@ backend/
 
 ```
 frontend/src/
+├── middleware.ts             # Protects /dashboard/:path* — checks jc_token cookie, redirects to /auth/login
+├── proxy.ts                  # UNUSED — empty stub, ignore
 ├── app/
-│   ├── layout.tsx            # Root layout: ProfileProvider + Sidebar + <main>
-│   ├── page.tsx              # Redirects → /dashboard
-│   ├── dashboard/page.tsx    # Stats cards + weekly chart + CV performance table
-│   ├── feed/page.tsx         # Job search: query + source checkboxes, scored grid, Sheet drawer, bulk apply
-│   ├── applications/page.tsx # Application history table with status management
-│   ├── profile/page.tsx      # Extended profile form
-│   └── settings/page.tsx     # Autopilot toggle + SMTP form
+│   ├── layout.tsx            # Root layout: QueryProvider + AuthProvider + ProfileProvider + Sidebar + <main>
+│   ├── page.tsx              # Landing page; uses useAuth() to redirect logged-in users to /dashboard/feed
+│   ├── auth/
+│   │   ├── login/page.tsx        # Magic link email form + Google OAuth button; uses authService + useMutation
+│   │   ├── verify/page.tsx       # Reads ?token=, calls authService.verifyMagicLink(), stores JWT via login()
+│   │   └── google-callback/      # Reads ?token= from Google OAuth redirect, calls login(), redirects to feed
+│   └── dashboard/
+│       ├── page.tsx              # Redirects to /dashboard/feed
+│       ├── feed/page.tsx         # Job search: query + source checkboxes, scored grid, Sheet drawer, bulk apply
+│       ├── analytics/page.tsx    # Stats cards + weekly chart + CV performance table
+│       ├── profile/page.tsx      # Extended profile form
+│       ├── applications/page.tsx # Placeholder (empty)
+│       └── settings/page.tsx     # Placeholder (empty)
 ├── components/
 │   ├── layout/
-│   │   ├── Sidebar.tsx       # Dark sidebar (custom, NOT shadcn Sidebar), usePathname active state
+│   │   ├── Sidebar.tsx       # Dark sidebar with DropdownMenu on profile section (logout, profile, settings)
 │   │   └── TopBar.tsx        # Page title + optional action + autopilot badge
+│   ├── providers/
+│   │   └── QueryProvider.tsx # TanStack QueryClient provider (client component)
 │   ├── ui/                   # shadcn/ui primitives — existing files are PascalCase; NEW installs via shadcn CLI arrive as lowercase
 │   │   ├── MatchBadge.tsx    # Green/amber Badge for match score
 │   │   ├── SourceBadge.tsx   # Colored Badge per job source
@@ -143,37 +170,81 @@ frontend/src/
 │   ├── dashboard/            # StatsCard, WeeklyChart (CSS-only bars), CVPerformanceTable
 │   ├── feed/                 # FeedJobCard, JobDetailDrawer (Sheet), BulkActionBar
 │   ├── applications/         # ApplicationsTable (Tabs + Table), StatusBadge (DropdownMenu)
-│   ├── profile/              # ExtendedProfileForm, CVLinkManager, BlacklistManager
+│   ├── profile/              # ExtendedProfileForm (email locked), CVLinkManager, BlacklistManager
 │   └── settings/             # AutopilotToggle (Dialog + Switch), SMTPForm
 ├── contexts/
-│   └── ProfileContext.tsx    # useProfile() hook; loads/saves localStorage on mount/change
+│   ├── AuthContext.tsx       # useAuth() → { user, isLoading, login(token), logout() }; login/logout are useCallback; reads/writes jc_token cookie
+│   └── ProfileContext.tsx    # useProfile() hook; in-memory only, seeded from auth user on mount; email always locked to auth email
+├── hooks/
+│   ├── use-stats.ts          # useQuery wrapping statsService.getStats(); staleTime 30s
+│   ├── use-feed.ts           # useMutation for search + apply; manages job list, skipped, selected state
+│   └── use-job-detail.ts     # useQuery for job detail (lazy, enabled by job URL); useMutation for apply
+├── services/                 # Domain service singletons (axios-based)
+│   ├── api.service.ts        # Abstract APIService base class with axios instance + interceptors
+│   ├── auth.service.ts       # sendMagicLink(), verifyMagicLink(); exports authService
+│   ├── jobs.service.ts       # search(), getDetail(); exports jobsService
+│   ├── apply.service.ts      # apply(); exports applyService
+│   └── stats.service.ts      # getStats(); exports statsService
 ├── lib/
-│   ├── api.ts                # Typed fetch wrappers for all endpoints
-│   ├── mailto.ts             # buildMailtoUrl(profile, jobDetail, cvUrl?) → Azerbaijani cover letter
-│   ├── localStorage.ts       # loadProfile() with backward-compat defaults, saveProfile()
+│   ├── endpoints.ts          # API_BASE_URL + ENDPOINTS constant map (all URL strings live here)
+│   ├── mailto.ts             # buildMailtoUrl(profile, jobDetail, cvUrl?) → cover letter
+│   ├── localStorage.ts       # EMPTY — localStorage removed, kept as stub
 │   └── utils.ts              # cn() from shadcn (clsx + tailwind-merge)
-└── types/index.ts            # All TypeScript interfaces mirroring backend schemas
+└── types/index.ts            # All TypeScript interfaces mirroring backend schemas (UserProfile has no phone field)
 ```
+
+## Auth — Important Details
+
+- **No NextAuth** — fully custom JWT auth (next-auth has been removed)
+- JWT payload: `{ sub: email, name, iat, exp }`
+- Cookie: `jc_token`, max-age 30 days, SameSite=Lax
+- `AuthContext` decodes JWT client-side (base64url) to read user — does NOT verify signature
+- `login` and `logout` in `AuthContext` are wrapped in `useCallback(fn, [])` — stable references, no infinite loops
+- `ProfileContext` always overwrites `profile.email` with `user.email` from auth — users cannot change their login email
+- `UserProfile.phone` has been removed from the type and form
+- Profile data is **not persisted** — resets on page refresh (future: save to backend DB)
+
+## Service Layer — Important Details
+
+All backend communication goes through domain service classes in `src/services/`. **Never use raw `fetch` or `axios` directly in components or hooks.**
+
+- `APIService` (abstract base in `src/services/api.service.ts`): creates axios instance, provides `get/post/patch/delete` methods
+- Domain services extend `APIService` and export a singleton: `export const jobsService = new JobsService()`
+- All URL constants live in `src/lib/endpoints.ts` — never hardcode paths elsewhere
+- Error shape from FastAPI: `{ detail: string }` — access via `err?.response?.data?.detail`
+- Use **`useQuery`** for auto-fetched data (stats, job detail); use **`useMutation`** for user-triggered actions (search, apply, magic link send)
+- `QueryProvider` wraps the full layout — all pages have access to TanStack Query
 
 ## Tech Stack
 
-**Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS v4, **shadcn/ui** (Radix UI primitives), lucide-react
+**Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS v4, **shadcn/ui** (Radix UI primitives), lucide-react, **axios**, **@tanstack/react-query**
 
 **shadcn components in use:** `Button`, `Input`, `Card`, `Badge`, `Switch`, `Table`, `Dialog`, `Tabs`, `Label`, `Checkbox`, `RadioGroup`, `Sheet`, `Separator`, `Skeleton`, `DropdownMenu`, `ScrollArea`, `Select`
 
 **Styling rules:**
 - Use shadcn components everywhere — NEVER write raw `<button>`, `<input>`, `<select>`, `<textarea>`, `<a>` (for actions) elements. Always import and use the shadcn equivalents: `<Button>`, `<Input>`, `<Select>`, `<Textarea>`, etc.
-- Color system is **Emerald-based** (updated in `globals.css`):
-  - `--primary: #10B981` (emerald-500)
-  - `--secondary: #2563EB` (blue-600)
-  - `--background: #F8FAFC` (slate-50)
-  - `--foreground: #0F172A` (slate-900)
-  - `--success: #10B981`, `--warning: #F59E0B`, `--destructive: #EF4444`
+- Color system is **Dark Mode — default baseline** (defined in `frontend/src/styles/globals.css`, sourced from `docs/BRAND.MD`). There is NO light mode. All `:root` variables are dark:
+  - Five core roles: Canvas · Surface · Primary Text · Muted Text · Brand
+  - `--background: #11151C` (deep slate-blue canvas — not black, easy on eyes)
+  - `--foreground: #E8EBF3` (soft cool white — high contrast, not piercing)
+  - `--card: #1A1F2B` (clear elevation layer above canvas)
+  - `--muted-foreground: #9AA3B2` (balanced slate — metadata, timestamps, labels)
+  - `--primary: #5563FF` (brighter indigo — energy and visibility on dark surfaces)
+  - `--primary-foreground: #FFFFFF`
+  - `--secondary: #8E98FF` (lighter indigo — company avatars, secondary UI)
+  - `--border: #222A3A` (dark subtle border)
+  - `--muted: #161C27`, `--accent: #1E2535`
+  - `--success: #10B981` (emerald), `--warning: #F59E0B` (amber), `--destructive: #FF4F4F` (red)
   - `--match-high: #10B981`, `--match-review: #F59E0B`
-- Sidebar CSS variables (use these, NOT old `--sidebar-bg`/`--sidebar-fg` names):
-  - `--sidebar: #0F172A`, `--sidebar-foreground: #CBD5E1`
-  - `--sidebar-primary: #10B981`, `--sidebar-accent: #1E293B`
-  - `--sidebar-border: #1E293B`, `--sidebar-ring: #10B981`
+  - **Attention currency rule:** `--primary` is reserved for CTAs, active nav, focus rings, and key highlights. Do NOT apply it broadly.
+  - **Match tokens:** always use `text-match-high` / `bg-match-high` for high-match states and `text-match-review` / `bg-match-review` for review states — never use `text-primary` for match indicators.
+  - **Auth page rule:** login page uses `bg-sidebar` + `border-sidebar-border` for left panel, `bg-card` for right form panel. Input fields use `bg-background border-border`. Never hardcode any `slate-*` or raw hex colors.
+- Sidebar CSS variables — sidebar is EVEN DEEPER than canvas:
+  - `--sidebar: #0C1018` (deepest dark — anchors the layout)
+  - `--sidebar-foreground: #9AA3B2`
+  - `--sidebar-primary: #5563FF`, `--sidebar-primary-foreground: #FFFFFF`
+  - `--sidebar-accent: #141A25`, `--sidebar-accent-foreground: #C8D0DC`
+  - `--sidebar-border: #181E2C`, `--sidebar-ring: #5563FF`
 - `.sidebar-nav-item` / `.sidebar-nav-item.active` are the only remaining custom CSS classes
 
 **ui/ folder naming convention:**
@@ -189,12 +260,18 @@ frontend/src/
 - `<a>` for navigation → use Next.js `<Link>`; for actions → use `<Button variant="link">`
 - Violations of this rule must be fixed immediately when spotted
 
-**Backend:** Python 3.9, FastAPI, Pydantic v2, Playwright (Chromium), SQLite, aiosmtplib
+**Backend:** Python 3.9, FastAPI, Pydantic v2, Playwright (Chromium), SQLite, aiosmtplib, PyJWT
 
 ## Environment Variables
 
-| Variable | Location | Default | Purpose |
-|----------|----------|---------|---------|
-| `NEXT_PUBLIC_API_URL` | `frontend/.env.local` | `http://localhost:8000` | Backend base URL |
+| Variable | Location | Purpose |
+|----------|----------|---------|
+| `NEXT_PUBLIC_API_URL` | `frontend/.env.local` | Backend base URL (default: `http://localhost:8000`) |
+| `GMAIL_USER` | `backend/.env` | Gmail address used to send magic link emails |
+| `GMAIL_APP_PASSWORD` | `backend/.env` | Gmail App Password (16 chars, spaces stripped automatically) |
+| `JWT_SECRET` | `backend/.env` | Secret for signing JWTs (HS256, 30-day TTL) |
+| `GOOGLE_CLIENT_ID` | `backend/.env` | Google OAuth 2.0 client ID |
+| `GOOGLE_CLIENT_SECRET` | `backend/.env` | Google OAuth 2.0 client secret |
+| `GOOGLE_REDIRECT_URI` | `backend/.env` | Must be `http://localhost:8000/api/auth/callback/google` |
 
-No backend `.env` file needed for development. SQLite DB is created automatically at `backend/jobclawd.db` on first run.
+SQLite DB is created automatically at `backend/jobclawd.db` on first run.
