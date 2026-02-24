@@ -91,7 +91,7 @@ export default function AppSidebar() {
   return (
     <aside className={cn(
       "flex flex-col h-screen sticky top-0 shrink-0 border-r border-sidebar-border overflow-hidden transition-[width] duration-200 ease-in-out bg-sidebar",
-      collapsed ? "w-14" : "w-56"
+      collapsed ? "w-15" : "w-60"
     )}>
       {/* Logo */}
       <div className="flex items-center h-14.25 shrink-0 border-b border-sidebar-border px-3 gap-3">

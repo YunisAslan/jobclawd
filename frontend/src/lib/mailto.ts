@@ -3,7 +3,7 @@ import { UserProfile, JobDetail } from "@/types";
 export function buildMailtoUrl(
   profile: UserProfile,
   job: JobDetail,
-  selectedCVUrl?: string
+  selectedCVUrl?: string,
 ): string {
   const to = job.email!;
   const nameFull = `${profile.name} ${profile.surname}`.trim();
@@ -26,11 +26,10 @@ export function buildMailtoUrl(
   lines.push(
     "",
     "Contact details:",
-    `Phone: ${profile.phone}`,
     `Email: ${profile.email}`,
     "",
     "Best regards,",
-    nameFull
+    nameFull,
   );
 
   const body = lines.join("\n");

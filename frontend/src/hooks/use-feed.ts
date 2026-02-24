@@ -14,7 +14,7 @@ export const ALL_SOURCES: { value: JobSource; label: string }[] = [
 export function useFeed() {
   const { profile } = useProfile();
   const [query, setQuery]     = useState("");
-  const [sources, setSources] = useState<JobSource[]>(["jobsearch"]);
+  const [sources, setSources] = useState<JobSource[]>(["jobsearch", "linkedin"]);
   const [jobs, setJobs]       = useState<JobListing[]>([]);
   const [skipped, setSkipped]   = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -48,11 +48,6 @@ export function useFeed() {
     if (!query.trim()) return;
     searchMutation.mutate({ q: query, srcs: sources });
   }, [query, sources, searchMutation]);
-
-  const toggleSource = (s: JobSource) =>
-    setSources((prev) =>
-      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
-    );
 
   const toggleSelect = (url: string) =>
     setSelected((prev) => {
@@ -98,6 +93,7 @@ export function useFeed() {
     query,
     setQuery,
     sources,
+    setSources,
     jobs,
     loading:      searchMutation.isPending,
     error:        errorMsg,
@@ -106,7 +102,6 @@ export function useFeed() {
     setDrawerJob,
     bulkApplying,
     handleSearch,
-    toggleSource,
     toggleSelect,
     handleSkip,
     handleApplied,

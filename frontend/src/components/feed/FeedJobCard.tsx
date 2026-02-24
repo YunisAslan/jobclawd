@@ -6,8 +6,14 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Badge } from "@/components/ui/Badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/DropdownMenu";
 import { cn } from "@/lib/utils";
-import { CircleCheck, ExternalLink, X } from "lucide-react";
+import { CircleCheck, ExternalLink, MoreHorizontal, X } from "lucide-react";
 
 interface FeedJobCardProps {
   job: JobListing;
@@ -16,6 +22,7 @@ interface FeedJobCardProps {
   onApply: () => void;
   onSkip: () => void;
   onDetails: () => void;
+  onHideCompany?: (company: string) => void;
 }
 
 function CompanyAvatar({ company, logoUrl }: { company: string; logoUrl?: string | null }) {
@@ -95,6 +102,7 @@ export default function FeedJobCard({
   onApply,
   onSkip,
   onDetails,
+  onHideCompany,
 }: FeedJobCardProps) {
   const isHigh = job.match_level === "high";
 
@@ -188,6 +196,26 @@ export default function FeedJobCard({
           >
             <X className="size-3.5" />
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground shrink-0"
+                aria-label="More actions"
+              >
+                <MoreHorizontal className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={6}>
+              <DropdownMenuItem
+                onSelect={() => onHideCompany?.(job.company)}
+                className="text-xs"
+              >
+                Hide company
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardContent>
     </Card>
