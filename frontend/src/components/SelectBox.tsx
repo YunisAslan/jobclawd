@@ -7,26 +7,54 @@ import {
   SelectValue,
 } from "@/components/ui/Select";
 
-interface SelectBoxProps {
+type SelectBoxBaseProps = {
   icon?: React.ReactNode;
   placeholder: string;
   options: Array<{ value: string; label: string }>;
-  mode?: SelectMode;
-}
+  search?: boolean | { placeholder?: string; emptyMessage?: string };
+};
+
+type SelectBoxSingleProps = SelectBoxBaseProps & {
+  mode?: "single";
+  value?: string;
+  onChange?: (value: string) => void;
+};
+
+type SelectBoxMultiProps = SelectBoxBaseProps & {
+  mode: "multiple";
+  value?: string[];
+  onChange?: (value: string[]) => void;
+};
+
+type SelectBoxProps = SelectBoxSingleProps | SelectBoxMultiProps;
 
 function SelectBox({
   icon,
   options,
   placeholder,
   mode = "single",
+  value,
+  onChange,
+  search,
 }: SelectBoxProps) {
+  const isMultiple = mode === "multiple";
   return (
-    <Select mode={mode} >
+    <Select
+      mode={mode as SelectMode}
+      value={!isMultiple ? (value as string) : undefined}
+      values={isMultiple ? (value as string[]) : undefined}
+      onValueChange={
+        !isMultiple ? (onChange as (v: string) => void) : undefined
+      }
+      onValuesChange={
+        isMultiple ? (onChange as (v: string[]) => void) : undefined
+      }
+    >
       <SelectTrigger className="w-full">
         {icon ? icon : null}
-        <SelectValue placeholder={placeholder} overflowBehavior="cutoff"/>
+        <SelectValue placeholder={placeholder} overflowBehavior="cutoff" />
       </SelectTrigger>
-      <SelectContent position="popper">
+      <SelectContent position="popper" search={search}>
         {options.map((option) => (
           <SelectItem key={option.value} value={option.value}>
             {option.label}

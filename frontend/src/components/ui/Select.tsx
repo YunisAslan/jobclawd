@@ -102,7 +102,7 @@ function Select({
   const selectedValues =
     mode === "single"
       ? value !== undefined
-        ? new Set([value])
+        ? new Set(value ? [value] : [])
         : internalValues
       : values
         ? new Set(values)
@@ -157,7 +157,12 @@ function Select({
       }}
     >
       {mode === "single" ? (
-        <SelectPrimitive.Root open={open} onOpenChange={setOpen}>
+        <SelectPrimitive.Root
+          open={open}
+          onOpenChange={setOpen}
+          value={[...selectedValues][0] || undefined}
+          onValueChange={toggleValue}
+        >
           {children}
         </SelectPrimitive.Root>
       ) : (
@@ -180,7 +185,8 @@ function SelectTrigger({
   size?: "sm" | "default";
   variant?: React.ComponentProps<typeof Button>["variant"];
 }) {
-  const { mode, open, disabled } = useSelectContext();
+  const { mode, open, disabled, selectedValues, toggleValue } =
+    useSelectContext();
   const isDisabled = disabledProp ?? disabled;
 
   if (mode === "multiple") {
@@ -196,7 +202,9 @@ function SelectTrigger({
             className,
           )}
         >
-          {children}
+          <div className="flex flex-1 min-w-0 items-center gap-2 overflow-hidden">
+            {children}
+          </div>
           <ChevronsUpDownIcon className="size-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -209,14 +217,30 @@ function SelectTrigger({
       data-size={size}
       disabled={isDisabled}
       className={cn(
-        "hover:bg-accent cursor-pointer border-input data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 dark:hover:bg-input/50 flex w-fit items-center justify-between gap-2 rounded-md border bg-transparent px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "hover:bg-accent cursor-pointer border-input data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 dark:hover:bg-input/50 flex w-fit items-center justify-between gap-2 rounded-md border bg-transparent px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-1 disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...props}
     >
       <div className="flex items-center gap-2">{children}</div>
       <SelectPrimitive.Icon asChild>
-        <ChevronDownIcon className="size-4 opacity-50" />
+        {mode === "single" && selectedValues.size > 0 ? (
+          <div
+            role="button"
+            tabIndex={0}
+            className="flex items-center justify-center p-0.5 rounded-full cursor-pointer text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors pointer-events-auto"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const val = [...selectedValues][0];
+              if (val) toggleValue(val);
+            }}
+          >
+            <XIcon className="size-4" />
+          </div>
+        ) : (
+          <ChevronDownIcon className="size-4 opacity-50" />
+        )}
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );
@@ -448,7 +472,7 @@ function SelectItem({
         )}
         value={value}
         onSelect={() => {
-          setOpen(false);
+          toggleValue(value);
           onSelect?.(value);
         }}
         {...props}

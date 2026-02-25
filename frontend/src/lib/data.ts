@@ -22,7 +22,7 @@ export const FEED_EXPERIENCE_OPTIONS: FeedSelectOption[] = [
   { value: "intern", label: "Intern" },
   { value: "junior", label: "Junior" },
   { value: "mid", label: "Mid" },
-  { value: "senior", label: "Senior" } ,
+  { value: "senior", label: "Senior" },
   { value: "lead", label: "Lead / Manager" },
 ];
 
@@ -30,6 +30,82 @@ export const FEED_LOCATION_OPTIONS: FeedSelectOption[] = [
   { value: "baku", label: "Baku, Azerbaijan" },
   { value: "worldwide", label: "Worldwide" },
 ];
+
+export type LocationZone = {
+  label: string;
+  value: string;
+  flag?: string;
+  fullWidth?: boolean;
+};
+
+export type LocationGroup = {
+  heading: string;
+  items: LocationZone[];
+};
+
+export const REMOTE_LOCATION_GROUPS: LocationGroup[] = [
+  {
+    heading: "REGION / COUNTRY",
+    items: [
+      { label: "Worldwide", value: "worldwide", flag: "🌍", fullWidth: true },
+      { label: "Azerbaijan", value: "az", flag: "🇦🇿" },
+      { label: "Europe (EMEA)", value: "europe", flag: "🇪🇺" },
+      { label: "Turkey", value: "turkey", flag: "🇹🇷" },
+      { label: "CIS / Russia", value: "cis", flag: "🌐" },
+      { label: "USA", value: "us", flag: "🇺🇸" },
+    ],
+  },
+];
+
+export const ONSITE_LOCATION_GROUPS: LocationGroup[] = [
+  {
+    heading: "CITY",
+    items: [
+      { label: "Baku, Azerbaijan", value: "baku", flag: "📍", fullWidth: true },
+      { label: "Sumqayit", value: "sumqayit", flag: "📍" },
+      { label: "Ganja", value: "ganja", flag: "📍" },
+    ],
+  },
+  {
+    heading: "RELOCATION HUBS",
+    items: [
+      { label: "Dubai, UAE", value: "dubai", flag: "🇦🇪" },
+      { label: "Berlin, Germany", value: "berlin", flag: "🇩🇪" },
+      { label: "Amsterdam", value: "amsterdam", flag: "🇳🇱" },
+      { label: "Warsaw", value: "warsaw", flag: "🇵🇱" },
+    ],
+  },
+];
+
+// Scenario C: both remote + on-site selected
+export const MIXED_LOCATION_GROUPS: LocationGroup[] = [
+  {
+    heading: "CITY",
+    items: [
+      {
+        label: "Include Worldwide Remote",
+        value: "worldwide",
+        flag: "🌍",
+        fullWidth: true,
+      },
+      { label: "Baku, Azerbaijan", value: "baku", flag: "📍", fullWidth: true },
+      { label: "Sumqayit", value: "sumqayit", flag: "📍" },
+      { label: "Ganja", value: "ganja", flag: "📍" },
+    ],
+  },
+  {
+    heading: "RELOCATION HUBS",
+    items: [
+      { label: "Dubai, UAE", value: "dubai", flag: "🇦🇪" },
+      { label: "Berlin, Germany", value: "berlin", flag: "🇩🇪" },
+      { label: "Amsterdam", value: "amsterdam", flag: "🇳🇱" },
+      { label: "Warsaw", value: "warsaw", flag: "🇵🇱" },
+    ],
+  },
+];
+
+// Legacy fallback (keep for backward compat)
+export const LOCATION_GROUPS = REMOTE_LOCATION_GROUPS;
 
 export const FEED_CV_OPTIONS: FeedSelectOption[] = [
   { value: "default", label: "CV: Default (CV_Main.pdf)" },
