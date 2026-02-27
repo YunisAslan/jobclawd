@@ -1,40 +1,49 @@
-### 🟢 Scenario A: User Selects "Remote" 🌍
+Work Mode options:
 
-**Logic:** The user wants to work from home (Baku), but the company can be anywhere. We filter by **Scope/Country**.
+- On-site
+- Hybrid
+- Remote
+- Relocation
 
-1.  **Input Label/Placeholder:** Changes to `Region / Country`
-2.  **Default Value:** `Worldwide` (Null/Empty in backend)
-3.  **Dropdown Data (The "List" to show):**
-    - **Option 1 (Top):** `Global / Worldwide` (Value: `null`)
-    - **Option 2 (Local):** `Azerbaijan` (Value: `AZ`) → _Logic: Companies in AZ allowing remote._
-    - **Option 3 (Timezone Friendly):** `Europe (EMEA)` (Value: `EMEA`) → _Logic: UK, Germany, Netherlands, etc._
-    - **Option 4 (Language Friendly):** `Turkey` (Value: `TR`), `CIS/Russia` (Value: `CIS`).
-    - **Option 5 (High Salary):** `USA` (Value: `US`).
-4.  **Typing Logic:** If user types manually, searching strictly for **Countries** or **Regions** (e.g., "Asia"). **Do not** show specific cities like "London".
+Location behavior based on selected Work Mode:
 
----
+1. If Work Mode is "On-site" or "Hybrid":
+   - Show the Location field immediately.
+   - The Location field should be a standard location selector: primarily countries + cities/regions within the selected country (cascading: first country, then cities).
+   - Default/focus on user's current location (e.g., Azerbaijan, Baku) or nearby countries.
+   - Purpose: These modes require physical presence, so filter jobs strictly by the selected physical location.
+   - Do NOT show "Worldwide" or broad regions as primary options.
 
-### 🔵 Scenario B: User Selects "On-site" or "Hybrid" 📍
+2. If Work Mode is "Remote":
+   - Show the Location field, but make it optional or less restrictive.
+   - Options include: "Worldwide", "Any Location", specific regions (Europe Remote, US Remote, etc.), or countries with timezone/language preferences.
+   - Many remote jobs have location restrictions (e.g., EU only, US only, specific timezones), so allow filtering by country/region even for remote.
+   - If no location selected → show truly global remote jobs.
 
-**Logic:** The user must physically go to an office. We filter by **Specific City**.
+3. If Work Mode is "Relocation":
+   - This mode means the user is willing to move to a new country/region for the job, often with relocation package.
+   - Immediately show a cascading selector:
+     - First: Region dropdown (e.g., North America, Europe, Asia Pacific, Middle East, Latin America, Any Region / Worldwide).
+     - After region selected: Country dropdown filtered to countries in that region (e.g., North America → USA, Canada, Mexico).
+   - Below the location selector, add a section with checkboxes for relocation package details (all optional, user can uncheck):
+     - Visa Sponsorship Required (default: checked — because most relocation from Azerbaijan needs visa support)
+     - Moving Expenses / Household Goods Shipment (default: checked)
+     - Travel Expenses / Flights Covered (default: checked)
+     - Temporary Housing Provided (default: checked)
+     - Home Buying/Selling or Lease Break Assistance (default: unchecked)
+     - Tax Gross-Up Assistance (default: unchecked)
+     - Family/Spousal Support (default: unchecked)
+   - Purpose: Allow users to target specific relocation destinations and filter jobs that offer meaningful relocation support.
+   - Search logic: Combine "relocation assistance" OR "relocation package" keywords with selected country/region, and add visa/moving keywords only if checkboxes are checked.
 
-1.  **Input Label/Placeholder:** Changes to `City`
-2.  **Default Value:** `Baku` (User's Current Location Profile Data)
-3.  **Dropdown Data (The "List" to show):**
-    - **Option 1 (Current):** `Baku, Azerbaijan` (Value: `Baku`).
-    - **Option 2 (Nearby):** `Sumqayit`, `Ganja` (Value: `Sumqayit`, `Ganja`).
-    - **Option 3 (Relocation Hubs):** _Logic: Show top tech hubs accepting expats._
-      - `Dubai, UAE`
-      - `Berlin, Germany`
-      - `Amsterdam, Netherlands`
-      - `Warsaw, Poland`
-4.  **Typing Logic:** If user types manually, search strictly for **Cities** via Google Places/Mapbox API.
+General rules for all modes:
 
----
+- Make the UI conditional: hide/show fields dynamically based on Work Mode selection.
+- For search query: append appropriate keywords/filters (e.g., for relocation + USA + visa → include "visa sponsorship" "relocation to USA").
 
-### 🟠 Scenario C: User Selects "Remote" AND "On-site" (Both)
+Provide a clear, structured description of this logic, including:
 
-**Logic:** The user is open to everything.
-
-- **Priority:** Show **Cities** (Scenario B logic) because "On-site" is the stricter constraint.
-- **Add-on:** Add a special static option at the top: `Include Worldwide Remote`.
+- UI flow step-by-step
+- Example React-like pseudocode for conditional rendering
+- Backend search query examples
+- Why this logic improves UX for relocation seekers

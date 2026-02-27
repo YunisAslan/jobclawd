@@ -1,54 +1,68 @@
 "use client";
 
 import * as React from "react";
-import { MapPin, Search, Globe, ChevronsUpDownIcon } from "lucide-react";
+import { MapPin, Globe, ChevronsUpDownIcon } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/Popover";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import {
-  REMOTE_LOCATION_GROUPS,
-  ONSITE_LOCATION_GROUPS,
-  MIXED_LOCATION_GROUPS,
-  LocationZone,
-  LocationGroup,
-} from "@/lib/data";
+import { ONSITE_COUNTRIES } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { LocationValue } from "@/types";
+
+type WorkModeScenario = "remote" | "onsite" | "mixed" | "none";
 
 interface LocationPickerProps {
-  value?: string;
-  onChange?: (value: string) => void;
+  value?: LocationValue;
+  onChange?: (value: LocationValue) => void;
   workModes?: string[];
 }
 
-function resolveGroups(workModes: string[]): {
-  groups: LocationGroup[];
-  placeholder: string;
-  Icon: React.ElementType;
-} {
+function getScenario(workModes: string[]): WorkModeScenario {
   const hasRemote = workModes.includes("remote");
   const hasOnsite =
     workModes.includes("onsite") || workModes.includes("hybrid");
-
-  if (hasRemote && hasOnsite) {
-    return { groups: MIXED_LOCATION_GROUPS, placeholder: "City", Icon: MapPin };
-  }
-  if (hasOnsite) {
-    return {
-      groups: ONSITE_LOCATION_GROUPS,
-      placeholder: "City",
-      Icon: MapPin,
-    };
-  }
-  return {
-    groups: REMOTE_LOCATION_GROUPS,
-    placeholder: "Region / Country",
-    Icon: Globe,
-  };
+  if (hasRemote && hasOnsite) return "mixed";
+  if (hasOnsite) return "onsite";
+  if (hasRemote) return "remote";
+  return "none";
 }
+
+function getConfig(scenario: WorkModeScenario) {
+  switch (scenario) {
+    case "onsite":
+    case "mixed":
+      return { placeholder: "Country / City", Icon: MapPin };
+    default:
+      return { placeholder: "Region / Country", Icon: Globe };
+  }
+}
+
+function getTriggerLabel(value?: LocationValue): string | null {
+  if (!value?.value && !value?.values?.length) return null;
+
+  if (value.values?.length) {
+    const allCities = ONSITE_COUNTRIES.flatMap((c) => c.cities);
+    const labels = value.values
+      .map((v) => allCities.find((ci) => ci.value === v)?.label ?? v)
+      .join(", ");
+    return labels;
+  }
+
+  if (!value.value) return null;
+  if (value.value === "worldwide") return "Worldwide Remote";
+  for (const country of ONSITE_COUNTRIES) {
+    if (country.value === value.value) return country.label;
+    const city = country.cities.find((ci) => ci.value === value.value);
+    if (city) return `${city.label}, ${country.label}`;
+  }
+
+  return null;
+}
+
+import LocationModal from "./LocationModal";
 
 export default function LocationPicker({
   value,
@@ -56,68 +70,48 @@ export default function LocationPicker({
   workModes = [],
 }: LocationPickerProps) {
   const [open, setOpen] = React.useState(false);
-  const [search, setSearch] = React.useState("");
+  const [modalKey, setModalKey] = React.useState(0);
 
-  const { groups, placeholder, Icon } = resolveGroups(workModes);
+  const scenario = getScenario(workModes);
+  const { placeholder, Icon } = getConfig(scenario);
+  const triggerLabel = getTriggerLabel(value);
 
+  const prevScenario = React.useRef(scenario);
   React.useEffect(() => {
-    if (!value) return;
-    const allItems = groups.flatMap((g) => g.items);
-    if (!allItems.find((item) => item.value === value)) {
-      onChange?.("");
+    if (prevScenario.current !== scenario) {
+      prevScenario.current = scenario;
+      onChange?.({});
     }
-  }, [groups, value, onChange]);
+  }, [scenario, onChange]);
 
-  const selected = React.useMemo(() => {
-    for (const group of groups) {
-      const found = group.items.find((item) => item.value === value);
-      if (found) return found;
-    }
-    return null;
-  }, [value, groups]);
+  function handleOpenChange(isOpen: boolean) {
+    if (isOpen) setModalKey((k) => k + 1);
+    setOpen(isOpen);
+  }
 
-  const filteredGroups = React.useMemo(() => {
-    if (!search.trim()) return groups;
-    const q = search.toLowerCase();
-    return groups
-      .map((group) => ({
-        ...group,
-        items: group.items.filter((item) =>
-          item.label.toLowerCase().includes(q),
-        ),
-      }))
-      .filter((group) => group.items.length > 0);
-  }, [search, groups]);
-
-  function handleSelect(zone: LocationZone) {
-    onChange?.(zone.value === value ? "" : zone.value);
+  function handleClose() {
     setOpen(false);
-    setSearch("");
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
+          type="button"
           className={cn(
             "w-full h-9 justify-between px-3 font-normal bg-transparent",
-            !selected && "text-muted-foreground",
+            !triggerLabel && "text-muted-foreground",
           )}
         >
           <span className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-            {selected ? (
-              <>
-                <span className="text-base leading-none">{selected.flag}</span>
-                <span className="truncate text-foreground">
-                  {selected.label}
-                </span>
-              </>
+            <Icon className="size-4 shrink-0 text-muted-foreground" />
+            {triggerLabel ? (
+              <span className="truncate text-foreground text-sm">
+                {triggerLabel}
+              </span>
             ) : (
-              <>
-                <Icon className="size-4 shrink-0 text-muted-foreground" />
-                <span className="truncate">{placeholder}</span>
-              </>
+              <span className="truncate text-sm">{placeholder}</span>
             )}
           </span>
           <ChevronsUpDownIcon className="size-4 shrink-0 opacity-50" />
@@ -125,61 +119,17 @@ export default function LocationPicker({
       </PopoverTrigger>
 
       <PopoverContent
-        className="w-80 p-0 shadow-lg border-border/70 overflow-hidden"
+        className="w-72 p-0 shadow-lg border-border/70 overflow-hidden"
         align="start"
         sideOffset={6}
       >
-        {/* Search */}
-        <div className="flex items-center gap-2 px-3 border-b border-border/60">
-          <Search className="size-3.5 text-muted-foreground shrink-0" />
-          <Input
-            autoFocus
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search manually..."
-            className="border-0 shadow-none focus-visible:ring-0 px-0 h-10 text-sm bg-transparent"
-          />
-        </div>
-
-        {/* Groups */}
-        <div className="p-2 space-y-3 max-h-72 overflow-y-auto">
-          {filteredGroups.map((group) => (
-            <div key={group.heading}>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-1 mb-1.5">
-                {group.heading}
-              </p>
-              <div className="grid grid-cols-2 gap-1.5">
-                {group.items.map((zone) => {
-                  const isSelected = value === zone.value;
-                  return (
-                    <Button
-                      key={zone.value}
-                      variant={isSelected ? "default" : "ghost"}
-                      size="sm"
-                      onClick={() => handleSelect(zone)}
-                      className={cn(
-                        "justify-start gap-2 h-auto py-2 px-3 text-sm font-normal",
-                        zone.fullWidth && "col-span-2",
-                        !isSelected && "bg-muted/50 hover:bg-muted",
-                      )}
-                    >
-                      <span className="text-base leading-none">
-                        {zone.flag}
-                      </span>
-                      <span className="truncate">{zone.label}</span>
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-
-          {filteredGroups.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No results for &quot;{search}&quot;
-            </p>
-          )}
-        </div>
+        <LocationModal
+          key={modalKey}
+          value={value}
+          onChange={onChange}
+          onClose={handleClose}
+          showWorldwide={scenario !== "onsite"}
+        />
       </PopoverContent>
     </Popover>
   );

@@ -15,7 +15,6 @@ export const FEED_WORK_MODE_OPTIONS: FeedSelectOption[] = [
   { value: "remote", label: "Remote" },
   { value: "hybrid", label: "Hybrid" },
   { value: "onsite", label: "On-site" },
-  { value: "relocation", label: "Relocation" },
 ];
 
 export const FEED_EXPERIENCE_OPTIONS: FeedSelectOption[] = [
@@ -26,86 +25,74 @@ export const FEED_EXPERIENCE_OPTIONS: FeedSelectOption[] = [
   { value: "lead", label: "Lead / Manager" },
 ];
 
-export const FEED_LOCATION_OPTIONS: FeedSelectOption[] = [
-  { value: "baku", label: "Baku, Azerbaijan" },
-  { value: "worldwide", label: "Worldwide" },
-];
+// ─── Location types (API-ready) ─────────────────────────────
 
-export type LocationZone = {
+// On-site / Hybrid / Remote mode — cascading country → city
+export type OnsiteCountry = {
   label: string;
-  value: string;
+  value: string; // ISO code
   flag?: string;
-  fullWidth?: boolean;
+  cities: { label: string; value: string }[];
 };
 
-export type LocationGroup = {
-  heading: string;
-  items: LocationZone[];
-};
-
-export const REMOTE_LOCATION_GROUPS: LocationGroup[] = [
+export const ONSITE_COUNTRIES: OnsiteCountry[] = [
   {
-    heading: "REGION / COUNTRY",
-    items: [
-      { label: "Worldwide", value: "worldwide", flag: "🌍", fullWidth: true },
-      { label: "Azerbaijan", value: "az", flag: "🇦🇿" },
-      { label: "Europe (EMEA)", value: "europe", flag: "🇪🇺" },
-      { label: "Turkey", value: "turkey", flag: "🇹🇷" },
-      { label: "CIS / Russia", value: "cis", flag: "🌐" },
-      { label: "USA", value: "us", flag: "🇺🇸" },
+    label: "Azerbaijan",
+    value: "AZ",
+    flag: "🇦🇿",
+    cities: [
+      { label: "Baku", value: "baku" },
+      { label: "Sumqayit", value: "sumqayit" },
+      { label: "Ganja", value: "ganja" },
+    ],
+  },
+  {
+    label: "UAE",
+    value: "AE",
+    flag: "🇦🇪",
+    cities: [
+      { label: "Dubai", value: "dubai" },
+      { label: "Abu Dhabi", value: "abu-dhabi" },
+    ],
+  },
+  {
+    label: "Germany",
+    value: "DE",
+    flag: "🇩🇪",
+    cities: [
+      { label: "Berlin", value: "berlin" },
+      { label: "Munich", value: "munich" },
+      { label: "Hamburg", value: "hamburg" },
+    ],
+  },
+  {
+    label: "Netherlands",
+    value: "NL",
+    flag: "🇳🇱",
+    cities: [
+      { label: "Amsterdam", value: "amsterdam" },
+      { label: "Rotterdam", value: "rotterdam" },
+    ],
+  },
+  {
+    label: "Poland",
+    value: "PL",
+    flag: "🇵🇱",
+    cities: [
+      { label: "Warsaw", value: "warsaw" },
+      { label: "Kraków", value: "krakow" },
+    ],
+  },
+  {
+    label: "Turkey",
+    value: "TR",
+    flag: "🇹🇷",
+    cities: [
+      { label: "Istanbul", value: "istanbul" },
+      { label: "Ankara", value: "ankara" },
     ],
   },
 ];
-
-export const ONSITE_LOCATION_GROUPS: LocationGroup[] = [
-  {
-    heading: "CITY",
-    items: [
-      { label: "Baku, Azerbaijan", value: "baku", flag: "📍", fullWidth: true },
-      { label: "Sumqayit", value: "sumqayit", flag: "📍" },
-      { label: "Ganja", value: "ganja", flag: "📍" },
-    ],
-  },
-  {
-    heading: "RELOCATION HUBS",
-    items: [
-      { label: "Dubai, UAE", value: "dubai", flag: "🇦🇪" },
-      { label: "Berlin, Germany", value: "berlin", flag: "🇩🇪" },
-      { label: "Amsterdam", value: "amsterdam", flag: "🇳🇱" },
-      { label: "Warsaw", value: "warsaw", flag: "🇵🇱" },
-    ],
-  },
-];
-
-// Scenario C: both remote + on-site selected
-export const MIXED_LOCATION_GROUPS: LocationGroup[] = [
-  {
-    heading: "CITY",
-    items: [
-      {
-        label: "Include Worldwide Remote",
-        value: "worldwide",
-        flag: "🌍",
-        fullWidth: true,
-      },
-      { label: "Baku, Azerbaijan", value: "baku", flag: "📍", fullWidth: true },
-      { label: "Sumqayit", value: "sumqayit", flag: "📍" },
-      { label: "Ganja", value: "ganja", flag: "📍" },
-    ],
-  },
-  {
-    heading: "RELOCATION HUBS",
-    items: [
-      { label: "Dubai, UAE", value: "dubai", flag: "🇦🇪" },
-      { label: "Berlin, Germany", value: "berlin", flag: "🇩🇪" },
-      { label: "Amsterdam", value: "amsterdam", flag: "🇳🇱" },
-      { label: "Warsaw", value: "warsaw", flag: "🇵🇱" },
-    ],
-  },
-];
-
-// Legacy fallback (keep for backward compat)
-export const LOCATION_GROUPS = REMOTE_LOCATION_GROUPS;
 
 export const FEED_CV_OPTIONS: FeedSelectOption[] = [
   { value: "default", label: "CV: Default (CV_Main.pdf)" },

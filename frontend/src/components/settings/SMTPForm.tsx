@@ -12,27 +12,47 @@ interface SMTPFormProps {
 }
 
 export default function SMTPForm({ initial }: SMTPFormProps) {
-  const { form, showPassword, setShowPassword, saving, saved, error, update, handleSave } =
-    useSMTPForm(initial);
+  const {
+    form,
+    showPassword,
+    setShowPassword,
+    saving,
+    saved,
+    error,
+    update,
+    handleSave,
+  } = useSMTPForm(initial);
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="smtp-host">SMTP Server</Label>
-          <Input id="smtp-host" placeholder="smtp.gmail.com"
-            value={form.host} onChange={(e) => update("host", e.target.value)} />
+          <Input
+            id="smtp-host"
+            placeholder="smtp.gmail.com"
+            value={form.host}
+            onChange={(e) => update("host", e.target.value)}
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="smtp-port">Port</Label>
-          <Input id="smtp-port" type="number"
+          <Input
+            id="smtp-port"
+            type="number"
             value={form.port}
-            onChange={(e) => update("port", parseInt(e.target.value) || 587)} />
+            onChange={(e) => update("port", parseInt(e.target.value) || 587)}
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="smtp-user">Username (email)</Label>
-          <Input id="smtp-user" type="email" placeholder="you@gmail.com"
-            value={form.username} onChange={(e) => update("username", e.target.value)} />
+          <Input
+            id="smtp-user"
+            type="email"
+            placeholder="you@gmail.com"
+            value={form.username}
+            onChange={(e) => update("username", e.target.value)}
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="smtp-pass">Password</Label>
@@ -50,16 +70,24 @@ export default function SMTPForm({ initial }: SMTPFormProps) {
               variant="ghost"
               size="icon"
               className="absolute right-1 top-1/2 -translate-y-1/2 size-7 text-muted-foreground"
-              onClick={() => setShowPassword((v) => !v)}
+              onClick={() => setShowPassword((v: boolean) => !v)}
             >
-              {showPassword ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+              {showPassword ? (
+                <EyeOffIcon className="size-4" />
+              ) : (
+                <EyeIcon className="size-4" />
+              )}
             </Button>
           </div>
         </div>
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="smtp-from">Sender name</Label>
-          <Input id="smtp-from" placeholder="JobClawd"
-            value={form.from_name} onChange={(e) => update("from_name", e.target.value)} />
+          <Input
+            id="smtp-from"
+            placeholder="JobClawd"
+            value={form.from_name}
+            onChange={(e) => update("from_name", e.target.value)}
+          />
         </div>
       </div>
 

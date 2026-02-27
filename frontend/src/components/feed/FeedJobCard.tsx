@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { CircleCheck, ExternalLink, MoreHorizontal, X } from "lucide-react";
 
 interface FeedJobCardProps {
@@ -25,7 +25,13 @@ interface FeedJobCardProps {
   onHideCompany?: (company: string) => void;
 }
 
-function CompanyAvatar({ company, logoUrl }: { company: string; logoUrl?: string | null }) {
+function CompanyAvatar({
+  company,
+  logoUrl,
+}: {
+  company: string;
+  logoUrl?: string | null;
+}) {
   const initials = company
     .split(" ")
     .slice(0, 2)
@@ -45,13 +51,19 @@ function CompanyAvatar({ company, logoUrl }: { company: string; logoUrl?: string
   }
 
   return (
-    <div className="size-11 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 bg-gradient-to-br from-secondary/80 to-secondary text-white shadow-sm">
+    <div className="size-11 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 bg-linear-to-br from-secondary/80 to-secondary text-white shadow-sm">
       {initials || "?"}
     </div>
   );
 }
 
-function MatchScore({ score, level }: { score: number; level: "high" | "review" | "trash" }) {
+function MatchScore({
+  score,
+  level,
+}: {
+  score: number;
+  level: "high" | "review" | "trash";
+}) {
   if (level === "trash" || score === 0) return null;
 
   const isHigh = level === "high";
@@ -61,13 +73,13 @@ function MatchScore({ score, level }: { score: number; level: "high" | "review" 
         "flex flex-col items-center justify-center rounded-xl px-3 py-2 min-w-[58px] shrink-0",
         isHigh
           ? "bg-match-high/10 border border-match-high/20"
-          : "bg-match-review/10 border border-match-review/20"
+          : "bg-match-review/10 border border-match-review/20",
       )}
     >
       <span
         className={cn(
           "text-lg font-bold leading-none tabular-nums",
-          isHigh ? "text-match-high" : "text-match-review"
+          isHigh ? "text-match-high" : "text-match-review",
         )}
       >
         {score}
@@ -75,24 +87,13 @@ function MatchScore({ score, level }: { score: number; level: "high" | "review" 
       <span
         className={cn(
           "text-[10px] font-semibold mt-0.5 uppercase tracking-wide",
-          isHigh ? "text-match-high/70" : "text-match-review/70"
+          isHigh ? "text-match-high/70" : "text-match-review/70",
         )}
       >
         {isHigh ? "High" : "Review"}
       </span>
     </div>
   );
-}
-
-function formatDate(dateStr: string): string {
-  if (!dateStr) return "";
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString("en-US", { day: "numeric", month: "short" });
-  } catch {
-    return dateStr;
-  }
 }
 
 export default function FeedJobCard({
@@ -110,24 +111,24 @@ export default function FeedJobCard({
     <Card
       className={cn(
         "gap-0 py-0 transition-all duration-200 overflow-hidden",
-        selected ? "ring-2 ring-primary shadow-md" : "hover:shadow-md hover:-translate-y-0.5",
-        isHigh && "border-match-high/30"
+        selected
+          ? "ring-2 ring-primary shadow-md"
+          : "hover:shadow-md hover:-translate-y-0.5",
+        isHigh && "border-match-high/30",
       )}
     >
-      {/* Match level top accent strip */}
       <div
         className={cn(
           "h-[3px] w-full shrink-0",
           job.match_level === "high"
-            ? "bg-gradient-to-r from-match-high/70 to-match-high"
+            ? "bg-linear-to-r from-match-high/70 to-match-high"
             : job.match_level === "review"
-            ? "bg-gradient-to-r from-match-review/70 to-match-review"
-            : "bg-border/40"
+              ? "bg-linear-to-r from-match-review/70 to-match-review"
+              : "bg-border/40",
         )}
       />
 
       <CardContent className="px-4 pt-4 pb-4 space-y-3.5">
-        {/* Header row: checkbox + avatar + info + score */}
         <div className="flex items-start gap-3">
           <Checkbox
             checked={selected}
@@ -140,13 +141,21 @@ export default function FeedJobCard({
               {job.title}
             </h3>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs text-muted-foreground font-medium">{job.company}</span>
-              <span className="text-muted-foreground/30 text-xs select-none">•</span>
+              <span className="text-xs text-muted-foreground font-medium">
+                {job.company}
+              </span>
+              <span className="text-muted-foreground/30 text-xs select-none">
+                •
+              </span>
               <SourceBadge source={job.source} />
               {job.date_posted && (
                 <>
-                  <span className="text-muted-foreground/30 text-xs select-none">•</span>
-                  <span className="text-xs text-muted-foreground">{formatDate(job.date_posted)}</span>
+                  <span className="text-muted-foreground/30 text-xs select-none">
+                    •
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatDate(job.date_posted)}
+                  </span>
                 </>
               )}
             </div>
@@ -154,7 +163,6 @@ export default function FeedJobCard({
           <MatchScore score={job.match_score} level={job.match_level} />
         </div>
 
-        {/* Match flags */}
         {job.match_flags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {job.match_flags.map((flag, i) => (
@@ -168,7 +176,6 @@ export default function FeedJobCard({
           </div>
         )}
 
-        {/* Actions */}
         <div className="flex items-center gap-2 pt-0.5">
           <Button
             onClick={onApply}

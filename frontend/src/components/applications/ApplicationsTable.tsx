@@ -1,14 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { ApplicationRecord, ApplicationStatus } from "@/types";
 import StatusBadge from "./StatusBadge";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/Tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import {
   Table,
   TableBody,
@@ -17,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/Table";
+import { formatDate } from "@/lib/utils";
 
 const TABS: { value: ApplicationStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -28,18 +23,6 @@ const TABS: { value: ApplicationStatus | "all"; label: string }[] = [
 interface ApplicationsTableProps {
   records: ApplicationRecord[];
   onStatusChange: (id: number, status: ApplicationStatus) => void;
-}
-
-function formatDate(str: string): string {
-  try {
-    return new Date(str).toLocaleDateString("en-US", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return str;
-  }
 }
 
 function RecordsTable({
@@ -71,7 +54,9 @@ function RecordsTable({
       <TableBody>
         {records.map((r) => (
           <TableRow key={r.id}>
-            <TableCell className="font-medium max-w-[140px] truncate">{r.company}</TableCell>
+            <TableCell className="font-medium max-w-[140px] truncate">
+              {r.company}
+            </TableCell>
             <TableCell className="max-w-[200px]">
               <a
                 href={r.job_url}
@@ -83,7 +68,7 @@ function RecordsTable({
               </a>
             </TableCell>
             <TableCell className="text-muted-foreground whitespace-nowrap">
-              {formatDate(r.sent_at)}
+              {formatDate(r.sent_at, { year: "numeric" })}
             </TableCell>
             <TableCell className="text-muted-foreground max-w-[120px] truncate">
               {r.cv_name ?? "—"}
@@ -110,7 +95,10 @@ export default function ApplicationsTable({
 
   return (
     <Tabs defaultValue="all">
-      <TabsList variant="line" className="w-full justify-start mb-4 h-auto p-0 rounded-none border-b bg-transparent">
+      <TabsList
+        variant="line"
+        className="w-full justify-start mb-4 h-auto p-0 rounded-none border-b bg-transparent"
+      >
         {TABS.map((t) => {
           const count =
             t.value === "all"
@@ -123,14 +111,19 @@ export default function ApplicationsTable({
               className="pb-3 text-sm rounded-none data-[state=active]:shadow-none"
             >
               {t.label}
-              <span className="ml-1 text-xs text-muted-foreground">({count})</span>
+              <span className="ml-1 text-xs text-muted-foreground">
+                ({count})
+              </span>
             </TabsTrigger>
           );
         })}
       </TabsList>
       {TABS.map((t) => (
         <TabsContent key={t.value} value={t.value}>
-          <RecordsTable records={filtered(t.value)} onStatusChange={onStatusChange} />
+          <RecordsTable
+            records={filtered(t.value)}
+            onStatusChange={onStatusChange}
+          />
         </TabsContent>
       ))}
     </Tabs>

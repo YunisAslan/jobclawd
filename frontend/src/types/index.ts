@@ -6,6 +6,12 @@ export type MatchLevel = "high" | "review" | "trash";
 export type ApplicationStatus = "sent" | "replied" | "rejected" | "withdrawn";
 export type JobSource = "jobsearch" | "linkedin" | "indeed";
 
+export type LocationValue = {
+  type?: "region" | "country" | "city";
+  value?: string;
+  values?: string[];
+};
+
 // ---------- Sub-models ----------
 
 export interface CVLink {

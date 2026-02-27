@@ -454,8 +454,7 @@ function SelectItem({
   badgeLabel?: React.ReactNode;
   onSelect?: (value: string) => void;
 }) {
-  const { mode, toggleValue, selectedValues, onItemAdded, setOpen } =
-    useSelectContext();
+  const { mode, toggleValue, selectedValues, onItemAdded } = useSelectContext();
   const isSelected = selectedValues.has(value);
 
   React.useEffect(() => {

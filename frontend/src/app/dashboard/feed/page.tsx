@@ -19,7 +19,7 @@ export default function FeedPage() {
         sources: values.sources?.length ? values.sources : undefined,
         workModes: values.workModes?.length ? values.workModes : undefined,
         experience: values.experience?.length ? values.experience : undefined,
-        location: values.location || undefined,
+        location: values.location?.value ? values.location : undefined,
         datePosted: values.datePosted || undefined,
         salaryMin: values.salaryMin ? Number(values.salaryMin) : undefined,
         jobTypes: values.jobTypes?.length ? values.jobTypes : undefined,
