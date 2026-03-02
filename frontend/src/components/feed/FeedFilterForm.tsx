@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+
 import {
   Search,
   Sparkles,
@@ -17,14 +19,7 @@ import { feedFilterSchema, FeedFilterValues } from "@/validations/feed";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
-import {
-  FEED_SOURCE_OPTIONS,
-  FEED_WORK_MODE_OPTIONS,
-  FEED_EXPERIENCE_OPTIONS,
-  FEED_JOB_TYPE_OPTIONS,
-  FEED_DATE_OPTIONS,
-  FEED_SORT_OPTIONS,
-} from "@/lib/data";
+import { useMetaFilters } from "@/hooks/use-meta";
 import SelectBox from "@/components/SelectBox";
 import LocationPicker from "@/components/feed/LocationPicker";
 
@@ -33,6 +28,7 @@ interface FeedFilterFormProps {
 }
 
 export default function FeedFilterForm({ onSubmit }: FeedFilterFormProps) {
+  const { data: meta } = useMetaFilters();
   const { control, handleSubmit, watch } = useForm<FeedFilterValues>({
     resolver: zodResolver(feedFilterSchema),
     defaultValues: {
@@ -49,6 +45,39 @@ export default function FeedFilterForm({ onSubmit }: FeedFilterFormProps) {
   });
 
   const workModes = watch("workModes") ?? [];
+  const location = watch("location");
+
+  const currency = useMemo(() => {
+    if (!meta || !location) return "USD";
+    if (location.type === "region" && location.value === "worldwide")
+      return "USD";
+
+    let selectedCountryCode: string | null = null;
+    if (location.type === "country" && location.value) {
+      selectedCountryCode = location.value;
+    } else if (
+      location.type === "city" &&
+      location.values &&
+      location.values.length > 0
+    ) {
+      const firstCity = location.values[0];
+      const foundCountry = meta.countries.find((c) =>
+        c.cities.some((ci) => ci.value === firstCity),
+      );
+      if (foundCountry) {
+        selectedCountryCode = foundCountry.value;
+      }
+    }
+
+    if (selectedCountryCode) {
+      const country = meta.countries.find(
+        (c) => c.value === selectedCountryCode,
+      );
+      return country?.currency || "USD";
+    }
+
+    return "USD";
+  }, [meta, location]);
 
   return (
     <Card className="py-0 shadow-sm border-border/60">
@@ -83,7 +112,7 @@ export default function FeedFilterForm({ onSubmit }: FeedFilterFormProps) {
                 <SelectBox
                   icon={<Globe2 className="size-4 text-muted-foreground" />}
                   placeholder="Source"
-                  options={FEED_SOURCE_OPTIONS}
+                  options={meta?.sources ?? []}
                   mode="multiple"
                   value={field.value}
                   onChange={field.onChange}
@@ -98,7 +127,7 @@ export default function FeedFilterForm({ onSubmit }: FeedFilterFormProps) {
                 <SelectBox
                   icon={<Monitor className="size-4 text-muted-foreground" />}
                   placeholder="Work mode"
-                  options={FEED_WORK_MODE_OPTIONS}
+                  options={meta?.work_modes ?? []}
                   mode="multiple"
                   value={field.value}
                   onChange={field.onChange}
@@ -115,6 +144,7 @@ export default function FeedFilterForm({ onSubmit }: FeedFilterFormProps) {
                   value={locationField.value}
                   onChange={locationField.onChange}
                   workModes={workModes}
+                  countries={meta?.countries ?? []}
                 />
               )}
             />
@@ -128,7 +158,7 @@ export default function FeedFilterForm({ onSubmit }: FeedFilterFormProps) {
                     <GraduationCap className="size-4 text-muted-foreground" />
                   }
                   placeholder="Experience"
-                  options={FEED_EXPERIENCE_OPTIONS}
+                  options={meta?.experience_levels ?? []}
                   mode="multiple"
                   value={field.value}
                   onChange={field.onChange}
@@ -144,7 +174,7 @@ export default function FeedFilterForm({ onSubmit }: FeedFilterFormProps) {
                 <SelectBox
                   icon={<Briefcase className="size-4 text-muted-foreground" />}
                   placeholder="Job type"
-                  options={FEED_JOB_TYPE_OPTIONS}
+                  options={meta?.job_types ?? []}
                   mode="multiple"
                   value={field.value}
                   onChange={field.onChange}
@@ -168,7 +198,7 @@ export default function FeedFilterForm({ onSubmit }: FeedFilterFormProps) {
                   />
                 )}
               />
-              <span className="text-sm text-muted-foreground">AZN</span>
+              <span className="text-sm text-muted-foreground">{currency}</span>
             </div>
 
             <Controller
@@ -180,7 +210,7 @@ export default function FeedFilterForm({ onSubmit }: FeedFilterFormProps) {
                     <CalendarDays className="size-4 text-muted-foreground" />
                   }
                   placeholder="Date posted"
-                  options={FEED_DATE_OPTIONS}
+                  options={meta?.date_posted ?? []}
                   value={field.value}
                   onChange={field.onChange}
                 />
@@ -196,7 +226,7 @@ export default function FeedFilterForm({ onSubmit }: FeedFilterFormProps) {
                     <ArrowUpDown className="size-3.5 text-muted-foreground" />
                   }
                   placeholder="Sort by"
-                  options={FEED_SORT_OPTIONS}
+                  options={meta?.sort_options ?? []}
                   value={field.value}
                   onChange={field.onChange}
                 />

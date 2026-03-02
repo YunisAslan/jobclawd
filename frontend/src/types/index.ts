@@ -140,3 +140,33 @@ export interface SMTPSettings {
 export interface AutopilotSettings {
   enabled: boolean;
 }
+
+// ---------- Meta ----------
+
+export interface FilterOption {
+  value: string;
+  label: string;
+}
+
+export interface CityOption {
+  value: string;
+  label: string;
+}
+
+export interface CountryOption {
+  value: string;
+  label: string;
+  flag?: string | null;
+  currency: string;
+  cities: CityOption[];
+}
+
+export interface MetaFiltersResponse {
+  sources: FilterOption[];
+  work_modes: FilterOption[];
+  experience_levels: FilterOption[];
+  job_types: FilterOption[];
+  date_posted: FilterOption[];
+  sort_options: FilterOption[];
+  countries: CountryOption[];
+}

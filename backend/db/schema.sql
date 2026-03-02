@@ -26,3 +26,25 @@ CREATE TABLE IF NOT EXISTS auth_tokens (
   expires_at TEXT NOT NULL,
   used INTEGER DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS filter_options (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  category TEXT NOT NULL,
+  value TEXT NOT NULL,
+  label TEXT NOT NULL,
+  UNIQUE(category, value)
+);
+
+CREATE TABLE IF NOT EXISTS countries (
+  code TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  flag TEXT,
+  currency TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS cities (
+  value TEXT PRIMARY KEY,
+  country_code TEXT NOT NULL,
+  name TEXT NOT NULL,
+  FOREIGN KEY(country_code) REFERENCES countries(code)
+);

@@ -1,32 +1,29 @@
 "use client";
 
-import { FEED_JOBS_MOCK } from "@/lib/data";
 import { FeedFilterValues } from "@/validations/feed";
 import TopBar from "@/components/layout/TopBar";
 import FeedFilterForm from "@/components/feed/FeedFilterForm";
 import FeedResults from "@/components/feed/FeedResults";
+import { useFeed } from "@/hooks/use-feed";
+import { JobSource } from "@/types";
 
 export default function FeedPage() {
-  const highMatch = FEED_JOBS_MOCK.filter((job) => job.match_level === "high");
-  const needsReview = FEED_JOBS_MOCK.filter(
-    (job) => job.match_level === "review",
-  );
+  const { highMatch, needsReview, setQuery, setSources, handleSearch } =
+    useFeed();
 
-  function handleSearch(values: FeedFilterValues) {
-    const payload = {
-      query: values.query || undefined,
-      filters: {
-        sources: values.sources?.length ? values.sources : undefined,
-        workModes: values.workModes?.length ? values.workModes : undefined,
-        experience: values.experience?.length ? values.experience : undefined,
-        location: values.location?.value ? values.location : undefined,
-        datePosted: values.datePosted || undefined,
-        salaryMin: values.salaryMin ? Number(values.salaryMin) : undefined,
-        jobTypes: values.jobTypes?.length ? values.jobTypes : undefined,
-        sortBy: values.sortBy || undefined,
-      },
-    };
-    console.log("[Feed] Search payload:", payload);
+  function onSearchSubmit(values: FeedFilterValues) {
+    if (values.query) {
+      setQuery(values.query);
+    }
+    if (values.sources) {
+      setSources(values.sources as JobSource[]);
+    }
+
+    // Future expansion: we can add location, dates, etc to useFeed parameters
+
+    handleSearch();
+
+    console.log("[Feed] Search payload (for analytics/future):", values);
   }
 
   return (
@@ -34,7 +31,7 @@ export default function FeedPage() {
       <TopBar title="Job Feed" />
 
       <div className="p-6 space-y-5">
-        <FeedFilterForm onSubmit={handleSearch} />
+        <FeedFilterForm onSubmit={onSearchSubmit} />
         <FeedResults highMatch={highMatch} needsReview={needsReview} />
       </div>
     </div>

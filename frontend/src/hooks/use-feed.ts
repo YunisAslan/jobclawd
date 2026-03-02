@@ -5,18 +5,15 @@ import { applyService } from "@/services/apply.service";
 import { JobListing, JobSource } from "@/types";
 import { useProfile } from "@/contexts/ProfileContext";
 
-export const ALL_SOURCES: { value: JobSource; label: string }[] = [
-  { value: "jobsearch", label: "Jobsearch" },
-  { value: "linkedin",  label: "LinkedIn"  },
-  { value: "indeed",    label: "Indeed"    },
-];
-
 export function useFeed() {
   const { profile } = useProfile();
-  const [query, setQuery]     = useState("");
-  const [sources, setSources] = useState<JobSource[]>(["jobsearch", "linkedin"]);
-  const [jobs, setJobs]       = useState<JobListing[]>([]);
-  const [skipped, setSkipped]   = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
+  const [sources, setSources] = useState<JobSource[]>([
+    "jobsearch",
+    "linkedin",
+  ]);
+  const [jobs, setJobs] = useState<JobListing[]>([]);
+  const [skipped, setSkipped] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [drawerJob, setDrawerJob] = useState<JobListing | null>(null);
   const [bulkApplying, setBulkApplying] = useState(false);
@@ -34,10 +31,10 @@ export function useFeed() {
   const applyMutation = useMutation({
     mutationFn: (job: JobListing) =>
       applyService.apply({
-        job_url:     job.url,
-        job_title:   job.title,
-        company:     job.company,
-        source:      job.source,
+        job_url: job.url,
+        job_title: job.title,
+        company: job.company,
+        source: job.source,
         match_score: job.match_score,
         match_level: job.match_level,
         profile,
@@ -58,7 +55,11 @@ export function useFeed() {
 
   const handleSkip = (url: string) => {
     setSkipped((prev) => new Set([...prev, url]));
-    setSelected((prev) => { const n = new Set(prev); n.delete(url); return n; });
+    setSelected((prev) => {
+      const n = new Set(prev);
+      n.delete(url);
+      return n;
+    });
   };
 
   const handleApplied = () => {
@@ -72,17 +73,17 @@ export function useFeed() {
     setBulkApplying(true);
     const toApply = jobs.filter((j) => selected.has(j.url));
     await Promise.all(
-      toApply.map((job) => applyMutation.mutateAsync(job).catch(() => {}))
+      toApply.map((job) => applyMutation.mutateAsync(job).catch(() => {})),
     );
     setSkipped((prev) => new Set([...prev, ...toApply.map((j) => j.url)]));
     setSelected(new Set());
     setBulkApplying(false);
   };
 
-  const visible     = jobs.filter((j) => !skipped.has(j.url));
-  const highMatch   = visible.filter((j) => j.match_level === "high");
+  const visible = jobs.filter((j) => !skipped.has(j.url));
+  const highMatch = visible.filter((j) => j.match_level === "high");
   const needsReview = visible.filter((j) => j.match_level === "review");
-  const hasScoring  = profile.name.length > 0;
+  const hasScoring = profile.name.length > 0;
 
   const errorMsg = searchMutation.error
     ? ((searchMutation.error as { response?: { data?: { detail?: string } } })
@@ -95,8 +96,8 @@ export function useFeed() {
     sources,
     setSources,
     jobs,
-    loading:      searchMutation.isPending,
-    error:        errorMsg,
+    loading: searchMutation.isPending,
+    error: errorMsg,
     selected,
     drawerJob,
     setDrawerJob,

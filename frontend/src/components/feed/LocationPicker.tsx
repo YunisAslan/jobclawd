@@ -8,9 +8,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/Popover";
 import { Button } from "@/components/ui/Button";
-import { ONSITE_COUNTRIES } from "@/lib/data";
 import { cn } from "@/lib/utils";
-import { LocationValue } from "@/types";
+import { CountryOption, LocationValue } from "@/types";
 
 type WorkModeScenario = "remote" | "onsite" | "mixed" | "none";
 
@@ -18,6 +17,7 @@ interface LocationPickerProps {
   value?: LocationValue;
   onChange?: (value: LocationValue) => void;
   workModes?: string[];
+  countries?: CountryOption[];
 }
 
 function getScenario(workModes: string[]): WorkModeScenario {
@@ -40,11 +40,14 @@ function getConfig(scenario: WorkModeScenario) {
   }
 }
 
-function getTriggerLabel(value?: LocationValue): string | null {
+function getTriggerLabel(
+  value?: LocationValue,
+  countries?: CountryOption[],
+): string | null {
   if (!value?.value && !value?.values?.length) return null;
 
   if (value.values?.length) {
-    const allCities = ONSITE_COUNTRIES.flatMap((c) => c.cities);
+    const allCities = (countries || []).flatMap((c) => c.cities);
     const labels = value.values
       .map((v) => allCities.find((ci) => ci.value === v)?.label ?? v)
       .join(", ");
@@ -53,7 +56,7 @@ function getTriggerLabel(value?: LocationValue): string | null {
 
   if (!value.value) return null;
   if (value.value === "worldwide") return "Worldwide Remote";
-  for (const country of ONSITE_COUNTRIES) {
+  for (const country of countries || []) {
     if (country.value === value.value) return country.label;
     const city = country.cities.find((ci) => ci.value === value.value);
     if (city) return `${city.label}, ${country.label}`;
@@ -68,13 +71,14 @@ export default function LocationPicker({
   value,
   onChange,
   workModes = [],
+  countries = [],
 }: LocationPickerProps) {
   const [open, setOpen] = React.useState(false);
   const [modalKey, setModalKey] = React.useState(0);
 
   const scenario = getScenario(workModes);
   const { placeholder, Icon } = getConfig(scenario);
-  const triggerLabel = getTriggerLabel(value);
+  const triggerLabel = getTriggerLabel(value, countries);
 
   const prevScenario = React.useRef(scenario);
   React.useEffect(() => {
@@ -129,6 +133,7 @@ export default function LocationPicker({
           onChange={onChange}
           onClose={handleClose}
           showWorldwide={scenario !== "onsite"}
+          countries={countries}
         />
       </PopoverContent>
     </Popover>

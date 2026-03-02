@@ -2,20 +2,21 @@ import * as React from "react";
 import { Search, ChevronLeft, ChevronRight, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { ONSITE_COUNTRIES } from "@/lib/data";
 import { cn } from "@/lib/utils";
-import { LocationValue } from "@/types";
+import { CountryOption, LocationValue } from "@/types";
 
 export default function LocationModal({
   value,
   onChange,
   onClose,
   showWorldwide,
+  countries,
 }: {
   value?: LocationValue;
   onChange?: (v: LocationValue) => void;
   onClose: () => void;
   showWorldwide: boolean;
+  countries: CountryOption[];
 }) {
   const [step, setStep] = React.useState<"first" | "city">("first");
   const [drillCountryVal, setDrillCountryVal] = React.useState<string>("");
@@ -36,15 +37,13 @@ export default function LocationModal({
     return () => clearTimeout(t);
   }, [step]);
 
-  const drillCountry = ONSITE_COUNTRIES.find(
-    (c) => c.value === drillCountryVal,
-  );
+  const drillCountry = countries.find((c) => c.value === drillCountryVal);
 
   const firstList = React.useMemo(() => {
     type Row = {
       value: string;
       label: string;
-      flag?: string;
+      flag?: string | null;
       type: "region" | "country" | "city";
       hasCities: boolean;
     };
@@ -60,7 +59,7 @@ export default function LocationModal({
       });
     }
 
-    for (const c of ONSITE_COUNTRIES) {
+    for (const c of countries) {
       rows.push({
         value: c.value,
         label: c.label,
@@ -91,7 +90,7 @@ export default function LocationModal({
   const selectedCities: string[] = value?.values ?? [];
 
   function cityCountFor(countryVal: string): number {
-    const c = ONSITE_COUNTRIES.find((x) => x.value === countryVal);
+    const c = countries.find((x) => x.value === countryVal);
     if (!c) return 0;
     return selectedCities.filter((sv) => c.cities.some((ci) => ci.value === sv))
       .length;

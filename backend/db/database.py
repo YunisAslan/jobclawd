@@ -2,6 +2,8 @@ import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 
+from .seed import seed_data
+
 DB_PATH = Path(__file__).parent.parent / "jobclawd.db"
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
@@ -14,6 +16,7 @@ def init_db() -> None:
         conn.execute(
             "INSERT OR IGNORE INTO settings (key, value) VALUES ('autopilot_enabled', 'false')"
         )
+        seed_data(conn)
         conn.commit()
 
 

@@ -179,3 +179,33 @@ class SMTPSettings(BaseModel):
 
 class AutopilotSettings(BaseModel):
     enabled: bool
+
+
+# ---------- Meta ----------
+
+class FilterOption(BaseModel):
+    value: str
+    label: str
+
+
+class CityOption(BaseModel):
+    value: str
+    label: str
+
+
+class CountryOption(BaseModel):
+    value: str
+    label: str
+    flag: Optional[str] = None
+    currency: str
+    cities: list[CityOption] = []
+
+
+class MetaFiltersResponse(BaseModel):
+    sources: list[FilterOption]
+    work_modes: list[FilterOption]
+    experience_levels: list[FilterOption]
+    job_types: list[FilterOption]
+    date_posted: list[FilterOption]
+    sort_options: list[FilterOption]
+    countries: list[CountryOption]

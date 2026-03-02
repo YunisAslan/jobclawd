@@ -1,6 +1,5 @@
 """LinkedIn job scraper — non-fatal, returns [] on any error."""
 
-import asyncio
 from urllib.parse import quote_plus
 from scraper import get_browser
 from models.schemas import JobListing, JobSource
