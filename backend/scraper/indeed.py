@@ -41,31 +41,39 @@ async def scrape_indeed(
         target_location = "Bakı" # Default for indeed.az
         
         if location and location.type in ["country", "city"]:
-            if location.type == "city" and location.value:
-                with get_db() as conn:
-                    row = conn.execute("SELECT name FROM cities WHERE value = ?", (location.value,)).fetchone()
-                    if row:
-                        target_location = row["name"]
-            elif location.type == "country":
-                target_value = location.value
-                if location.values and len(location.values) == 1:
-                    target_value = location.values[0]
-                if target_value:
+            val = None
+            if location.values and len(location.values) > 0:
+                val = location.values[0]
+            elif location.value:
+                val = location.value
+                
+            if val:
+                if location.type == "country":
                     with get_db() as conn:
-                        row = conn.execute("SELECT name FROM countries WHERE code = ?", (target_value,)).fetchone()
+                        row = conn.execute("SELECT name FROM countries WHERE code = ?", (val,)).fetchone()
                         if row:
                             target_location = row["name"]
+                elif location.type == "city":
+                    with get_db() as conn:
+                        row = conn.execute("SELECT name FROM cities WHERE value = ?", (val,)).fetchone()
+                        if row:
+                            target_location = row["name"]
+                        else:
+                            # Fallback if DB lookup fails, format az-baku as baku
+                            target_location = val.split("-")[1].title() if "-" in val else val.title()
 
         encoded_l = quote_plus(target_location)
         
-        # Determine from_age
-        fromage = 1 # default
-        if date_posted == "today" or date_posted == "past-24h":
+        # Determine from_age — 0 means "any time" (no restriction)
+        fromage = 0
+        if date_posted in ("1d", "today", "past-24h"):
             fromage = 1
-        elif date_posted == "past-week":
+        elif date_posted in ("3d",):
+            fromage = 3
+        elif date_posted in ("7d", "past-week"):
             fromage = 7
-        elif date_posted == "past-month":
-            fromage = 14
+        elif date_posted in ("1m", "past-month"):
+            fromage = 30
             
         # Determine sc parameters
         sc_tags = []
@@ -92,15 +100,18 @@ async def scrape_indeed(
         if sc_tags:
             sc_query = f"&sc=0kf:{''.join([f'{t};' for t in sc_tags])}"
 
-        base_url = f"{INDEED_BASE}/jobs?q={encoded_q}&l={encoded_l}&fromage={fromage}{sc_query}"
+        base_url = f"{INDEED_BASE}/jobs?q={encoded_q}&l={encoded_l}"
+        if fromage > 0:
+            base_url += f"&fromage={fromage}"
+        base_url += sc_query
         
-        if sort_by == "latest" or sort_by == "job-title-descending" or sort_by == "job-title-ascending":
-            base_url += "&sort=date"
+        # Always sort by date for freshness by default
+        base_url += "&sort=date"
 
         jobs: list[JobListing] = []
         seen_jks = set()
         
-        for offset in range(0, 100, 10):
+        for offset in range(0, 200, 10):
             url = f"{base_url}&start={offset}"
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=25000)
@@ -128,6 +139,7 @@ async def scrape_indeed(
                         
                     company_el = await card.query_selector('[data-testid="company-name"]')
                     date_el = await card.query_selector('[data-testid="myJobsStateDate"]')
+                    location_el = await card.query_selector('[data-testid="text-location"]')
 
                     title = ""
                     if title_el:
@@ -141,6 +153,7 @@ async def scrape_indeed(
 
                     company = (await company_el.inner_text()).strip() if company_el else ""
                     date_str = (await date_el.inner_text()).strip() if date_el else ""
+                    location_str = (await location_el.inner_text()).strip() if location_el else ""
 
                     if not title:
                         continue
@@ -155,15 +168,17 @@ async def scrape_indeed(
                             url=job_url,
                             date_posted=date_str,
                             source=JobSource.indeed,
+                            location_str=location_str,
                         )
                     )
                 except Exception:
                     continue
                     
-            if len(jobs) >= 100:
+            if len(jobs) >= 200:
                 break
 
-        return jobs[:100]
+        print(f"[Indeed] Fetched {len(jobs)} jobs for '{query}' @ {target_location}")
+        return jobs
 
     except Exception:
         return []

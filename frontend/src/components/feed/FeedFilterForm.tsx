@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 
 import {
   Search,
@@ -25,11 +25,13 @@ import LocationPicker from "@/components/feed/LocationPicker";
 
 interface FeedFilterFormProps {
   onSubmit: (values: FeedFilterValues) => void;
+  onChange?: (values: FeedFilterValues) => void;
   loading?: boolean;
 }
 
 export default function FeedFilterForm({
   onSubmit,
+  onChange,
   loading,
 }: FeedFilterFormProps) {
   const { data: meta } = useMetaFilters();
@@ -47,6 +49,15 @@ export default function FeedFilterForm({
       sortBy: "",
     },
   });
+
+  useEffect(() => {
+    if (onChange) {
+      const subscription = watch((value) => {
+        onChange(value as FeedFilterValues);
+      });
+      return () => subscription.unsubscribe();
+    }
+  }, [watch, onChange]);
 
   const workModes = watch("workModes") ?? [];
   const location = watch("location");

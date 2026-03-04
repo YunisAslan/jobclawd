@@ -113,6 +113,7 @@ export default function LocationModal({
     }
     if (row.hasCities) {
       setDrillCountryVal(row.value);
+      onChange?.({ type: "country", value: row.value });
       setFirstSearch("");
       setCitySearch("");
       setStep("city");

@@ -47,19 +47,74 @@ async def scrape_search(
                 pass
 
     page.on("response", handle_response)
-    
-    # Use only the query for search - location filtering will be done post-fetch
-    # because jobsearch.az search works better with clean queries
     import urllib.parse
-    augmented_query = urllib.parse.quote_plus(query)
+    
+    query_parts = {}
+    if query:
+        query_parts["search"] = query
+        
+    # Location (Region)
+    city_val = None
+    if location and location.type in ["city", "country"]:
+        if location.value:
+            city_val = location.value
+        elif location.values and len(location.values) > 0:
+            city_val = location.values[0]
+            
+    if city_val:
+        if "-" in city_val:
+            city_val = city_val.split("-", 1)[1]
+        
+        city_lower = city_val.lower()
+        if "baku" in city_lower or "bakı" in city_lower or "baki" in city_lower:
+            query_parts["region"] = "8"
+        elif "sumqayit" in city_lower or "sumgayit" in city_lower or "sumqayıt" in city_lower:
+            query_parts["region"] = "62"
+        elif "ganja" in city_lower or "gəncə" in city_lower or "gence" in city_lower:
+            query_parts["region"] = "21"
+        elif "naxcivan" in city_lower or "naxçıvan" in city_lower:
+            query_parts["region"] = "53"
+            
+    # Experience (Vəzifə dərəcəsi)
+    # 0:Təcrübəçi, 1:Köməkçi, 2:Mütəxəssis, 3:Menecer, 4:Direktor, 5:Yuxarı rəhbərlik
+    if experience:
+        exp_vals = []
+        for exp in experience:
+            e = exp.lower()
+            if "junior" in e or "intern" in e:
+                exp_vals.extend(["0", "1"])
+            if "mid" in e:
+                exp_vals.append("2")
+            if "senior" in e or "lead" in e:
+                exp_vals.extend(["3", "4", "5"])
+        if exp_vals:
+            query_parts["vacancy_type"] = ",".join(list(set(exp_vals)))
+            
+    # Job Types / Work Modes (Məşğulluq növü)
+    # 0:Tam, 1:Natamam, 2:Təcrübə, 3:Müvəqqəti, 4:Distant, 5:Frilans
+    em_vals = []
+    if job_types:
+        for jt in job_types:
+            j = jt.lower()
+            if "full-time" in j: em_vals.append("0")
+            elif "part-time" in j: em_vals.append("1")
+            elif "internship" in j: em_vals.append("2")
+            elif "temporary" in j or "contract" in j: em_vals.append("3")
+    if work_modes:
+        for wm in work_modes:
+            w = wm.lower()
+            if "remote" in w: em_vals.append("4")
+    if em_vals:
+        query_parts["employment_type"] = ",".join(list(set(em_vals)))
+        
+    qs = urllib.parse.urlencode(query_parts) if query_parts else ""
 
     try:
         await page.goto(
-            f"{BASE_URL}/vacancies?search={augmented_query}",
+            f"{BASE_URL}/vacancies?{qs}",
             wait_until="networkidle",
             timeout=30000,
         )
-
         try:
             await asyncio.wait_for(api_event.wait(), timeout=10)
         except asyncio.TimeoutError:
@@ -89,9 +144,9 @@ async def scrape_search(
             parsed = urllib.parse.urlparse(api_base_url)
             qs = urllib.parse.parse_qs(parsed.query)
             
-            # Fetch pages 2 to roughly max 6 (up to ~100 results)
+            # Fetch pages 2 to roughly max 15 for more results, sorted by fresh
             current_page = 2
-            while len(all_items) < 100 and current_page <= 6:
+            while current_page <= 15:
                 qs['page'] = [str(current_page)]
                 new_query = urllib.parse.urlencode(qs, doseq=True)
                 next_url = urllib.parse.urlunparse(parsed._replace(query=new_query))
@@ -115,7 +170,7 @@ async def scrape_search(
 
         # Post-fetch filter by date posted
         from datetime import datetime, timedelta
-        if date_posted in ["today", "past-24h", "past-week", "past-month"]:
+        if date_posted in ("1d", "today", "past-24h", "3d", "7d", "past-week", "1m", "past-month"):
             now = datetime.now()
             filtered_items = []
             for item in all_items:
@@ -124,28 +179,27 @@ async def scrape_search(
                     continue
                     
                 try:
-                    # typical jobsearch.az format: '2024-03-04 15:30:00' or similar
-                    # Sometimes it contains Timezones. We'll do a simple slice.
-                    # Or fallback to ISO parse.
                     dt_str = created_at_str[:19].replace("T", " ")
                     item_dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
-                    
                     diff = now - item_dt
                     
-                    if date_posted in ["today", "past-24h"] and diff <= timedelta(days=1):
+                    if date_posted in ("1d", "today", "past-24h") and diff <= timedelta(days=1):
                         filtered_items.append(item)
-                    elif date_posted == "past-week" and diff <= timedelta(days=7):
+                    elif date_posted == "3d" and diff <= timedelta(days=3):
                         filtered_items.append(item)
-                    elif date_posted == "past-month" and diff <= timedelta(days=30):
+                    elif date_posted in ("7d", "past-week") and diff <= timedelta(days=7):
+                        filtered_items.append(item)
+                    elif date_posted in ("1m", "past-month") and diff <= timedelta(days=30):
                         filtered_items.append(item)
                 except Exception:
-                    # If parse fails, aggressively include it or drop it? Include to be safe.
                     filtered_items.append(item)
                     
             all_items = filtered_items
 
+        print(f"[JobSearch] Fetched {len(all_items)} items for '{query}'")
+
         results = []
-        for i, item in enumerate(all_items[:100]):
+        for i, item in enumerate(all_items):
             if i == 0:
                 print("JOBSEARCH ITEM FULL:", item)
             
@@ -167,14 +221,14 @@ async def scrape_search(
                 )
             )
         
-        # Sort if requested
-        if sort_by == "latest":
-            # Jobsearch API is usually pre-sorted by latest, but we can enforce it
-            pass
-        elif sort_by == "job-title-ascending":
+        # Sort by most recent by default
+        if sort_by == "job-title-ascending":
             results.sort(key=lambda x: x.title.lower())
         elif sort_by == "job-title-descending":
             results.sort(key=lambda x: x.title.lower(), reverse=True)
+        else:
+            # Default: sort by date posted descending (newest first)
+            results.sort(key=lambda x: x.date_posted, reverse=True)
             
         return results
 

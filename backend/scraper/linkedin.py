@@ -23,7 +23,7 @@ async def scrape_linkedin(
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
                 "Chrome/120.0.0.0 Safari/537.36"
             ),
-            locale="az-AZ",
+            locale="en-US",
             viewport={"width": 1280, "height": 720},
         )
 
@@ -38,22 +38,26 @@ async def scrape_linkedin(
         encoded_query = quote_plus(query)
         target_location = "Worldwide"
         if location and location.type in ["country", "city"]:
-            if location.type == "country":
-                if location.values and len(location.values) == 1:
+            val = None
+            if location.values and len(location.values) > 0:
+                val = location.values[0]
+            elif location.value:
+                val = location.value
+                
+            if val:
+                if location.type == "country":
                     with get_db() as conn:
-                        row = conn.execute("SELECT name FROM countries WHERE code = ?", (location.values[0],)).fetchone()
+                        row = conn.execute("SELECT name FROM countries WHERE code = ?", (val,)).fetchone()
                         if row:
                             target_location = row["name"]
-                elif location.value:
+                elif location.type == "city":
                     with get_db() as conn:
-                        row = conn.execute("SELECT name FROM countries WHERE code = ?", (location.value,)).fetchone()
+                        row = conn.execute("SELECT name FROM cities WHERE value = ?", (val,)).fetchone()
                         if row:
                             target_location = row["name"]
-            elif location.type == "city" and location.value:
-                with get_db() as conn:
-                    row = conn.execute("SELECT name FROM cities WHERE value = ?", (location.value,)).fetchone()
-                    if row:
-                        target_location = row["name"]
+                        else:
+                            # Fallback if DB lookup fails, format az-baku as baku
+                            target_location = val.split("-")[1].title() if "-" in val else val.title()
                         
         encoded_location = quote_plus(target_location)
         
@@ -91,17 +95,19 @@ async def scrape_linkedin(
         if jt_flags:
             base_url += f"&f_JT={','.join(jt_flags)}"
         
-        if date_posted == "today" or date_posted == "past-24h":
+        if date_posted in ("1d", "today", "past-24h"):
             base_url += "&f_TPR=r86400"
-        elif date_posted == "past-week":
+        elif date_posted in ("3d",):
+            base_url += "&f_TPR=r259200"
+        elif date_posted in ("7d", "past-week"):
             base_url += "&f_TPR=r604800"
-        elif date_posted == "past-month":
+        elif date_posted in ("1m", "past-month"):
             base_url += "&f_TPR=r2592000"
             
         if sort_by == "relevance":
             base_url += "&sortBy=R"
         else:
-            base_url += "&sortBy=DD" # default to chronological
+            base_url += "&sortBy=DD" # sort by date (most recent)
 
         url = base_url
 
@@ -115,23 +121,25 @@ async def scrape_linkedin(
         seen_urls = set()
 
         # Scroll to load more cards
-        for i in range(12):
+        for i in range(25):
             await page.evaluate("window.scrollBy(0, 800)")
-            await page.wait_for_timeout(800)
+            await page.wait_for_timeout(400)
 
         cards = await page.query_selector_all(".job-search-card")
-        cards = cards[:100]
+        print(f"[LinkedIn] Found {len(cards)} cards for '{query}' @ location={target_location}")
 
         for card in cards:
             try:
                 title_el = await card.query_selector(".base-search-card__title")
                 company_el = await card.query_selector(".base-search-card__subtitle")
+                location_el = await card.query_selector(".job-search-card__location")
                 link_el = await card.query_selector("a.base-card__full-link")
                 time_el = await card.query_selector("time[datetime]")
                 logo_el = await card.query_selector("img.artdeco-entity-image")
 
                 title = (await title_el.inner_text()).strip() if title_el else ""
                 company = (await company_el.inner_text()).strip() if company_el else ""
+                location_str = (await location_el.inner_text()).strip() if location_el else ""
                 href = await link_el.get_attribute("href") if link_el else ""
                 date_str = await time_el.get_attribute("datetime") if time_el else ""
                 logo_url = await logo_el.get_attribute("src") if logo_el else None
@@ -152,6 +160,7 @@ async def scrape_linkedin(
                         date_posted=date_str or "",
                         source=JobSource.linkedin,
                         logo_url=logo_url,
+                        location_str=location_str,
                     )
                 )
             except Exception:
