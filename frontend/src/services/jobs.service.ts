@@ -9,12 +9,16 @@ class JobsService extends APIService {
 
   async search(
     query: string,
-    profile: UserProfile,
-    sources: JobSource[]
+    sources: JobSource[],
+    location?: any,
+    filters?: any,
   ): Promise<SearchResponse> {
-    return this.post(ENDPOINTS.SEARCH, { query, profile, sources }).then(
-      (r) => r.data
-    );
+    return this.post(ENDPOINTS.SEARCH, {
+      query,
+      sources,
+      location,
+      ...filters,
+    }).then((r) => r.data);
   }
 
   async getDetail(url: string): Promise<JobDetail> {

@@ -21,9 +21,19 @@ _ALLOWED_HOSTS = ["jobsearch.az", "linkedin.com", "indeed.com", "az.indeed.com"]
 
 @router.post("/search", response_model=SearchResponse)
 async def search_jobs(request: SearchRequest):
-    sources = request.sources or [JobSource.jobsearch]
+    sources = request.sources if request.sources else [JobSource.jobsearch, JobSource.linkedin, JobSource.indeed]
     try:
-        return await run_search(request.query, sources, request.profile)
+        return await run_search(
+            query=request.query,
+            sources=sources,
+            location=request.location,
+            work_modes=request.workModes,
+            experience=request.experience,
+            job_types=request.jobTypes,
+            date_posted=request.datePosted,
+            salary_min=request.salaryMin,
+            sort_by=request.sortBy,
+        )
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Axtarış xətası: {e}")
 

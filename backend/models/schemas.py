@@ -60,10 +60,21 @@ class UserProfile(BaseModel):
 
 # ---------- Search ----------
 
+class LocationFilter(BaseModel):
+    type: Optional[str] = None
+    value: Optional[str] = None
+    values: list[str] = []
+
 class SearchRequest(BaseModel):
     query: str
-    profile: Optional[UserProfile] = None
-    sources: list[JobSource] = [JobSource.jobsearch]
+    sources: list[JobSource] = [JobSource.jobsearch, JobSource.linkedin, JobSource.indeed]
+    location: Optional[LocationFilter] = None
+    workModes: Optional[list[str]] = None
+    experience: Optional[list[str]] = None
+    jobTypes: Optional[list[str]] = None
+    datePosted: Optional[str] = None
+    salaryMin: Optional[str] = None
+    sortBy: Optional[str] = None
 
 
 class JobListing(BaseModel):
@@ -77,12 +88,16 @@ class JobListing(BaseModel):
     match_score: int = 0
     match_level: MatchLevel = MatchLevel.review
     match_flags: list[str] = []
+    location_str: Optional[str] = None
+    work_mode_str: Optional[str] = None
+    experience_str: Optional[str] = None
 
 
 class SearchResponse(BaseModel):
     jobs: list[JobListing]
     total: int
     query: str
+    currency: str = "USD"
 
 
 # ---------- Job Detail ----------

@@ -16,7 +16,7 @@ export const feedFilterSchema = z.object({
   salaryMin: z
     .string()
     .optional()
-    .refine((v) => !v || /^\d+$/.test(v), { message: "Must be a number" }),
+    .refine((v) => !v || /^[\d,]+$/.test(v), { message: "Must be a number" }),
   jobTypes: z.array(z.string()).optional(),
   sortBy: z.string().optional(),
 });

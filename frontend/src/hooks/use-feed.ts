@@ -12,6 +12,9 @@ export function useFeed() {
     "jobsearch",
     "linkedin",
   ]);
+  const [location, setLocation] = useState<any>();
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [jobs, setJobs] = useState<JobListing[]>([]);
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -19,8 +22,37 @@ export function useFeed() {
   const [bulkApplying, setBulkApplying] = useState(false);
 
   const searchMutation = useMutation({
-    mutationFn: ({ q, srcs }: { q: string; srcs: JobSource[] }) =>
-      jobsService.search(q, profile, srcs),
+    mutationFn: ({
+      q,
+      srcs,
+      loc,
+      workModes,
+      experience,
+      jobTypes,
+      datePosted,
+      salaryMin,
+      sortBy,
+    }: {
+      q: string;
+      srcs: JobSource[];
+      loc?: any;
+      workModes?: string[];
+      experience?: string[];
+      jobTypes?: string[];
+      datePosted?: string;
+      salaryMin?: string;
+      sortBy?: string;
+    }) => {
+      setHasSearched(true);
+      return jobsService.search(q, srcs, loc, {
+        workModes,
+        experience,
+        jobTypes,
+        datePosted,
+        salaryMin,
+        sortBy,
+      });
+    },
     onSuccess: (data) => {
       setJobs(data.jobs);
       setSkipped(new Set());
@@ -41,10 +73,41 @@ export function useFeed() {
       }),
   });
 
-  const handleSearch = useCallback(() => {
-    if (!query.trim()) return;
-    searchMutation.mutate({ q: query, srcs: sources });
-  }, [query, sources, searchMutation]);
+  const handleSearch = useCallback(
+    (overrides?: {
+      q?: string;
+      srcs?: JobSource[];
+      loc?: any;
+      workModes?: string[];
+      experience?: string[];
+      jobTypes?: string[];
+      datePosted?: string;
+      salaryMin?: string;
+      sortBy?: string;
+    }) => {
+      const finalQ = overrides?.q ?? query;
+      const finalSrcs = overrides?.srcs ?? sources;
+      const finalLoc = overrides?.loc !== undefined ? overrides?.loc : location;
+
+      // Allow search with filters even if query is empty
+      if (!finalQ?.trim() && !overrides?.loc && !overrides?.workModes?.length && !overrides?.experience?.length && !overrides?.jobTypes?.length) {
+        return;
+      }
+
+      searchMutation.mutate({
+        q: finalQ ?? "",
+        srcs: finalSrcs,
+        loc: finalLoc,
+        workModes: overrides?.workModes,
+        experience: overrides?.experience,
+        jobTypes: overrides?.jobTypes,
+        datePosted: overrides?.datePosted,
+        salaryMin: overrides?.salaryMin,
+        sortBy: overrides?.sortBy,
+      });
+    },
+    [query, sources, location, searchMutation],
+  );
 
   const toggleSelect = (url: string) =>
     setSelected((prev) => {
@@ -95,6 +158,8 @@ export function useFeed() {
     setQuery,
     sources,
     setSources,
+    location,
+    setLocation,
     jobs,
     loading: searchMutation.isPending,
     error: errorMsg,
@@ -113,5 +178,6 @@ export function useFeed() {
     needsReview,
     hasScoring,
     allVisible: hasScoring ? [] : visible,
+    hasSearched,
   };
 }

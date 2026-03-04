@@ -25,9 +25,13 @@ import LocationPicker from "@/components/feed/LocationPicker";
 
 interface FeedFilterFormProps {
   onSubmit: (values: FeedFilterValues) => void;
+  loading?: boolean;
 }
 
-export default function FeedFilterForm({ onSubmit }: FeedFilterFormProps) {
+export default function FeedFilterForm({
+  onSubmit,
+  loading,
+}: FeedFilterFormProps) {
   const { data: meta } = useMetaFilters();
   const { control, handleSubmit, watch } = useForm<FeedFilterValues>({
     resolver: zodResolver(feedFilterSchema),
@@ -98,9 +102,17 @@ export default function FeedFilterForm({ onSubmit }: FeedFilterFormProps) {
                 )}
               />
             </div>
-            <Button type="submit" className="gap-2 px-6 h-12 shrink-0">
-              <Sparkles className="size-4" />
-              Search
+            <Button
+              type="submit"
+              disabled={loading}
+              className="gap-2 px-6 h-12 shrink-0"
+            >
+              {loading ? (
+                <div className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : (
+                <Sparkles className="size-4" />
+              )}
+              {loading ? "Searching..." : "Search"}
             </Button>
           </div>
 
@@ -195,6 +207,17 @@ export default function FeedFilterForm({ onSubmit }: FeedFilterFormProps) {
                     autoComplete="off"
                     placeholder="Minimum salary"
                     className="rounded-none h-8.5 w-full border-none bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, "");
+                      if (!raw) {
+                        field.onChange("");
+                        return;
+                      }
+                      const formatted = new Intl.NumberFormat("en-US").format(
+                        Number(raw),
+                      );
+                      field.onChange(formatted);
+                    }}
                   />
                 )}
               />

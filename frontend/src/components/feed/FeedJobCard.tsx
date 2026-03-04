@@ -186,13 +186,15 @@ export default function FeedJobCard({
             Apply
           </Button>
           <Button
-            onClick={onDetails}
+            asChild
             size="sm"
             variant="outline"
             className="flex-1 h-8 text-xs gap-1.5"
           >
-            <ExternalLink className="size-3.5" />
-            Details
+            <a href={job.url} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="size-3.5" />
+              Details
+            </a>
           </Button>
           <Button
             onClick={onSkip}
