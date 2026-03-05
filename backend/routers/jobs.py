@@ -35,7 +35,7 @@ async def search_jobs(request: SearchRequest):
             sort_by=request.sortBy,
         )
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Axtarış xətası: {e}")
+        raise HTTPException(status_code=502, detail=f"Search error: {e}")
 
 
 @router.post("/job-details", response_model=JobDetailResponse)
@@ -43,17 +43,17 @@ async def get_job_details(request: JobDetailRequest):
     if not any(host in request.url for host in _ALLOWED_HOSTS):
         raise HTTPException(
             status_code=400,
-            detail="Yalnız jobsearch.az, LinkedIn və Indeed linkləri qəbul olunur.",
+            detail="Only jobsearch.az, LinkedIn, and Indeed URLs are accepted.",
         )
     try:
         return await scrape_job_detail(request.url)
     except TimeoutError:
         raise HTTPException(
             status_code=504,
-            detail="Vakansiya səhifəsi yüklənmədi. Yenidən cəhd edin.",
+            detail="Job page timed out. Please try again.",
         )
     except Exception as e:
         raise HTTPException(
             status_code=502,
-            detail=f"Vakansiya detallarını almaq mümkün olmadı: {str(e)}",
+            detail=f"Failed to fetch job details: {str(e)}",
         )

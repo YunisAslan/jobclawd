@@ -17,6 +17,7 @@ export const feedFilterSchema = z.object({
     .string()
     .optional()
     .refine((v) => !v || /^[\d,]+$/.test(v), { message: "Must be a number" }),
+  salaryPeriod: z.enum(["annual", "monthly", "hourly"]).optional(),
   jobTypes: z.array(z.string()).optional(),
   sortBy: z.string().optional(),
 });

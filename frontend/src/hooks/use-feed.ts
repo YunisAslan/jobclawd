@@ -85,12 +85,18 @@ export function useFeed() {
       salaryMin?: string;
       sortBy?: string;
     }) => {
+      // Always use explicit overrides — never pollute new searches with stale state
       const finalQ = overrides?.q ?? query;
       const finalSrcs = overrides?.srcs ?? sources;
-      const finalLoc = overrides?.loc !== undefined ? overrides?.loc : location;
+      const finalLoc = overrides?.loc !== undefined ? overrides.loc : location;
 
-      // Allow search with filters even if query is empty
-      if (!finalQ?.trim() && !overrides?.loc && !overrides?.workModes?.length && !overrides?.experience?.length && !overrides?.jobTypes?.length) {
+      if (
+        !finalQ?.trim() &&
+        !finalLoc &&
+        !overrides?.workModes?.length &&
+        !overrides?.experience?.length &&
+        !overrides?.jobTypes?.length
+      ) {
         return;
       }
 
@@ -98,12 +104,13 @@ export function useFeed() {
         q: finalQ ?? "",
         srcs: finalSrcs,
         loc: finalLoc,
-        workModes: overrides?.workModes,
-        experience: overrides?.experience,
-        jobTypes: overrides?.jobTypes,
-        datePosted: overrides?.datePosted,
-        salaryMin: overrides?.salaryMin,
-        sortBy: overrides?.sortBy,
+        // Always pass explicit filter values — empty array beats undefined (signals "no filter selected")
+        workModes: overrides?.workModes ?? [],
+        experience: overrides?.experience ?? [],
+        jobTypes: overrides?.jobTypes ?? [],
+        datePosted: overrides?.datePosted ?? "",
+        salaryMin: overrides?.salaryMin ?? "",
+        sortBy: overrides?.sortBy ?? "",
       });
     },
     [query, sources, location, searchMutation],

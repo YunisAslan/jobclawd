@@ -8,6 +8,7 @@ from routers import applications
 from routers import stats
 from routers import auth_router
 from routers import meta
+from routers import settings_router
 from scraper import shutdown_browser
 from db.database import init_db
 
@@ -38,6 +39,7 @@ app.include_router(applications.router, prefix="/api")
 app.include_router(stats.router, prefix="/api")
 app.include_router(auth_router.router, prefix="/api")
 app.include_router(meta.router, prefix="/api")
+app.include_router(settings_router.router, prefix="/api")
 
 @app.get("/health")
 async def health():

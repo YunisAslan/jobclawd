@@ -14,7 +14,7 @@ router = APIRouter()
 async def get_smtp_settings():
     config = settings_repo.get_smtp_config()
     if not config:
-        raise HTTPException(status_code=404, detail="SMTP konfiqurasiyası tapılmadı.")
+        raise HTTPException(status_code=404, detail="SMTP configuration not found.")
     # Omit password from GET response
     return SMTPSettings(**{**config.model_dump(), "password": None})
 
@@ -22,7 +22,7 @@ async def get_smtp_settings():
 @router.post("/settings/smtp")
 async def save_smtp_settings(settings: SMTPSettings):
     settings_repo.save_smtp_config(settings)
-    return {"success": True, "message": "SMTP konfiqurasiyası saxlanıldı."}
+    return {"success": True, "message": "SMTP configuration saved."}
 
 
 @router.get("/settings/autopilot", response_model=AutopilotSettings)

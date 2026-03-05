@@ -93,7 +93,7 @@ def get_stats() -> StatsResponse:
         cv_rows = conn.execute(
             """
             SELECT
-              COALESCE(cv_name, 'Naməlum') as cv_name,
+              COALESCE(cv_name, 'Unknown') as cv_name,
               COUNT(*) as sent,
               SUM(CASE WHEN status = 'replied' THEN 1 ELSE 0 END) as replies
             FROM applications

@@ -81,7 +81,7 @@ async def scrape_indeed(
             sc_tags.append("attr(DSQF7)")
         
         if experience:
-            if "junior" in experience or "freshmen" in experience:
+            if "junior" in experience or "freshmen" in experience or "intern" in experience:
                 sc_tags.append("explvl(ENTRY_LEVEL)")
             elif "mid" in experience:
                 sc_tags.append("explvl(MID_LEVEL)")
@@ -126,6 +126,18 @@ async def scrape_indeed(
             if not cards:
                 break
 
+            # --- DYNAMIC JSON EXTRACTOR ---
+            # Indeed hides dates deep in React structures but leaves them in the source code JSON.
+            # We parse the entire page source once per page load to map every JobKey to its true relative post date.
+            import re
+            html_content = await page.content()
+            date_map = {}
+            # Matches: "jobkey":"123","...","formattedRelativeTime":"3 days ago"
+            matches = re.findall(r'"jobkey"\s*:\s*"([^"]+)".*?"formattedRelativeTime"\s*:\s*"([^"]+)"', html_content)
+            for jk_match, rel_time in matches:
+                date_map[jk_match] = rel_time
+            # -----------------------------
+
             for card in cards:
                 try:
                     jk_el = await card.query_selector("[data-jk]")
@@ -138,7 +150,6 @@ async def scrape_indeed(
                         title_el = await card.query_selector('h2.jobTitle span')
                         
                     company_el = await card.query_selector('[data-testid="company-name"]')
-                    date_el = await card.query_selector('[data-testid="myJobsStateDate"]')
                     location_el = await card.query_selector('[data-testid="text-location"]')
 
                     title = ""
@@ -152,8 +163,23 @@ async def scrape_indeed(
                             title = (await title_el.inner_text()).strip()
 
                     company = (await company_el.inner_text()).strip() if company_el else ""
-                    date_str = (await date_el.inner_text()).strip() if date_el else ""
                     location_str = (await location_el.inner_text()).strip() if location_el else ""
+
+                    snippet = ""
+                    try:
+                        snippet_el = await card.query_selector('[data-testid="job-snippet"]')
+                        if not snippet_el:
+                            snippet_el = await card.query_selector(".job-snippet")
+                        if snippet_el:
+                            snippet = (await snippet_el.inner_text()).strip()[:500]
+                    except Exception:
+                        pass
+
+                    # Quick Dictionary Lookup (100x faster and more reliable than DOM querying)
+                    date_str = date_map.get(jk, "")
+
+                    # Indeed does not render logos in the card DOM
+                    logo_url = None
 
                     if not title:
                         continue
@@ -169,6 +195,8 @@ async def scrape_indeed(
                             date_posted=date_str,
                             source=JobSource.indeed,
                             location_str=location_str,
+                            logo_url=logo_url,
+                            description_snippet=snippet or None,
                         )
                     )
                 except Exception:

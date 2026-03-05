@@ -10,34 +10,13 @@ import {
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { CountryOption, LocationValue } from "@/types";
-
-type WorkModeScenario = "remote" | "onsite" | "mixed" | "none";
+import LocationModal from "./LocationModal";
 
 interface LocationPickerProps {
   value?: LocationValue;
   onChange?: (value: LocationValue) => void;
-  workModes?: string[];
   countries?: CountryOption[];
-}
-
-function getScenario(workModes: string[]): WorkModeScenario {
-  const hasRemote = workModes.includes("remote");
-  const hasOnsite =
-    workModes.includes("onsite") || workModes.includes("hybrid");
-  if (hasRemote && hasOnsite) return "mixed";
-  if (hasOnsite) return "onsite";
-  if (hasRemote) return "remote";
-  return "none";
-}
-
-function getConfig(scenario: WorkModeScenario) {
-  switch (scenario) {
-    case "onsite":
-    case "mixed":
-      return { placeholder: "Country / City", Icon: MapPin };
-    default:
-      return { placeholder: "Region / Country", Icon: Globe };
-  }
+  disabled?: boolean;
 }
 
 function getTriggerLabel(
@@ -49,13 +28,19 @@ function getTriggerLabel(
   if (value.values?.length) {
     const allCities = (countries || []).flatMap((c) => c.cities);
     const labels = value.values
-      .map((v) => allCities.find((ci) => ci.value === v)?.label ?? v)
+      .map((v) => {
+        const city = allCities.find((ci) => ci.value === v);
+        if (city) return city.label;
+        const country = (countries || []).find((c) => c.value === v);
+        if (country) return country.label;
+        return v;
+      })
       .join(", ");
     return labels;
   }
 
   if (!value.value) return null;
-  if (value.value === "worldwide") return "Worldwide Remote";
+  if (value.value === "worldwide") return "Worldwide";
   for (const country of countries || []) {
     if (country.value === value.value) return country.label;
     const city = country.cities.find((ci) => ci.value === value.value);
@@ -65,28 +50,16 @@ function getTriggerLabel(
   return null;
 }
 
-import LocationModal from "./LocationModal";
-
 export default function LocationPicker({
   value,
   onChange,
-  workModes = [],
   countries = [],
+  disabled,
 }: LocationPickerProps) {
   const [open, setOpen] = React.useState(false);
   const [modalKey, setModalKey] = React.useState(0);
 
-  const scenario = getScenario(workModes);
-  const { placeholder, Icon } = getConfig(scenario);
   const triggerLabel = getTriggerLabel(value, countries);
-
-  const prevScenario = React.useRef(scenario);
-  React.useEffect(() => {
-    if (prevScenario.current !== scenario) {
-      prevScenario.current = scenario;
-      onChange?.({});
-    }
-  }, [scenario, onChange]);
 
   function handleOpenChange(isOpen: boolean) {
     if (isOpen) setModalKey((k) => k + 1);
@@ -103,19 +76,20 @@ export default function LocationPicker({
         <Button
           variant="outline"
           type="button"
+          disabled={disabled}
           className={cn(
             "w-full h-9 justify-between px-3 font-normal bg-transparent",
             !triggerLabel && "text-muted-foreground",
           )}
         >
           <span className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-            <Icon className="size-4 shrink-0 text-muted-foreground" />
+            <MapPin className="size-4 shrink-0 text-muted-foreground" />
             {triggerLabel ? (
               <span className="truncate text-foreground text-sm">
                 {triggerLabel}
               </span>
             ) : (
-              <span className="truncate text-sm">{placeholder}</span>
+              <span className="truncate text-sm">Country / City</span>
             )}
           </span>
           <ChevronsUpDownIcon className="size-4 shrink-0 opacity-50" />
@@ -132,7 +106,6 @@ export default function LocationPicker({
           value={value}
           onChange={onChange}
           onClose={handleClose}
-          showWorldwide={scenario !== "onsite"}
           countries={countries}
         />
       </PopoverContent>

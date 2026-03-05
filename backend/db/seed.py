@@ -18,9 +18,9 @@ def seed_data(conn: sqlite3.Connection):
         ("work_mode", "hybrid", "Hybrid"),
         ("work_mode", "onsite", "On-site"),
         
-        ("experience", "intern", "Intern"),
+        ("experience", "intern", "Internship / Intern"),
         ("experience", "junior", "Junior"),
-        ("experience", "mid", "Mid"),
+        ("experience", "mid", "Mid-Level"),
         ("experience", "senior", "Senior"),
         ("experience", "lead", "Lead / Manager"),
         
@@ -43,6 +43,9 @@ def seed_data(conn: sqlite3.Connection):
         "INSERT OR IGNORE INTO filter_options (category, value, label) VALUES (?, ?, ?)",
         filters
     )
+    # Ensure labels are up-to-date for already-seeded databases
+    conn.execute("UPDATE filter_options SET label = 'Internship / Intern' WHERE category = 'experience' AND value = 'intern'")
+    conn.execute("UPDATE filter_options SET label = 'Mid-Level' WHERE category = 'experience' AND value = 'mid'")
     
     # Check if countries already populated
     c_count = conn.execute("SELECT COUNT(*) FROM countries").fetchone()[0]

@@ -1,29 +1,36 @@
+import React from "react";
 import { JobSource } from "@/types";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
-import { Linkedin, Search, Briefcase } from "lucide-react";
+import { Linkedin, Search } from "lucide-react";
+
+function IndeedIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="5" r="2.5" />
+      <rect x="10" y="9.5" width="4" height="11" rx="2" />
+    </svg>
+  );
+}
 
 const SOURCE_CONFIG: Record<
   JobSource,
-  { label: string; className: string; icon: any }
+  { label: string; className: string; icon: React.ComponentType<{ className?: string }> }
 > = {
   jobsearch: {
-    label: "Jobsearch.az",
-    className:
-      "bg-[#F3F6F8] text-[#1E2532] border-[#E8ECEF] hover:bg-[#E8ECEF]",
+    label: "JOBSEARCH",
+    className: "bg-black text-white",
     icon: Search,
   },
   linkedin: {
-    label: "LinkedIn",
-    className:
-      "bg-[#0A66C2]/10 text-[#0A66C2] border-[#0A66C2]/20 hover:bg-[#0A66C2]/15",
+    label: "LINKEDIN",
+    className: "bg-[#0A66C2] text-white",
     icon: Linkedin,
   },
   indeed: {
-    label: "Indeed",
-    className:
-      "bg-[#2164F4]/10 text-[#2164F4] border-[#2164F4]/20 hover:bg-[#2164F4]/15",
-    icon: Briefcase,
+    label: "INDEED",
+    className: "bg-[#2557a7] text-white",
+    icon: IndeedIcon,
   },
 };
 
@@ -33,11 +40,11 @@ export default function SourceBadge({ source }: { source: JobSource }) {
   return (
     <Badge
       className={cn(
-        "border text-[11px] px-2 py-0.5 font-medium gap-1 cursor-default",
+        "border text-[9px] px-1.5 py-0 h-4.5 font-bold uppercase tracking-wider gap-1 cursor-default border-transparent",
         cfg.className,
       )}
     >
-      <Icon className="size-3" />
+      <Icon className="size-2 shrink-0" />
       {cfg.label}
     </Badge>
   );

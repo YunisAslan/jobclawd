@@ -47,6 +47,7 @@ export interface JobListing {
   match_level: MatchLevel;
   match_flags: string[];
   location_str?: string;
+  description_snippet?: string | null;
 }
 
 export interface SearchResponse {

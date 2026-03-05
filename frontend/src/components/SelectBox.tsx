@@ -12,6 +12,7 @@ type SelectBoxBaseProps = {
   placeholder: string;
   options: Array<{ value: string; label: string }>;
   search?: boolean | { placeholder?: string; emptyMessage?: string };
+  disabled?: boolean;
 };
 
 type SelectBoxSingleProps = SelectBoxBaseProps & {
@@ -36,10 +37,12 @@ function SelectBox({
   value,
   onChange,
   search,
+  disabled,
 }: SelectBoxProps) {
   const isMultiple = mode === "multiple";
   return (
     <Select
+      disabled={disabled}
       mode={mode as SelectMode}
       value={!isMultiple ? (value as string) : undefined}
       values={isMultiple ? (value as string[]) : undefined}

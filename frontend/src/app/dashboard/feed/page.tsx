@@ -8,186 +8,165 @@ import FeedResults from "@/components/feed/FeedResults";
 import { useFeed } from "@/hooks/use-feed";
 import { JobSource, JobListing } from "@/types";
 
+const DATE_RANGES: Record<string, number> = {
+  "1d": 1,
+  "3d": 3,
+  "7d": 7,
+  "1m": 31,
+};
+
+// Refinement layer — runs client-side on already-fetched results.
+// Does NOT re-apply query or location (those require a new backend search).
+// Only narrows by sources, workModes, experience, jobTypes, datePosted, sortBy.
 function applyLocalFilters(
   jobs: JobListing[],
   filters: Partial<FeedFilterValues>,
 ) {
-  if (!filters || Object.keys(filters).length === 0) return jobs;
+  if (!filters) return jobs;
 
-  const filtered = jobs.filter((job) => {
+  let filtered = jobs.filter((job) => {
     const titleNorm = (job.title || "").toLowerCase();
     const locNorm = (job.location_str || "").toLowerCase();
-    const combined = titleNorm + " " + locNorm;
+    const snippetNorm = (job.description_snippet || "").toLowerCase();
+    const combined = `${titleNorm} ${locNorm} ${snippetNorm}`;
 
-    // 1. Sources
+    // Sources
     if (filters.sources && filters.sources.length > 0) {
-      if (!filters.sources.includes(job.source)) return false;
+      if (!filters.sources.includes(job.source as JobSource)) return false;
     }
 
-    // 2. Query
-    if (filters.query) {
-      const qNorm = filters.query.toLowerCase().trim();
-      if (qNorm) {
-        const qWords = qNorm.split(/\s+/).filter((w) => w.length > 2);
-        if (qWords.length > 0) {
-          const main = qWords[0];
-          if (!titleNorm.includes(main)) return false;
-        }
-      }
-    }
-
-    // 3. Location (Approximate)
-    let cityVal = "";
-    if (filters.location && filters.location.type === "city") {
-      if (filters.location.value) {
-        cityVal = filters.location.value;
-      } else if (
-        filters.location.values &&
-        filters.location.values.length > 0
-      ) {
-        cityVal = filters.location.values[0];
-      }
-    }
-
-    if (cityVal) {
-      if (cityVal.includes("-")) {
-        cityVal = cityVal.split("-")[1];
-      }
-      const cityFilter = cityVal.toLowerCase();
-      const otherCities = [
-        "sumqayit",
-        "sumgayit",
-        "sumqayıt",
-        "ganja",
-        "gence",
-        "gəncə",
-        "xacmaz",
-        "naxcivan",
-        "naxçıvan",
-      ];
-
-      const hasOtherCity = otherCities.some((c) => combined.includes(c));
-      const hasTargetCity =
-        combined.includes(cityFilter) ||
-        combined.includes(cityFilter.replace("bakı", "baku"));
-
-      if (hasOtherCity && !hasTargetCity) return false;
-      if (
-        job.location_str &&
-        !hasTargetCity &&
-        !locNorm.includes("remote") &&
-        !locNorm.includes("azerbaijan") &&
-        !locNorm.includes("azərbaycan")
-      ) {
-        return false;
-      }
-    }
-
-    // 4. Work Modes
+    // Work modes — only filter if the job explicitly mentions a mode we don't want
     if (filters.workModes && filters.workModes.length > 0) {
-      const allowedModes = filters.workModes.map((m) => m.toLowerCase());
-      const hasMatch = allowedModes.some((m) => {
-        if (combined.includes(m)) return true;
-        if (
-          m === "onsite" &&
-          (combined.includes("office") || combined.includes("on-site"))
-        )
-          return true;
-        return false;
-      });
-
+      const allowed = filters.workModes.map((m) => m.toLowerCase());
       const mentionsRemote = combined.includes("remote");
       const mentionsHybrid = combined.includes("hybrid");
       const mentionsOnsite =
         combined.includes("onsite") ||
-        combined.includes("office") ||
-        combined.includes("on-site");
+        combined.includes("on-site") ||
+        combined.includes("office");
+      const mentionsAnyMode = mentionsRemote || mentionsHybrid || mentionsOnsite;
 
-      if (!hasMatch) {
-        if (mentionsRemote || mentionsHybrid || mentionsOnsite) {
-          return false;
-        }
+      if (mentionsAnyMode) {
+        const hasAllowedMode =
+          (allowed.includes("remote") && mentionsRemote) ||
+          (allowed.includes("hybrid") && mentionsHybrid) ||
+          (allowed.includes("onsite") && mentionsOnsite);
+        if (!hasAllowedMode) return false;
       }
     }
 
-    // 5. Experience
+    // Experience — check title and snippet
     if (filters.experience && filters.experience.length > 0) {
-      const allowedExp = filters.experience.map((e) => e.toLowerCase());
-      const mentionsJunior =
-        combined.includes("junior") ||
-        combined.includes("intern") ||
-        combined.includes("stajyor") ||
-        combined.includes("təcrübəçi");
-      const mentionsSenior =
-        combined.includes("senior") ||
-        combined.includes("lead") ||
-        combined.includes("manager") ||
-        combined.includes("head") ||
-        combined.includes("director");
+      const allowed = filters.experience.map((e) => e.toLowerCase());
+      const seniorWords = ["senior", "lead", "head", "director", "principal", "manager", "expert", "sr"];
+      const internWords = ["intern", "internship", "trainee", "graduate", "fresher", "freshmen", "stajyer", "entry"];
 
-      let isAllowed = true;
-      if (
-        mentionsSenior &&
-        !allowedExp.includes("senior") &&
-        !allowedExp.includes("lead")
-      ) {
-        isAllowed = false;
-      }
-      if (
-        mentionsJunior &&
-        !allowedExp.some((e) => ["junior", "intern", "freshmen"].includes(e))
-      ) {
-        isAllowed = false;
-      }
-      if (!isAllowed) return false;
+      const isSenior = seniorWords.some((w) => new RegExp(`\\b${w}\\b`).test(titleNorm));
+      const isInternSignal = internWords.some(
+        (w) => new RegExp(`\\b${w}\\b`).test(titleNorm) || new RegExp(`\\b${w}\\b`).test(snippetNorm),
+      );
+
+      // Reject explicitly senior jobs when user wants entry-level
+      if (isSenior && !allowed.some((e) => ["senior", "lead"].includes(e))) return false;
+
+      // When "intern" is the only selected level, require a positive intern signal
+      const onlyIntern = allowed.includes("intern") && !["junior", "mid", "senior", "lead"].some((e) => allowed.includes(e));
+      if (onlyIntern && !isInternSignal) return false;
+
+      // Reject intern/trainee signals when user only wants senior
+      const onlySenior = allowed.every((e) => ["senior", "lead"].includes(e));
+      if (onlySenior && isInternSignal && !isSenior) return false;
     }
 
-    // 6. Job Types
+    // Job types — only filter if the job explicitly signals a type we don't want
     if (filters.jobTypes && filters.jobTypes.length > 0) {
-      const allowedJt = filters.jobTypes.map((jt) => jt.toLowerCase());
-      const mentionsIntern =
-        combined.includes("intern") ||
-        combined.includes("stajyor") ||
-        combined.includes("təcrübəçi");
+      const allowed = filters.jobTypes.map((jt) => jt.toLowerCase());
+      const isContract = /\b(contract|contractor|freelance|temporary|temp|consulting)\b/i.test(combined);
+      const isPartTime = /\b(part[\s-]?time|p\/t)\b/i.test(combined);
+      if (isContract && !allowed.includes("contract")) return false;
+      if (isPartTime && !allowed.includes("part-time")) return false;
+    }
 
-      if (mentionsIntern && !allowedJt.includes("internship")) {
-        return false;
+    // Salary — best-effort via title + snippet. Ranges use the MAX value.
+    if (filters.salaryMin) {
+      const annualMin = parseInt(filters.salaryMin.replace(/,/g, ""), 10);
+      if (!isNaN(annualMin) && annualMin > 0) {
+        const salaryText = `${titleNorm} ${snippetNorm}`;
+        let foundSalary = false;
+        let passesSalary = true;
+
+        // Range k–k: "30k-50k", "$30k - $50k"
+        const rangeKK = salaryText.match(/[\$£€]?\s*\d+(?:\.\d+)?\s*k\s*[-–]\s*[\$£€]?\s*(\d+(?:\.\d+)?)\s*k/);
+        if (rangeKK) {
+          foundSalary = true;
+          if (parseFloat(rangeKK[1]) * 1000 < annualMin) passesSalary = false;
+        }
+        // Range plain–k: "30-50k"
+        if (!foundSalary) {
+          const rangeK = salaryText.match(/[\$£€]?\s*\d+\s*[-–]\s*[\$£€]?\s*(\d+(?:\.\d+)?)\s*k/);
+          if (rangeK) {
+            foundSalary = true;
+            if (parseFloat(rangeK[1]) * 1000 < annualMin) passesSalary = false;
+          }
+        }
+        // Hourly: "$40/hr"
+        if (!foundSalary) {
+          const hourly = salaryText.match(/[\$£€]?\s*(\d+(?:[.,]\d+)?)\s*(?:\/\s*h(?:r|our)?|per\s*h(?:r|our))/);
+          if (hourly) {
+            foundSalary = true;
+            const rate = parseFloat(hourly[1].replace(",", "."));
+            if (!isNaN(rate) && rate * 2080 < annualMin) passesSalary = false;
+          }
+        }
+        // Annual k: "$80k"
+        if (!foundSalary) {
+          const annualK = salaryText.match(/[\$£€]?\s*(\d+(?:\.\d+)?)\s*k(?:\/yr)?/);
+          if (annualK) {
+            foundSalary = true;
+            if (parseFloat(annualK[1]) * 1000 < annualMin) passesSalary = false;
+          }
+        }
+
+        if (foundSalary && !passesSalary) return false;
       }
-      if (
-        allowedJt.includes("internship") &&
-        !allowedJt.includes("full-time") &&
-        !mentionsIntern
-      ) {
-        if (
-          combined.includes("senior") ||
-          combined.includes("lead") ||
-          combined.includes("head")
-        ) {
-          return false;
+    }
+
+    // Date posted
+    if (filters.datePosted && DATE_RANGES[filters.datePosted]) {
+      const maxDays = DATE_RANGES[filters.datePosted];
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - maxDays);
+      if (job.date_posted) {
+        try {
+          const jobDate = new Date(job.date_posted.replace("Z", "").split(".")[0]);
+          if (!isNaN(jobDate.getTime()) && jobDate < cutoff) return false;
+        } catch {
+          // Keep job if date unparseable
         }
       }
-    }
-
-    // 7. Salary Min
-    if (filters.salaryMin) {
-      // Very naive frontend check: if the job explicitly mentions a number lower than we want
-      // It's mostly handled by AI backend, but we can do a raw string check if we want
-      // For now, allow all if not explicitly failing
     }
 
     return true;
   });
 
-  // 8. Sorting
+  // Sorting
   if (filters.sortBy) {
     if (filters.sortBy === "job-title-ascending") {
-      filtered.sort((a: JobListing, b: JobListing) =>
-        a.title.localeCompare(b.title),
-      );
+      filtered = [...filtered].sort((a, b) => a.title.localeCompare(b.title));
     } else if (filters.sortBy === "job-title-descending") {
-      filtered.sort((a: JobListing, b: JobListing) =>
-        b.title.localeCompare(a.title),
-      );
+      filtered = [...filtered].sort((a, b) => b.title.localeCompare(a.title));
+    } else if (filters.sortBy === "date-desc" || filters.sortBy === "latest") {
+      filtered = [...filtered].sort((a, b) => {
+        const da = new Date(a.date_posted || "").getTime() || 0;
+        const db = new Date(b.date_posted || "").getTime() || 0;
+        return db - da;
+      });
+    } else if (filters.sortBy === "date-asc") {
+      filtered = [...filtered].sort((a, b) => {
+        const da = new Date(a.date_posted || "").getTime() || 0;
+        const db = new Date(b.date_posted || "").getTime() || 0;
+        return da - db;
+      });
     }
   }
 
@@ -206,9 +185,7 @@ export default function FeedPage() {
     hasSearched,
   } = useFeed();
 
-  const [localFilters, setLocalFilters] = useState<Partial<FeedFilterValues>>(
-    {},
-  );
+  const [localFilters, setLocalFilters] = useState<Partial<FeedFilterValues>>({});
 
   const filteredHighMatch = useMemo(
     () => applyLocalFilters(highMatch, localFilters),
@@ -219,15 +196,34 @@ export default function FeedPage() {
     [needsReview, localFilters],
   );
 
+  // Count every active filter except the free-text query
+  const activeFilterCount = useMemo(() => {
+    let n = 0;
+    if (localFilters.sources?.length) n++;
+    if (localFilters.workModes?.length) n++;
+    if (localFilters.location?.value || (localFilters.location?.values?.length ?? 0) > 0) n++;
+    if (localFilters.experience?.length) n++;
+    if (localFilters.jobTypes?.length) n++;
+    if (localFilters.salaryMin) n++;
+    if (localFilters.datePosted) n++;
+    if (localFilters.sortBy) n++;
+    return n;
+  }, [localFilters]);
+
   function onSearchSubmit(values: FeedFilterValues) {
-    if (values.query) {
-      setQuery(values.query);
-    }
-    if (values.sources) {
-      setSources(values.sources as JobSource[]);
-    }
-    if (values.location) {
-      setLocation(values.location);
+    if (values.query) setQuery(values.query);
+    if (values.sources) setSources(values.sources as JobSource[]);
+    if (values.location) setLocation(values.location);
+
+    // Normalize salary to annual so the backend always receives a consistent unit.
+    // Most job boards list salaries annually; monthly × 12, hourly × 2080 (52w × 40h).
+    let salaryMin = values.salaryMin?.replace(/,/g, "");
+    if (salaryMin) {
+      const n = parseInt(salaryMin, 10);
+      if (!isNaN(n)) {
+        if (values.salaryPeriod === "monthly") salaryMin = String(n * 12);
+        else if (values.salaryPeriod === "hourly") salaryMin = String(n * 2080);
+      }
     }
 
     handleSearch({
@@ -238,13 +234,11 @@ export default function FeedPage() {
       experience: values.experience,
       jobTypes: values.jobTypes,
       datePosted: values.datePosted,
-      salaryMin: values.salaryMin?.replace(/,/g, ""),
+      salaryMin,
       sortBy: values.sortBy,
     });
 
-    // reset local filters since backend result will naturally reflect it
-    setLocalFilters({});
-    console.log("[Feed] Search payload (for analytics/future):", values);
+    setLocalFilters(values);
   }
 
   return (
@@ -262,6 +256,7 @@ export default function FeedPage() {
           needsReview={filteredNeedsReview}
           loading={loading}
           hasSearched={hasSearched}
+          activeFilterCount={activeFilterCount}
         />
       </div>
     </div>

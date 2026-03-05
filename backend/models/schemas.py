@@ -91,6 +91,7 @@ class JobListing(BaseModel):
     location_str: Optional[str] = None
     work_mode_str: Optional[str] = None
     experience_str: Optional[str] = None
+    description_snippet: Optional[str] = None
 
 
 class SearchResponse(BaseModel):

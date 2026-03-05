@@ -49,7 +49,7 @@ async def scrape_job_detail(url: str) -> JobDetailResponse:
             }
         """)
 
-        # Click the "Müraciət et" button inside #apply-button to reveal the email
+        # Click the apply button inside #apply-button to reveal the email
         email = None
         try:
             apply_link = page.locator("#apply-button a.apply")
@@ -108,7 +108,7 @@ async def scrape_job_detail(url: str) -> JobDetailResponse:
             error_message=(
                 None
                 if email
-                else "Bu elanda email tapılmadı. Zəhmət olmasa sayt üzərindən müraciət edin."
+                else "No email found in this listing. Please apply directly on the site."
             ),
         )
 

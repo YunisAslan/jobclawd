@@ -25,7 +25,7 @@ async def process_apply(request: ApplyRequest) -> ApplyResponse:
             match_level=request.match_level.value if request.match_level else None,
         )
     except Exception as e:
-        raise RuntimeError(f"Verilənlər bazası xətası: {e}") from e
+        raise RuntimeError(f"Database error: {e}") from e
 
     # 2. Autopilot SMTP send (non-fatal — failure never blocks the saved record)
     sent_via_smtp = False
@@ -49,6 +49,6 @@ async def process_apply(request: ApplyRequest) -> ApplyResponse:
     return ApplyResponse(
         success=True,
         application_id=app_id,
-        message="Müraciət qeydə alındı." + (" Email göndərildi." if sent_via_smtp else ""),
+        message="Application saved." + (" Email sent." if sent_via_smtp else ""),
         sent_via_smtp=sent_via_smtp,
     )

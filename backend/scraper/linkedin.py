@@ -78,7 +78,7 @@ async def scrape_linkedin(
             if "junior" in experience: e_flags.append("2")
             if "mid" in experience: e_flags.append("3")
             if "senior" in experience or "lead" in experience: e_flags.append("4")
-            if "freshmen" in experience: e_flags.append("1") # Internship context
+            if "freshmen" in experience or "intern" in experience: e_flags.append("1") # Internship context
         if e_flags:
             base_url += f"&f_E={','.join(e_flags)}"
             
@@ -152,6 +152,14 @@ async def scrape_linkedin(
                     continue
                 seen_urls.add(clean_url)
 
+                snippet = ""
+                try:
+                    snippet_el = await card.query_selector(".base-search-card__metadata")
+                    if snippet_el:
+                        snippet = (await snippet_el.inner_text()).strip()[:500]
+                except Exception:
+                    pass
+
                 jobs.append(
                     JobListing(
                         title=title,
@@ -161,6 +169,7 @@ async def scrape_linkedin(
                         source=JobSource.linkedin,
                         logo_url=logo_url,
                         location_str=location_str,
+                        description_snippet=snippet or None,
                     )
                 )
             except Exception:

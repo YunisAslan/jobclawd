@@ -144,9 +144,9 @@ async def scrape_search(
             parsed = urllib.parse.urlparse(api_base_url)
             qs = urllib.parse.parse_qs(parsed.query)
             
-            # Fetch pages 2 to roughly max 15 for more results, sorted by fresh
+            # Fetch pages 2 to roughly max 40 for more results, sorted by fresh
             current_page = 2
-            while current_page <= 15:
+            while current_page <= 40:
                 qs['page'] = [str(current_page)]
                 new_query = urllib.parse.urlencode(qs, doseq=True)
                 next_url = urllib.parse.urlunparse(parsed._replace(query=new_query))
@@ -163,6 +163,18 @@ async def scrape_search(
                         break
                         
                     all_items.extend(new_items)
+
+                    # Quick safety check: if last item is already older than 35 days, stop fetching
+                    if new_items:
+                        last_item = new_items[-1]
+                        created_at = last_item.get("created_at", "")
+                        if created_at:
+                            try:
+                                from datetime import datetime, timedelta
+                                item_dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                                if datetime.now(item_dt.tzinfo) - item_dt > timedelta(days=35):
+                                    break
+                            except: pass
                 except Exception:
                     break
                     
@@ -198,25 +210,48 @@ async def scrape_search(
 
         print(f"[JobSearch] Fetched {len(all_items)} items for '{query}'")
 
+        # Scrape logos from rendered DOM cards (API returns empty logo strings)
+        # Map: slug -> logo_url
+        slug_to_logo: dict[str, str] = {}
+        try:
+            cards = await page.query_selector_all(".vacancy-list__item, .list__item")
+            for card in cards:
+                # Get slug from the card link
+                link_el = await card.query_selector("a[href*='/vacancies/']")
+                card_slug = None
+                if link_el:
+                    href = await link_el.get_attribute("href")
+                    if href and "/vacancies/" in href:
+                        card_slug = href.split("/vacancies/")[-1].strip("/")
+                
+                # Get logo img from the card
+                logo_img = await card.query_selector(".list__item__logo img, .vacancy-list__item__logo img, img[class*='logo']")
+                if logo_img and card_slug:
+                    src = await logo_img.get_attribute("src")
+                    if src and src.startswith("http"):
+                        slug_to_logo[card_slug] = src
+        except Exception as e:
+            print(f"[JobSearch] Logo scrape warning: {e}")
+
         results = []
-        for i, item in enumerate(all_items):
-            if i == 0:
-                print("JOBSEARCH ITEM FULL:", item)
-            
+        for item in all_items:
             # Extract location from city field or title
             city_value = None
             if item.get("city"):
                 city_value = item["city"].get("value") or item["city"].get("title")
+
+            item_slug = item['slug']
+            logo_url = slug_to_logo.get(item_slug) or item.get("company", {}).get("logo") or None
             
             results.append(
                 JobListing(
                     title=item["title"],
                     company=item.get("company", {}).get("title", "N/A"),
-                    url=f"{BASE_URL}/vacancies/{item['slug']}",
+                    url=f"{BASE_URL}/vacancies/{item_slug}",
                     date_posted=item.get("created_at", ""),
                     view_count=_parse_view_count(item.get("view_count")),
                     source=JobSource.jobsearch,
-                    logo_url=item.get("company", {}).get("logo", None),
+                    logo_url=logo_url,
                     location_str=city_value,
                 )
             )

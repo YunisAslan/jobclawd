@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { JobListing } from "@/types";
 import SourceBadge from "@/components/ui/SourceBadge";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -13,7 +15,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
 import { cn, formatDate } from "@/lib/utils";
-import { CircleCheck, ExternalLink, MoreHorizontal, X } from "lucide-react";
+import {
+  CircleCheck,
+  ExternalLink,
+  MapPin,
+  MoreHorizontal,
+  X,
+} from "lucide-react";
 
 interface FeedJobCardProps {
   job: JobListing;
@@ -32,6 +40,8 @@ function CompanyAvatar({
   company: string;
   logoUrl?: string | null;
 }) {
+  const [imgFailed, setImgFailed] = useState(false);
+
   const initials = company
     .split(" ")
     .slice(0, 2)
@@ -39,21 +49,21 @@ function CompanyAvatar({
     .join("")
     .toUpperCase();
 
-  if (logoUrl) {
-    return (
-      <img
-        src={logoUrl}
-        alt={company}
-        className="size-11 rounded-xl object-cover shrink-0 border border-border/50 shadow-sm"
-        onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
-      />
-    );
-  }
-
-  return (
+  const fallback = (
     <div className="size-11 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 bg-linear-to-br from-secondary/80 to-secondary text-white shadow-sm">
       {initials || "?"}
     </div>
+  );
+
+  if (!logoUrl || imgFailed) return fallback;
+
+  return (
+    <img
+      src={logoUrl}
+      alt={company}
+      className="size-11 rounded-xl object-cover shrink-0 border border-border/50 shadow-sm"
+      onError={() => setImgFailed(true)}
+    />
   );
 }
 
@@ -128,7 +138,12 @@ export default function FeedJobCard({
         )}
       /> */}
 
-      <CardContent className="px-4 pt-4 pb-4 space-y-3.5">
+      <CardContent className="px-4 pt-4 pb-4 space-y-3.5 relative">
+        {/* Floating Source Badge */}
+        <div className="absolute top-2 right-2">
+          <SourceBadge source={job.source} />
+        </div>
+
         <div className="flex items-start gap-3">
           <Checkbox
             checked={selected}
@@ -136,18 +151,14 @@ export default function FeedJobCard({
             className="mt-1 shrink-0"
           />
           <CompanyAvatar company={job.company} logoUrl={job.logo_url} />
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-sm leading-snug line-clamp-2 text-foreground mb-1.5">
+          <div className="flex-1 min-w-0 pr-8">
+            <h3 className="font-semibold text-sm leading-snug line-clamp-2 text-foreground mb-1.5 pr-8">
               {job.title}
             </h3>
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-xs text-muted-foreground font-medium">
                 {job.company}
               </span>
-              <span className="text-muted-foreground/30 text-xs select-none">
-                •
-              </span>
-              <SourceBadge source={job.source} />
               {job.date_posted && (
                 <>
                   <span className="text-muted-foreground/30 text-xs select-none">
@@ -159,8 +170,18 @@ export default function FeedJobCard({
                 </>
               )}
             </div>
+            {job.location_str && (
+              <div className="flex items-center gap-1 mt-1">
+                <MapPin className="size-3 text-muted-foreground/60 shrink-0" />
+                <span className="text-xs text-muted-foreground/70 truncate">
+                  {job.location_str}
+                </span>
+              </div>
+            )}
           </div>
-          <MatchScore score={job.match_score} level={job.match_level} />
+          <div className="flex flex-col items-end gap-2 shrink-0 pt-6">
+            <MatchScore score={job.match_score} level={job.match_level} />
+          </div>
         </div>
 
         {job.match_flags.length > 0 && (
