@@ -5,7 +5,7 @@ export default function ProfilePage() {
   return (
     <div>
       <TopBar title="Profile" />
-      <div className="p-6 max-w-3xl">
+      <div className="p-6 max-w-5xl">
         <ExtendedProfileForm />
       </div>
     </div>

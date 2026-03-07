@@ -42,6 +42,7 @@ function SelectBox({
   const isMultiple = mode === "multiple";
   return (
     <Select
+      options={options}
       disabled={disabled}
       mode={mode as SelectMode}
       value={!isMultiple ? (value as string) : undefined}

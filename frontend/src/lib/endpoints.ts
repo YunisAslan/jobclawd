@@ -19,4 +19,8 @@ export const ENDPOINTS = {
 
   // Meta
   META_FILTERS: "/api/meta/filters",
+
+  // Profile
+  PROFILE: "/api/profile",
+  CV_UPLOAD: "/api/profile/cv/upload",
 } as const;

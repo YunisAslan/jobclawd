@@ -48,3 +48,9 @@ CREATE TABLE IF NOT EXISTS cities (
   name TEXT NOT NULL,
   FOREIGN KEY(country_code) REFERENCES countries(code)
 );
+
+CREATE TABLE IF NOT EXISTS profiles (
+  email TEXT PRIMARY KEY,
+  data TEXT NOT NULL DEFAULT '{}',
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

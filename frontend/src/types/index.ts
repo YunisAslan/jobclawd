@@ -1,7 +1,7 @@
 // ---------- Enums ----------
 
 export type WorkMode = "remote" | "hybrid" | "onsite";
-export type ExperienceLevel = "junior" | "mid" | "senior" | "lead";
+export type ExperienceLevel = "intern" | "junior" | "mid" | "senior" | "lead";
 export type MatchLevel = "high" | "review" | "trash";
 export type ApplicationStatus = "sent" | "replied" | "rejected" | "withdrawn";
 export type JobSource = "jobsearch" | "linkedin" | "indeed";
@@ -25,12 +25,22 @@ export interface UserProfile {
   email: string;
   current_employer: string;
   work_modes: WorkMode[];
-  experience_level: ExperienceLevel;
-  relocation: boolean;
+  experience_level: ExperienceLevel[];
+  relocation?: boolean;
   blacklist: string[];
   cv_links: CVLink[];
   // legacy
   cvLink: string;
+
+  // Job search preferences — pre-fills feed filters on demand
+  headline?: string;
+  desired_titles?: string[];
+  job_types?: string[];
+  preferred_location?: LocationValue;
+  salary_min?: string;
+  salary_period?: "annual" | "monthly" | "hourly";
+  years_of_experience?: number | null;
+  availability?: string;
 }
 
 // ---------- Search ----------

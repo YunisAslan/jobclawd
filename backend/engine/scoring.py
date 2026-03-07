@@ -30,7 +30,8 @@ _WORK_MODE_KEYWORDS: dict[WorkMode, list[str]] = {
 }
 
 _EXPERIENCE_KEYWORDS: dict[ExperienceLevel, list[str]] = {
-    ExperienceLevel.junior: ["junior", "junior", "gənc", "trainee", "stajçı", "intern"],
+    ExperienceLevel.intern: ["intern", "internship", "stajçı", "trainee", "stajyer", "graduate"],
+    ExperienceLevel.junior: ["junior", "gənc", "jr"],
     ExperienceLevel.mid: ["mid", "orta", "middle"],
     ExperienceLevel.senior: ["senior", "baş", "böyük", "experienced"],
     ExperienceLevel.lead: ["lead", "rəhbər", "head", "manager", "menencer", "chief"],
@@ -46,12 +47,12 @@ def score_job(job: JobListing, profile: UserProfile) -> JobListing:
     # Anti-fail checks
     if is_blacklisted(job.company, profile.blacklist):
         return job.model_copy(
-            update={"match_score": 0, "match_level": MatchLevel.trash, "match_flags": ["Qara siyahıda olan şirkət"]}
+            update={"match_score": 0, "match_level": MatchLevel.trash, "match_flags": ["Blacklisted company"]}
         )
 
     if is_current_employer(job.company, profile.current_employer):
         return job.model_copy(
-            update={"match_score": 0, "match_level": MatchLevel.trash, "match_flags": ["Cari iş yeri"]}
+            update={"match_score": 0, "match_level": MatchLevel.trash, "match_flags": ["Current employer"]}
         )
 
     score = 0
@@ -69,7 +70,7 @@ def score_job(job: JobListing, profile: UserProfile) -> JobListing:
         else:
             # User wants only remote, job gives no signal — soft mismatch
             score += 10
-            flags.append("İş rejimi qeyri-müəyyəndir")
+            flags.append("Work mode unclear")
     else:
         overlap = set(detected_modes) & set(profile.work_modes)
         if overlap:
@@ -78,13 +79,13 @@ def score_job(job: JobListing, profile: UserProfile) -> JobListing:
             # Hard mismatch: user is strictly remote, job is onsite
             if profile.work_modes == [WorkMode.remote] and WorkMode.onsite in detected_modes:
                 return job.model_copy(
-                    update={"match_score": 0, "match_level": MatchLevel.trash, "match_flags": ["İş rejimi uyğun deyil (yalnız uzaqdan)"]}
+                    update={"match_score": 0, "match_level": MatchLevel.trash, "match_flags": ["Work mode mismatch (remote only)"]}
                 )
-            flags.append("İş rejimi tam uyğun deyil")
+            flags.append("Work mode mismatch")
             score += 5
 
     # --- Experience level (25 pts) ---
-    user_exp = profile.experience_level
+    user_levels = profile.experience_level  # list[ExperienceLevel]
     exp_keywords_present: list[ExperienceLevel] = []
     for lvl, keywords in _EXPERIENCE_KEYWORDS.items():
         if any(kw in title_lower for kw in keywords):
@@ -92,10 +93,10 @@ def score_job(job: JobListing, profile: UserProfile) -> JobListing:
 
     if not exp_keywords_present:
         score += 15  # no info, neutral
-    elif user_exp in exp_keywords_present:
+    elif not user_levels or any(lvl in exp_keywords_present for lvl in user_levels):
         score += 25
     else:
-        flags.append("Təcrübə səviyyəsi tam uyğun deyil")
+        flags.append("Experience level mismatch")
         score += 0
 
     # --- Location (20 pts) ---

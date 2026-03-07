@@ -51,7 +51,7 @@ function LoadingStages() {
         <div className="relative flex items-center justify-center size-10">
           <div className="absolute inset-0 border border-border/60 rounded-full" />
           <div
-            className="absolute inset-0 border-2 border-transparent border-t-primary border-r-primary/30 rounded-full animate-spin"
+            className="absolute inset-0 border-2 border-transparent border-t-primary rounded-full animate-spin"
             style={{ animationDuration: "1.5s" }}
           />
         </div>

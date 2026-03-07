@@ -1,196 +1,93 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { UserProfile } from "@/types";
 import { useProfile } from "@/contexts/ProfileContext";
-import { WorkMode, ExperienceLevel } from "@/types";
-import { Switch } from "@/components/ui/Switch";
-import { Input } from "@/components/ui/Input";
+import { DEFAULT_PROFILE } from "@/contexts/ProfileContext";
+import { useMetaFilters } from "@/hooks/use-meta";
+import { useProfileQuery, useSaveProfile } from "@/hooks/use-profile";
 import { Button } from "@/components/ui/Button";
-import { Label } from "@/components/ui/Label";
-import { Checkbox } from "@/components/ui/Checkbox";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/Select";
-import CVLinkManager from "./CVLinkManager";
-import BlacklistManager from "./BlacklistManager";
-import { CheckIcon } from "lucide-react";
-
-const WORK_MODES: { value: WorkMode; label: string }[] = [
-  { value: "remote", label: "Remote" },
-  { value: "hybrid", label: "Hybrid" },
-  { value: "onsite", label: "On-site" },
-];
-
-const EXP_LEVELS: { value: ExperienceLevel; label: string }[] = [
-  { value: "junior", label: "Junior" },
-  { value: "mid", label: "Mid" },
-  { value: "senior", label: "Senior" },
-  { value: "lead", label: "Lead / Manager" },
-];
-
-function FormSection({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-        {description && <CardDescription>{description}</CardDescription>}
-      </CardHeader>
-      <CardContent className="space-y-4">{children}</CardContent>
-    </Card>
-  );
-}
+import { Check, Loader2 } from "lucide-react";
+import ProfileIdentityCard from "@/components/profile/ProfileIdentityCard";
+import IdentitySection from "@/components/profile/IdentitySection";
+import TargetingSection from "@/components/profile/TargetingSection";
+import PreferencesSection from "@/components/profile/PreferencesSection";
+import AvailabilitySection from "@/components/profile/AvailabilitySection";
+import DocumentsSection from "@/components/profile/DocumentsSection";
 
 export default function ExtendedProfileForm() {
   const { profile, setProfile } = useProfile();
+  const { data: meta } = useMetaFilters();
+  const { data: profileData } = useProfileQuery();
+  const {
+    mutateAsync: saveProfile,
+    isPending: saving,
+    isSuccess: saveSuccess,
+  } = useSaveProfile();
   const [saved, setSaved] = useState(false);
 
-  const update = (field: string, value: unknown) => {
-    setProfile({ ...profile, [field]: value });
-    setSaved(false);
-  };
+  const { control, handleSubmit, setValue, reset } = useForm<UserProfile>({
+    defaultValues: DEFAULT_PROFILE,
+  });
 
-  const toggleWorkMode = (mode: WorkMode) => {
-    const modes = profile.work_modes.includes(mode)
-      ? profile.work_modes.filter((m) => m !== mode)
-      : [...profile.work_modes, mode];
-    update("work_modes", modes.length > 0 ? modes : [mode]);
-  };
+  // Populate form when API data arrives
+  useEffect(() => {
+    if (profileData) {
+      reset(profileData);
+    }
+  }, [profileData, reset]);
 
-  const handleSave = () => {
-    setProfile(profile);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
-  };
+  // Brief saved indicator after success
+  useEffect(() => {
+    if (saveSuccess) {
+      setSaved(true);
+      const t = setTimeout(() => setSaved(false), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [saveSuccess]);
+
+  async function onSubmit(values: UserProfile) {
+    setProfile(values);
+    await saveProfile(values);
+  }
 
   return (
-    <div className="space-y-5">
-      <FormSection title="Personal information">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">First name</Label>
-            <Input id="name" placeholder="Your first name" value={profile.name}
-              onChange={(e) => update("name", e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="surname">Last name</Label>
-            <Input id="surname" placeholder="Your last name" value={profile.surname}
-              onChange={(e) => update("surname", e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={profile.email}
-              readOnly
-              className="bg-muted text-muted-foreground cursor-not-allowed"
-            />
-            <p className="text-xs text-muted-foreground">
-              Your login email — cannot be changed here.
-            </p>
-          </div>
-        </div>
-      </FormSection>
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-8 items-start">
+        {/* LEFT: sticky identity card */}
+        <ProfileIdentityCard control={control} saving={saving} saved={saved} />
 
-      <FormSection title="Current status">
-        <div className="space-y-2">
-          <Label htmlFor="employer">Current employer</Label>
-          <Input id="employer" placeholder="Leave blank if unemployed"
-            value={profile.current_employer}
-            onChange={(e) => update("current_employer", e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="exp-level">Experience level</Label>
-          <Select
-            value={profile.experience_level}
-            onValueChange={(v) => update("experience_level", v as ExperienceLevel)}
-          >
-            <SelectTrigger id="exp-level">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {EXP_LEVELS.map((l) => (
-                <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </FormSection>
+        {/* RIGHT: form sections */}
+        <div className="space-y-3 bg-card border border-border/60 shadow-sm rounded-xl p-6">
+          <IdentitySection control={control} email={profile.email} />
+          <TargetingSection control={control} setValue={setValue} />
+          <PreferencesSection control={control} meta={meta} />
+          <AvailabilitySection control={control} />
+          <DocumentsSection control={control} />
 
-      <FormSection title="Job preferences">
-        <div className="space-y-2">
-          <Label>Work mode</Label>
-          <div className="flex flex-wrap gap-4">
-            {WORK_MODES.map((m) => (
-              <div key={m.value} className="flex items-center gap-2">
-                <Checkbox
-                  id={`wm-${m.value}`}
-                  checked={profile.work_modes.includes(m.value)}
-                  onCheckedChange={() => toggleWorkMode(m.value)}
-                />
-                <Label htmlFor={`wm-${m.value}`} className="font-normal cursor-pointer">
-                  {m.label}
-                </Label>
-              </div>
-            ))}
+          {/* Mobile save */}
+          <div className="flex justify-end lg:hidden pb-2">
+            <Button
+              type="submit"
+              className="gap-2 min-w-[120px]"
+              disabled={saving}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" /> Saving...
+                </>
+              ) : saved ? (
+                <>
+                  <Check className="size-4" /> Saved
+                </>
+              ) : (
+                "Save profile"
+              )}
+            </Button>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Switch
-            id="relocation"
-            checked={profile.relocation}
-            onCheckedChange={(v) => update("relocation", v)}
-          />
-          <Label htmlFor="relocation" className="font-normal cursor-pointer">
-            Open to relocation
-          </Label>
-        </div>
-      </FormSection>
-
-      <FormSection
-        title="CV links"
-        description="Google Drive, Dropbox, or any public link."
-      >
-        <CVLinkManager
-          cvLinks={profile.cv_links}
-          onChange={(links) => update("cv_links", links)}
-        />
-      </FormSection>
-
-      <FormSection
-        title="Blacklist"
-        description="Jobs from these companies will be automatically filtered out."
-      >
-        <BlacklistManager
-          blacklist={profile.blacklist}
-          onChange={(list) => update("blacklist", list)}
-        />
-      </FormSection>
-
-      <div className="flex items-center gap-3">
-        <Button onClick={handleSave} className="px-6">
-          Save
-        </Button>
-        {saved && (
-          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-success">
-            <CheckIcon className="size-4" />
-            Saved
-          </span>
-        )}
       </div>
-    </div>
+    </form>
   );
 }

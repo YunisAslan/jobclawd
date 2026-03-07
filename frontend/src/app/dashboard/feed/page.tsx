@@ -6,6 +6,7 @@ import TopBar from "@/components/layout/TopBar";
 import FeedFilterForm from "@/components/feed/FeedFilterForm";
 import FeedResults from "@/components/feed/FeedResults";
 import { useFeed } from "@/hooks/use-feed";
+import { useProfile } from "@/contexts/ProfileContext";
 import { JobSource, JobListing } from "@/types";
 
 const DATE_RANGES: Record<string, number> = {
@@ -185,6 +186,26 @@ export default function FeedPage() {
     hasSearched,
   } = useFeed();
 
+  const { profile } = useProfile();
+
+  const profileDefaults = useMemo<Partial<FeedFilterValues>>(() => {
+    const result: Partial<FeedFilterValues> = {};
+    if (profile.headline) {
+      result.query = profile.headline;
+    }
+    if (profile.work_modes?.length) result.workModes = profile.work_modes as string[];
+    if (profile.experience_level?.length) result.experience = profile.experience_level;
+    if (profile.job_types?.length) result.jobTypes = profile.job_types;
+    if (profile.preferred_location?.value || (profile.preferred_location?.values?.length ?? 0) > 0) {
+      result.location = profile.preferred_location;
+    }
+    if (profile.salary_min) {
+      result.salaryMin = profile.salary_min;
+      result.salaryPeriod = (profile.salary_period as FeedFilterValues["salaryPeriod"]) ?? "annual";
+    }
+    return result;
+  }, [profile]);
+
   const [localFilters, setLocalFilters] = useState<Partial<FeedFilterValues>>({});
 
   const filteredHighMatch = useMemo(
@@ -250,6 +271,7 @@ export default function FeedPage() {
           onSubmit={onSearchSubmit}
           onChange={setLocalFilters}
           loading={loading}
+          profileDefaults={profileDefaults}
         />
         <FeedResults
           highMatch={filteredHighMatch}

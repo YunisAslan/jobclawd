@@ -12,6 +12,7 @@ class WorkMode(str, Enum):
 
 
 class ExperienceLevel(str, Enum):
+    intern = "intern"
     junior = "junior"
     mid = "mid"
     senior = "senior"
@@ -44,26 +45,38 @@ class CVLink(BaseModel):
     url: str
 
 
+# Defined before UserProfile so it can be referenced as a field type
+class LocationFilter(BaseModel):
+    type: Optional[str] = None
+    value: Optional[str] = None
+    values: list[str] = []
+
+
 class UserProfile(BaseModel):
     name: str
     surname: str = ""
     email: str
     current_employer: str = ""
     work_modes: list[WorkMode] = [WorkMode.hybrid]
-    experience_level: ExperienceLevel = ExperienceLevel.mid
+    experience_level: list[ExperienceLevel] = []
     relocation: bool = False
     blacklist: list[str] = []
     cv_links: list[CVLink] = []
     # legacy field kept for backward compat
     cvLink: str = ""
 
+    # Job search preference fields — used to pre-fill feed filters + apply cover letter
+    headline: Optional[str] = None
+    desired_titles: list[str] = []
+    job_types: list[str] = []
+    preferred_location: Optional[LocationFilter] = None
+    salary_min: Optional[str] = None
+    salary_period: Optional[str] = None          # "annual" | "monthly" | "hourly"
+    years_of_experience: Optional[int] = None
+    availability: Optional[str] = None
+
 
 # ---------- Search ----------
-
-class LocationFilter(BaseModel):
-    type: Optional[str] = None
-    value: Optional[str] = None
-    values: list[str] = []
 
 class SearchRequest(BaseModel):
     query: str

@@ -13,6 +13,7 @@ import {
   GraduationCap,
   Briefcase,
   Info,
+  LucideSearch,
 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,26 +25,30 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { useMetaFilters } from "@/hooks/use-meta";
 import SelectBox from "@/components/SelectBox";
 import LocationPicker from "@/components/feed/LocationPicker";
+import { LocationValue } from "@/types";
+import { SALARY_PERIOD_OPTIONS } from "@/constants";
 
 interface FeedFilterFormProps {
   onSubmit: (values: FeedFilterValues) => void;
   onChange?: (values: FeedFilterValues) => void;
   loading?: boolean;
+  profileDefaults?: Partial<FeedFilterValues>;
 }
-
-const PERIOD_OPTIONS = [
-  { value: "annual", label: "yr" },
-  { value: "monthly", label: "mo" },
-  { value: "hourly", label: "hr" },
-] as const;
 
 export default function FeedFilterForm({
   onSubmit,
   onChange,
   loading,
+  profileDefaults,
 }: FeedFilterFormProps) {
   const { data: meta } = useMetaFilters();
-  const { control, handleSubmit, watch } = useForm<FeedFilterValues>({
+  const {
+    control,
+    handleSubmit,
+    watch,
+    reset,
+    getValues
+  } = useForm<FeedFilterValues>({
     resolver: zodResolver(feedFilterSchema),
     defaultValues: {
       query: "",
@@ -59,6 +64,9 @@ export default function FeedFilterForm({
     },
   });
 
+  console.log("source", getValues("sources"))
+  console.log("location", getValues("location"))
+
   useEffect(() => {
     if (onChange) {
       const subscription = watch((value) => {
@@ -67,6 +75,12 @@ export default function FeedFilterForm({
       return () => subscription.unsubscribe();
     }
   }, [watch, onChange]);
+
+  const hasProfileDefaults = profileDefaults
+    ? Object.values(profileDefaults).some((v) =>
+        Array.isArray(v) ? v.length > 0 : Boolean(v),
+      )
+    : false;
 
   const watchedLocation = watch("location");
   const watchedSalaryMin = watch("salaryMin");
@@ -127,6 +141,32 @@ export default function FeedFilterForm({
                 )}
               />
             </div>
+            {hasProfileDefaults && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={loading}
+                className="gap-1.5 h-12 shrink-0 text-muted-foreground"
+                onClick={() =>
+                  reset({
+                    query: "",
+                    sources: [],
+                    workModes: [],
+                    location: undefined,
+                    experience: [],
+                    jobTypes: [],
+                    salaryMin: "",
+                    salaryPeriod: "annual",
+                    datePosted: "",
+                    sortBy: "",
+                    ...profileDefaults,
+                  })
+                }
+              >
+                <Sparkles className="size-4" />
+                Fill from profile
+              </Button>
+            )}
             <Button
               type="submit"
               disabled={loading}
@@ -135,7 +175,7 @@ export default function FeedFilterForm({
               {loading ? (
                 <div className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
               ) : (
-                <Sparkles className="size-4" />
+                <LucideSearch className="size-4" />
               )}
               {loading ? "Searching..." : "Search"}
             </Button>
@@ -182,7 +222,7 @@ export default function FeedFilterForm({
               render={({ field: locationField }) => (
                 <LocationPicker
                   disabled={loading}
-                  value={locationField.value}
+                  value={locationField.value as LocationValue}
                   onChange={locationField.onChange}
                   countries={meta?.countries ?? []}
                 />
@@ -227,7 +267,6 @@ export default function FeedFilterForm({
 
           {/* Secondary filters — salary / date / sort */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-2 border-t border-border/60 pt-3.5">
-
             {/* Salary — spans 3 cols to make room for period selector */}
             <div className="xl:col-span-3 flex flex-col gap-1">
               <div
@@ -270,7 +309,7 @@ export default function FeedFilterForm({
                     control={control}
                     render={({ field: pField }) => (
                       <>
-                        {PERIOD_OPTIONS.map(({ value, label }) => (
+                        {SALARY_PERIOD_OPTIONS.map(({ value, label }) => (
                           <Button
                             key={value}
                             type="button"
@@ -299,7 +338,8 @@ export default function FeedFilterForm({
               {/* Salary disclaimer — only visible when a value is entered */}
               {watchedSalaryMin && (
                 <p className="text-[10px] text-muted-foreground/50 pl-1 leading-tight">
-                  Only filters jobs with salary stated in the title. Most listings don&apos;t include salary data.
+                  Only filters jobs with salary stated in the title. Most
+                  listings don&apos;t include salary data.
                 </p>
               )}
             </div>

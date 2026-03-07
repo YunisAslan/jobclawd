@@ -1,20 +1,31 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { UserProfile } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
+import { profileService } from "@/services/profile.service";
+import { PROFILE_QUERY_KEY } from "@/hooks/use-profile";
 
-const DEFAULT_PROFILE: UserProfile = {
+export const DEFAULT_PROFILE: UserProfile = {
   name: "",
   surname: "",
   email: "",
   current_employer: "",
   work_modes: ["hybrid"],
-  experience_level: "mid",
+  experience_level: [],
   relocation: false,
   blacklist: [],
   cv_links: [],
   cvLink: "",
+  headline: "",
+  desired_titles: [],
+  job_types: [],
+  preferred_location: undefined,
+  salary_min: "",
+  salary_period: "annual",
+  years_of_experience: null,
+  availability: "",
 };
 
 interface ProfileContextValue {
@@ -31,19 +42,28 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [profile, setProfileState] = useState<UserProfile>(DEFAULT_PROFILE);
 
-  // Seed from auth user when it becomes available
+  // Load from API via react-query — shared cache with useProfileQuery()
+  const { data: apiProfile } = useQuery({
+    queryKey: PROFILE_QUERY_KEY,
+    queryFn: () => profileService.getProfile(),
+    enabled: !!user,
+    staleTime: Infinity,
+    retry: false,
+  });
+
   useEffect(() => {
-    if (user) {
+    if (apiProfile && user) {
+      setProfileState({ ...DEFAULT_PROFILE, ...apiProfile, email: user.email });
+    } else if (user) {
       setProfileState((prev) => ({
         ...prev,
         email: user.email,
         name: prev.name || user.name || "",
       }));
     }
-  }, [user]);
+  }, [apiProfile, user]);
 
   const setProfile = (p: UserProfile) => {
-    // Always keep email in sync with auth
     setProfileState({ ...p, email: user?.email ?? p.email });
   };
 

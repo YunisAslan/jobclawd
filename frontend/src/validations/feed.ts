@@ -6,11 +6,11 @@ export const feedFilterSchema = z.object({
   workModes: z.array(z.string()).optional(),
   location: z
     .object({
-      type: z.enum(["region", "country", "city"]).optional(),
-      value: z.string().optional(),
-      values: z.array(z.string()).optional(),
+      type: z.enum(["region", "country", "city"]).nullish(),
+      value: z.string().nullish(),
+      values: z.array(z.string()).nullish(),
     })
-    .optional(),
+    .nullish(),
   experience: z.array(z.string()).optional(),
   datePosted: z.string().optional(),
   salaryMin: z

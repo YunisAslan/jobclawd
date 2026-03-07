@@ -61,6 +61,7 @@ interface SelectProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   disabled?: boolean;
+  options?: Array<{ value: string; label: string | React.ReactNode }>;
 }
 
 function Select({
@@ -75,6 +76,7 @@ function Select({
   open: controlledOpen,
   onOpenChange,
   disabled,
+  options,
 }: SelectProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
 
@@ -108,9 +110,21 @@ function Select({
         ? new Set(values)
         : internalValues;
 
-  const [items, setItems] = React.useState<Map<string, React.ReactNode>>(
-    new Map(),
-  );
+  const [items, setItems] = React.useState<Map<string, React.ReactNode>>(() => {
+    const m = new Map<string, React.ReactNode>();
+    options?.forEach((opt) => m.set(opt.value, opt.label));
+    return m;
+  });
+
+  React.useEffect(() => {
+    if (options && options.length > 0) {
+      setItems((prev) => {
+        const next = new Map(prev);
+        options.forEach((opt) => next.set(opt.value, opt.label));
+        return next;
+      });
+    }
+  }, [options]);
 
   function toggleValue(newValue: string) {
     if (mode === "single") {
@@ -339,23 +353,21 @@ function SelectValue({
         className,
       )}
     >
-      {[...selectedValues]
-        .filter((value) => items.has(value))
-        .map((value) => (
-          <Badge
-            variant="outline"
-            data-selected-item
-            className="group flex items-center gap-1 bg-accent/80"
-            key={value}
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleValue(value);
-            }}
-          >
-            {items.get(value)}
-            <XIcon className="size-2 text-muted-foreground group-hover:text-destructive" />
-          </Badge>
-        ))}
+      {[...selectedValues].map((value) => (
+        <Badge
+          variant="outline"
+          data-selected-item
+          className="group flex items-center gap-1 bg-accent/80"
+          key={value}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleValue(value);
+          }}
+        >
+          {items.get(value) || value}
+          <XIcon className="size-2 text-muted-foreground group-hover:text-destructive" />
+        </Badge>
+      ))}
       <Badge
         style={{
           display: overflowAmount > 0 && !shouldWrap ? "block" : "none",
