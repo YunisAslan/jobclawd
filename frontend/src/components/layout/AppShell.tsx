@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import AppSidebar from "@/components/layout/Sidebar";
 
@@ -13,8 +14,23 @@ function isAppRoute(pathname: string) {
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const isApp = isAppRoute(pathname);
 
-  if (!isAppRoute(pathname)) {
+  useEffect(() => {
+    if (isApp) {
+      document.body.style.overflow = "hidden";
+      document.body.style.height = "100%";
+    } else {
+      document.body.style.overflow = "";
+      document.body.style.height = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.height = "";
+    };
+  }, [isApp]);
+
+  if (!isApp) {
     // Landing page, auth pages — render without sidebar
     return <>{children}</>;
   }

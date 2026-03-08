@@ -9,57 +9,56 @@
    Cool Mist — Futuristic Minimal
 ===================================================== */
 :root {
-  --primary: #3F4DFF;
-  --primary-foreground: #FFFFFF;
-  --primary-hover: #3040EE;
+  --primary: #7b7cff;
+  --primary-foreground: #ffffff;
+  --primary-hover: #6a6bff;
 
-  --secondary: #8E98FF;
-  --secondary-foreground: #FFFFFF;
-  --secondary-hover: #7A85F5;
+  --secondary: #e7eaf3;
+  --secondary-foreground: #0e0f14;
+  --secondary-hover: #dce0ea;
 
-  --background: #F5F7FB;            /* cool mist white with blue undertone */
-  --foreground: #111827;            /* deep graphite with blue base */
+  --background: #ffffff;
+  --foreground: #0e0f14;
 
-  --card: #FFFFFF;
-  --card-foreground: #111827;
+  --card: #ffffff;
+  --card-foreground: #0e0f14;
 
-  --popover: #FFFFFF;
-  --popover-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #0e0f14;
 
-  --muted: #EFF1F6;
-  --muted-foreground: #6B7280;      /* neutral steel gray */
+  --muted: #f1f3f9;
+  --muted-foreground: #5b6275;
 
-  --accent: #E8EBEF;
-  --accent-foreground: #111827;
+  --accent: #eef1f8;
+  --accent-foreground: #0e0f14;
 
-  --destructive: #DC2626;
-  --warning: #D97706;
-  --success: #059669;
+  --destructive: #ff5a4f;
+  --warning: #f59e0b;
+  --success: #22c55e;
 
-  --border: #D1D5DB;
-  --input: #D1D5DB;
-  --ring: #3F4DFF;
+  --border: #e1e5ee;
+  --input: #e1e5ee;
+  --ring: #7b7cff;
 
-  --radius: 0.5rem;
+  --radius: 0.3rem;
 
-  --match-high: #059669;
-  --match-review: #D97706;
+  --match-high: #22c55e;
+  --match-review: #f59e0b;
 
-  --chart-1: #3F4DFF;
-  --chart-2: #059669;
-  --chart-3: #6B7280;
-  --chart-4: #D97706;
-  --chart-5: #DC2626;
+  --chart-1: #7b7cff;
+  --chart-2: #22c55e;
+  --chart-3: #6b7280;
+  --chart-4: #f59e0b;
+  --chart-5: #ff5a4f;
 
-  /* Sidebar stays dark in both modes */
-  --sidebar: #111827;
-  --sidebar-foreground: #9AA3B2;
-  --sidebar-primary: #3F4DFF;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #1C2333;
-  --sidebar-accent-foreground: #C8D0DC;
-  --sidebar-border: #1E2535;
-  --sidebar-ring: #3F4DFF;
+  --sidebar: #f8f9fd;
+  --sidebar-foreground: #0e0f14;
+  --sidebar-primary: #7b7cff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e7eaf3;
+  --sidebar-accent-foreground: #0e0f14;
+  --sidebar-border: #e1e5ee;
+  --sidebar-ring: #7b7cff;
 
   --font-body: var(--font-jakarta, "Inter", "Avenir Next", sans-serif);
   --font-code: var(--font-jetbrains, "SF Mono", "Menlo", "Monaco", monospace);
@@ -70,57 +69,55 @@
    Deep Slate-Blue — Futuristic Precision
 ===================================================== */
 .dark {
-  --primary: #5563FF;
-  --primary-foreground: #FFFFFF;
-  --primary-hover: #4452EE;
+  --primary: #7b7cff;
+  --primary-foreground: #0e0f14;
+  --primary-hover: #6a6bff;
 
-  --secondary: #8E98FF;
-  --secondary-foreground: #FFFFFF;
-  --secondary-hover: #7A85F5;
+  --secondary: #2b2f3a;
+  --secondary-foreground: #f4f6fb;
+  --secondary-hover: #323745;
 
-  --background: #11151C;            /* deep slate-blue */
-  --foreground: #E8EBF3;            /* soft cool white */
+  --background: #0e0f14;
+  --foreground: #f4f6fb;
 
-  --card: #1A1F2B;
-  --card-foreground: #E8EBF3;
+  --card: #151720;
+  --card-foreground: #f4f6fb;
 
-  --popover: #1E2433;
-  --popover-foreground: #E8EBF3;
+  --popover: #151720;
+  --popover-foreground: #f4f6fb;
 
-  --muted: #161C27;
-  --muted-foreground: #9AA3B2;      /* balanced slate */
+  --muted: #2b2f3a;
+  --muted-foreground: #a9b0c2;
 
-  --accent: #1E2535;
-  --accent-foreground: #E8EBF3;
+  --accent: #2b2f3a;
+  --accent-foreground: #f4f6fb;
 
-  --destructive: #FF4F4F;
-  --warning: #F59E0B;
-  --success: #10B981;
+  --destructive: #ff5a4f;
+  --warning: #f59e0b;
+  --success: #22c55e;
 
-  --border: #222A3A;
-  --input: #222A3A;
-  --ring: #5563FF;
+  --border: #353947;
+  --input: #353947;
+  --ring: #7b7cff;
 
-  --match-high: #10B981;
-  --match-review: #F59E0B;
+  --match-high: #22c55e;
+  --match-review: #f59e0b;
 
-  --chart-1: #5563FF;
-  --chart-2: #10B981;
-  --chart-3: #9AA3B2;
-  --chart-4: #F59E0B;
-  --chart-5: #FF4F4F;
+  --chart-1: #7b7cff;
+  --chart-2: #22c55e;
+  --chart-3: #a9b0c2;
+  --chart-4: #f59e0b;
+  --chart-5: #ff5a4f;
 
-  /* Sidebar even deeper than canvas */
-  --sidebar: #0C1018;
-  --sidebar-foreground: #9AA3B2;
-  --sidebar-primary: #5563FF;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #141A25;
-  --sidebar-accent-foreground: #C8D0DC;
-  --sidebar-border: #181E2C;
-  --sidebar-ring: #5563FF;
+  --sidebar: #0b0c11;
+  --sidebar-foreground: #f4f6fb;
+  --sidebar-primary: #7b7cff;
+  --sidebar-primary-foreground: #0e0f14;
+  --sidebar-accent: #1b1e27;
+  --sidebar-accent-foreground: #f4f6fb;
+  --sidebar-border: #2b2f3a;
+  --sidebar-ring: #7b7cff;
 }
-
 
 @theme inline {
   --color-background: var(--background);
@@ -174,11 +171,6 @@
     @apply border-border outline-ring/50;
   }
   html,
-  body {
-    height: 100%;
-    overflow: hidden;
-  }
-
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-body);
