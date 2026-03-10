@@ -260,6 +260,7 @@ export default function FeedFilterForm({
                   mode="multiple"
                   value={field.value}
                   onChange={field.onChange}
+                  search={{ placeholder: "Search manually..." }}
                 />
               )}
             />
@@ -271,7 +272,7 @@ export default function FeedFilterForm({
             <div className="xl:col-span-3 flex flex-col gap-1">
               <div
                 className={cn(
-                  "flex items-center gap-2 rounded-md border border-input bg-transparent px-3 py-0 h-9 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-within:border-ring",
+                  "flex items-center gap-2 rounded-md border border-input bg-transparent dark:bg-input/30! px-3 py-0 h-9 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-within:border-ring",
                   loading && "opacity-50 pointer-events-none",
                 )}
               >
@@ -286,7 +287,7 @@ export default function FeedFilterForm({
                       disabled={loading}
                       autoComplete="off"
                       placeholder="Minimum salary"
-                      className="rounded-none h-full w-full border-none bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 placeholder:text-muted-foreground disabled:opacity-100"
+                      className="dark:bg-transparent rounded-none h-full w-full border-none p-0 text-sm shadow-none focus-visible:ring-0 placeholder:text-muted-foreground disabled:opacity-100"
                       onChange={(e) => {
                         const raw = e.target.value.replace(/\D/g, "");
                         if (!raw) {

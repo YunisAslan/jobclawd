@@ -116,7 +116,7 @@ export default function PreferencesSection({ control, meta }: Props) {
               <Label className="text-xs text-muted-foreground">
                 Minimum salary expectation
               </Label>
-              <div className="flex items-center gap-2 rounded-md border border-input bg-transparent px-3 h-9 focus-within:border-ring transition-colors">
+              <div className="flex items-center gap-2 rounded-md border border-input dark:bg-input/30 bg-transparent px-3 h-9 focus-within:border-ring transition-colors">
                 <DollarSign className="size-4 text-muted-foreground shrink-0" />
                 <Controller
                   name="salary_min"
@@ -127,7 +127,7 @@ export default function PreferencesSection({ control, meta }: Props) {
                       value={field.value ?? ""}
                       autoComplete="off"
                       placeholder="70,000"
-                      className="rounded-none h-full w-full border-none bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
+                      className="dark:bg-transparent rounded-none h-full w-full border-none p-0 text-sm shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
                       onChange={(e) => {
                         const raw = e.target.value.replace(/\D/g, "");
                         if (!raw) {

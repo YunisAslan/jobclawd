@@ -190,7 +190,7 @@ export default function LocationModal({
             value={firstSearch}
             onChange={(e) => setFirstSearch(e.target.value)}
             placeholder="Search country..."
-            className="border-0 shadow-none focus-visible:ring-0 px-0 h-10 text-sm bg-transparent"
+            className="border-0 shadow-none focus-visible:ring-0 px-0 h-10 text-sm bg-transparent!"
           />
           {firstSearch && (
             <Button
@@ -308,7 +308,7 @@ export default function LocationModal({
             value={citySearch}
             onChange={(e) => setCitySearch(e.target.value)}
             placeholder="Search city..."
-            className="border-0 shadow-none focus-visible:ring-0 px-0 h-10 text-sm bg-transparent"
+            className="border-0 shadow-none focus-visible:ring-0 px-0 h-10 text-sm bg-transparent!"
           />
           {citySearch && (
             <Button

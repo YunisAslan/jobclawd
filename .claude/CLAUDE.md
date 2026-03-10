@@ -3,12 +3,6 @@
 ## Project Overview
 **JobClawd** is a full SaaS-style job application dashboard. It searches multiple job boards (jobsearch.az, LinkedIn, Indeed) using Playwright browser automation, scores vacancies against the user's profile.
 
-## Architecture
-- **Frontend:** Next.js 16 (port 3000)  
-- **Backend:** FastAPI (port 8000)  
-- **Automation / Scraping:** Playwright → jobsearch.az, LinkedIn, Indeed  
-- **Database:** SQLite (`jobclawd.db`)
-
 ## Running the Application
 **Backend:**
 ```bash
