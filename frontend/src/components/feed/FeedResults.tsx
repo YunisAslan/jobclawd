@@ -21,6 +21,11 @@ interface FeedResultsProps {
   loading?: boolean;
   hasSearched?: boolean;
   activeFilterCount?: number;
+  selected?: Set<string>;
+  onToggleSelect?: (url: string) => void;
+  onApply?: (job: JobListing) => void;
+  onSkip?: (url: string) => void;
+  onHideCompany?: (company: string) => void;
 }
 
 const STAGES = [
@@ -46,83 +51,17 @@ function LoadingStages() {
   }, []);
 
   return (
-    <div className="py-10 flex flex-col items-center gap-6 animate-in fade-in duration-700">
-      <div className="flex flex-col items-center gap-4">
-        <div className="relative flex items-center justify-center size-10">
-          <div className="absolute inset-0 border border-border/60 rounded-full" />
-          <div
-            className="absolute inset-0 border-2 border-transparent border-t-primary rounded-full animate-spin"
-            style={{ animationDuration: "1.5s" }}
-          />
-        </div>
-        <h3 className="text-base font-medium tracking-tight text-foreground/90">
-          Curating your feed
-        </h3>
-      </div>
-
-      <div className="w-full max-w-sm p-5 sm:p-6 rounded-2xl bg-card border border-border/50 shadow-sm relative overflow-hidden">
-        <div className="space-y-4 relative z-10 w-full px-1">
-          {STAGES.map((stage) => {
-            const done = stage.id < currentStage;
-            const active = stage.id === currentStage;
-            const upcoming = stage.id > currentStage;
-
-            return (
-              <div
-                key={stage.id}
-                className={cn(
-                  "flex items-center gap-3.5 transition-all duration-500",
-                  upcoming && "opacity-40",
-                )}
-              >
-                <div className="relative flex items-center justify-center shrink-0 w-5 h-5">
-                  {done ? (
-                    <div className="text-primary animate-in zoom-in duration-300 flex items-center justify-center">
-                      <CheckCircle2 className="size-4" strokeWidth={2.5} />
-                    </div>
-                  ) : active ? (
-                    <div className="relative flex items-center justify-center">
-                      <div className="absolute size-2 bg-primary rounded-full animate-ping opacity-60" />
-                      <div className="size-2 bg-primary rounded-full relative z-10 shadow-[0_0_10px_rgba(var(--primary),0.5)]" />
-                    </div>
-                  ) : (
-                    <div className="size-1 rounded-full bg-muted-foreground/30 transition-colors duration-500" />
-                  )}
-                </div>
-
-                <span
-                  className={cn(
-                    "text-[14px] transition-all duration-500 tracking-wide",
-                    done
-                      ? "text-muted-foreground/60"
-                      : active
-                        ? "font-semibold text-foreground"
-                        : "text-muted-foreground/80 font-medium",
-                  )}
-                >
-                  {stage.label}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 opacity-[0.15] pointer-events-none mt-2">
-        {[1, 2, 3, 4].map((i) => (
+    <div className="relative animate-in fade-in duration-700">
+      {/* Ghost skeleton cards — background layer */}
+      <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 pointer-events-none select-none">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
           <div
             key={i}
-            className="p-5 border border-border/40 rounded-2xl space-y-4 bg-card/50 backdrop-blur-sm h-36 flex flex-col justify-between"
+            className="p-5 border border-border/30 rounded-2xl space-y-4 bg-card/40 h-36 flex flex-col justify-between opacity-[0.12]"
           >
             <div className="space-y-3">
-              <div
-                className="h-3.5 bg-foreground/80 rounded animate-pulse"
-                style={{ width: `${50 + ((i * 13) % 35)}%` }}
-              />
-              <div
-                className="h-2.5 bg-muted-foreground/60 rounded animate-pulse"
-                style={{ width: `${25 + ((i * 7) % 20)}%` }}
-              />
+              <div className="h-3.5 bg-foreground/70 rounded animate-pulse" style={{ width: `${50 + ((i * 13) % 35)}%` }} />
+              <div className="h-2.5 bg-muted-foreground/50 rounded animate-pulse" style={{ width: `${25 + ((i * 7) % 20)}%` }} />
             </div>
             <div className="flex gap-2.5">
               <div className="h-7 w-16 bg-muted-foreground/30 rounded-full animate-pulse" />
@@ -130,6 +69,56 @@ function LoadingStages() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Progress card — overlay */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="w-full max-w-sm p-5 sm:p-6 rounded-2xl bg-card/95 border border-border/60 shadow-xl backdrop-blur-sm space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="relative flex items-center justify-center size-8 shrink-0">
+              <div className="absolute inset-0 border border-border/60 rounded-full" />
+              <div className="absolute inset-0 border-2 border-transparent border-t-primary rounded-full animate-spin" style={{ animationDuration: "1.5s" }} />
+            </div>
+            <h3 className="text-sm font-semibold tracking-tight text-foreground/90">
+              Curating your feed
+            </h3>
+          </div>
+
+          <div className="space-y-3.5 px-1">
+            {STAGES.map((stage) => {
+              const done = stage.id < currentStage;
+              const active = stage.id === currentStage;
+              const upcoming = stage.id > currentStage;
+              return (
+                <div
+                  key={stage.id}
+                  className={cn("flex items-center gap-3.5 transition-all duration-500", upcoming && "opacity-35")}
+                >
+                  <div className="relative flex items-center justify-center shrink-0 w-5 h-5">
+                    {done ? (
+                      <div className="text-primary animate-in zoom-in duration-300 flex items-center justify-center">
+                        <CheckCircle2 className="size-4" strokeWidth={2.5} />
+                      </div>
+                    ) : active ? (
+                      <div className="relative flex items-center justify-center">
+                        <div className="absolute size-2 bg-primary rounded-full animate-ping opacity-60" />
+                        <div className="size-2 bg-primary rounded-full relative z-10" />
+                      </div>
+                    ) : (
+                      <div className="size-1.5 rounded-full bg-muted-foreground/30" />
+                    )}
+                  </div>
+                  <span className={cn(
+                    "text-[13px] transition-all duration-500",
+                    done ? "text-muted-foreground/50" : active ? "font-semibold text-foreground" : "text-muted-foreground/70 font-medium",
+                  )}>
+                    {stage.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -143,6 +132,11 @@ export default function FeedResults({
   loading,
   hasSearched,
   activeFilterCount = 0,
+  selected,
+  onToggleSelect,
+  onApply,
+  onSkip,
+  onHideCompany,
 }: FeedResultsProps) {
   if (!hasSearched && !loading) {
     return (
@@ -242,12 +236,12 @@ export default function FeedResults({
               <FeedJobCard
                 key={job.url}
                 job={job}
-                selected={false}
-                onToggleSelect={noop}
-                onApply={noop}
-                onSkip={noop}
-                onDetails={noop}
-                onHideCompany={noop}
+                selected={selected?.has(job.url) ?? false}
+                onToggleSelect={() => onToggleSelect?.(job.url) ?? noop()}
+                onApply={() => onApply?.(job) ?? noop()}
+                onSkip={() => onSkip?.(job.url) ?? noop()}
+                onDetails={() => onApply?.(job) ?? noop()}
+                onHideCompany={(c) => onHideCompany?.(c) ?? noop()}
               />
             ))}
           </div>
@@ -266,12 +260,12 @@ export default function FeedResults({
               <FeedJobCard
                 key={job.url}
                 job={job}
-                selected={false}
-                onToggleSelect={noop}
-                onApply={noop}
-                onSkip={noop}
-                onDetails={noop}
-                onHideCompany={noop}
+                selected={selected?.has(job.url) ?? false}
+                onToggleSelect={() => onToggleSelect?.(job.url) ?? noop()}
+                onApply={() => onApply?.(job) ?? noop()}
+                onSkip={() => onSkip?.(job.url) ?? noop()}
+                onDetails={() => onApply?.(job) ?? noop()}
+                onHideCompany={(c) => onHideCompany?.(c) ?? noop()}
               />
             ))}
           </div>

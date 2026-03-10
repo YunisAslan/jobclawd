@@ -1,16 +1,49 @@
 """
 Service: handles the full apply flow.
   1. Persist application to DB via repository.
-  2. If autopilot is enabled and SMTP is configured, send email.
-Contains business logic that was previously mixed into the router.
+  2. Send email when hr_email is present:
+     Priority order:
+       a) Gmail API (user's OAuth refresh token — automatic, no config needed)
+       b) User's own SMTP config
+       c) System Gmail SMTP fallback
 """
-from models.schemas import ApplyRequest, ApplyResponse
+import os
+from pathlib import Path
+from typing import Optional
+from models.schemas import ApplyRequest, ApplyResponse, SMTPSettings
 from repositories import application_repo, settings_repo
 from services.smtp_sender import send_application_email
+from services.gmail_sender import send_via_gmail_api
+
+# Must match UPLOADS_DIR in profile_router.py
+_UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads" / "cv"
+
+
+def _resolve_cv_path(cv_url: Optional[str]) -> Optional[Path]:
+    """Extract filename from URL like /api/files/cv/{name} and return disk path."""
+    if not cv_url:
+        return None
+    filename = cv_url.rstrip("/").split("/")[-1]
+    path = _UPLOADS_DIR / filename
+    return path if path.exists() else None
+
+
+def _get_system_gmail_smtp() -> Optional[SMTPSettings]:
+    """Build SMTPSettings from system Gmail env vars, or None if not configured."""
+    try:
+        return SMTPSettings(
+            host="smtp.gmail.com",
+            port=587,
+            username=os.environ["GMAIL_USER"],
+            password=os.environ["GMAIL_APP_PASSWORD"],
+            from_name="JobClawd",
+        )
+    except KeyError:
+        return None
 
 
 async def process_apply(request: ApplyRequest) -> ApplyResponse:
-    """Save application to DB, then optionally send via SMTP on autopilot."""
+    """Save application to DB, then send email directly when hr_email is present."""
     # 1. Persist — raises RuntimeError on DB failure
     try:
         app_id = application_repo.insert_application(
@@ -27,28 +60,89 @@ async def process_apply(request: ApplyRequest) -> ApplyResponse:
     except Exception as e:
         raise RuntimeError(f"Database error: {e}") from e
 
-    # 2. Autopilot SMTP send (non-fatal — failure never blocks the saved record)
+    # 2. Send email when hr_email is available
     sent_via_smtp = False
+    send_error: Optional[str] = None
+
     if request.hr_email and request.profile:
-        try:
-            autopilot_on = settings_repo.get_autopilot_enabled()
-            smtp = settings_repo.get_smtp_config()
-            if autopilot_on and smtp:
-                await send_application_email(
-                    smtp=smtp,
-                    profile=request.profile,
+        user_email = request.profile.email
+        name_full = f"{request.profile.name} {request.profile.surname}".strip()
+        subject = request.email_subject or f"Job application: {request.job_title} — {name_full}"
+        body = request.cover_letter or ""
+        cv_path = _resolve_cv_path(request.cv_url)
+        extra_cv_paths = [
+            p for url in (request.extra_cv_urls or [])
+            if (p := _resolve_cv_path(url)) is not None
+        ]
+
+        # a) Gmail API via user's OAuth token (automatic — no config needed)
+        refresh_token = settings_repo.get_google_refresh_token(user_email)
+        if refresh_token:
+            try:
+                await send_via_gmail_api(
+                    from_email=user_email,
+                    from_name=name_full,
                     to_email=request.hr_email,
-                    job_title=request.job_title,
-                    company=request.company,
-                    cv_url=request.cv_url,
+                    subject=subject,
+                    body=body,
+                    refresh_token=refresh_token,
+                    cv_path=cv_path,
+                    extra_cv_paths=extra_cv_paths,
                 )
                 sent_via_smtp = True
-        except Exception:
-            pass
+            except Exception as e:
+                send_error = str(e)
+
+        # b) User's own SMTP config
+        if not sent_via_smtp:
+            smtp = settings_repo.get_smtp_config(user_email=user_email)
+            if smtp:
+                try:
+                    await send_application_email(
+                        smtp=smtp,
+                        profile=request.profile,
+                        to_email=request.hr_email,
+                        job_title=request.job_title,
+                        company=request.company,
+                        cv_url=request.cv_url,
+                        cv_path=cv_path,
+                        extra_cv_paths=extra_cv_paths,
+                        custom_subject=request.email_subject,
+                        custom_body=request.cover_letter,
+                    )
+                    sent_via_smtp = True
+                except Exception as e:
+                    send_error = str(e)
+
+        # c) System Gmail SMTP fallback
+        if not sent_via_smtp:
+            smtp = _get_system_gmail_smtp()
+            if smtp:
+                try:
+                    await send_application_email(
+                        smtp=smtp,
+                        profile=request.profile,
+                        to_email=request.hr_email,
+                        job_title=request.job_title,
+                        company=request.company,
+                        cv_url=request.cv_url,
+                        cv_path=cv_path,
+                        extra_cv_paths=extra_cv_paths,
+                        custom_subject=request.email_subject,
+                        custom_body=request.cover_letter,
+                    )
+                    sent_via_smtp = True
+                except Exception as e:
+                    send_error = str(e)
+
+    if request.hr_email and not sent_via_smtp:
+        msg = f"Application saved, but email failed: {send_error or 'No email method available'}."
+    else:
+        msg = "Application saved." + (" Email sent." if sent_via_smtp else "")
 
     return ApplyResponse(
         success=True,
         application_id=app_id,
-        message="Application saved." + (" Email sent." if sent_via_smtp else ""),
+        message=msg,
         sent_via_smtp=sent_via_smtp,
     )

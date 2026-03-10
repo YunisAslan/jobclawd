@@ -24,6 +24,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from db.database import get_db
+from repositories.settings_repo import save_google_refresh_token
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 
@@ -167,9 +168,9 @@ async def google_oauth_start():
         "client_id": GOOGLE_CLIENT_ID,
         "redirect_uri": GOOGLE_REDIRECT_URI,
         "response_type": "code",
-        "scope": "email profile",
+        "scope": "email profile https://www.googleapis.com/auth/gmail.send",
         "access_type": "offline",
-        "prompt": "select_account",
+        "prompt": "consent",  # force consent to always get refresh_token
     }
     url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
     return RedirectResponse(url)
@@ -198,7 +199,8 @@ async def google_oauth_callback(
             if token_res.status_code != 200:
                 return RedirectResponse(f"{FRONTEND_URL}/auth/login?error=google_failed")
 
-            google_token = token_res.json().get("access_token")
+            token_data = token_res.json()
+            google_token = token_data.get("access_token")
 
             user_res = await client.get(
                 "https://www.googleapis.com/oauth2/v2/userinfo",
@@ -216,6 +218,11 @@ async def google_oauth_callback(
 
     if not email:
         return RedirectResponse(f"{FRONTEND_URL}/auth/login?error=google_no_email")
+
+    # Store refresh token so we can send Gmail on behalf of the user
+    refresh_token = token_data.get("refresh_token")
+    if refresh_token:
+        save_google_refresh_token(email, refresh_token)
 
     jwt_token = jwt.encode(
         {

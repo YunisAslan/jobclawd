@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState, useRef } from "react";
 
 import {
   Search,
@@ -12,8 +12,9 @@ import {
   Monitor,
   GraduationCap,
   Briefcase,
-  Info,
   LucideSearch,
+  History,
+  X,
 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -47,7 +48,7 @@ export default function FeedFilterForm({
     handleSubmit,
     watch,
     reset,
-    getValues
+    setValue,
   } = useForm<FeedFilterValues>({
     resolver: zodResolver(feedFilterSchema),
     defaultValues: {
@@ -64,8 +65,45 @@ export default function FeedFilterForm({
     },
   });
 
-  console.log("source", getValues("sources"))
-  console.log("location", getValues("location"))
+  // ── Search history ──────────────────────────────────────────────────────────
+  const HISTORY_KEY = "jc_search_history";
+  const MAX_HISTORY = 8;
+
+  const [history, setHistory] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? "[]"); } catch { return []; }
+  });
+  const [showHistory, setShowHistory] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  const pushHistory = (q: string) => {
+    const trimmed = q.trim();
+    if (!trimmed) return;
+    setHistory((prev) => {
+      const next = [trimmed, ...prev.filter((h) => h !== trimmed)].slice(0, MAX_HISTORY);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const removeHistory = (item: string) => {
+    setHistory((prev) => {
+      const next = prev.filter((h) => h !== item);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowHistory(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   useEffect(() => {
     if (onChange) {
@@ -123,11 +161,11 @@ export default function FeedFilterForm({
   return (
     <Card className="py-0 shadow-sm border-border/60">
       <CardContent className="pt-5 pb-4 space-y-4">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit((values) => { pushHistory(values.query ?? ""); onSubmit(values); })} className="space-y-4">
           {/* Search row */}
           <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-muted-foreground pointer-events-none" />
+            <div className="relative flex-1" ref={searchRef}>
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-muted-foreground pointer-events-none z-10" />
               <Controller
                 name="query"
                 control={control}
@@ -137,9 +175,53 @@ export default function FeedFilterForm({
                     disabled={loading}
                     placeholder="Job title or skill..."
                     className="pl-10 h-12 text-[15px]"
+                    autoComplete="off"
+                    onFocus={() => setShowHistory(true)}
                   />
                 )}
               />
+              {/* History dropdown */}
+              {showHistory && history.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl border border-border/60 bg-popover shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+                  <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 flex items-center gap-1.5">
+                      <History className="size-3" />
+                      Recent searches
+                    </span>
+                    <button
+                      type="button"
+                      className="text-[10px] text-muted-foreground/50 hover:text-destructive transition-colors"
+                      onClick={() => { setHistory([]); localStorage.removeItem(HISTORY_KEY); }}
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                  <ul className="py-1">
+                    {history.map((item) => (
+                      <li key={item} className="flex items-center gap-2 px-3 py-2 hover:bg-muted/60 cursor-pointer group transition-colors">
+                        <History className="size-3.5 text-muted-foreground/40 shrink-0" />
+                        <span
+                          className="flex-1 text-sm text-foreground/80 truncate"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setValue("query", item);
+                            setShowHistory(false);
+                          }}
+                        >
+                          {item}
+                        </span>
+                        <button
+                          type="button"
+                          className="opacity-0 group-hover:opacity-100 text-muted-foreground/40 hover:text-destructive transition-all shrink-0"
+                          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeHistory(item); }}
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
             {hasProfileDefaults && (
               <Button

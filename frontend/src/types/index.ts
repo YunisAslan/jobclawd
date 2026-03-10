@@ -32,6 +32,11 @@ export interface UserProfile {
   // legacy
   cvLink: string;
 
+  // Contact fields — pre-fill job applications
+  phone?: string;
+  linkedin_url?: string;
+  portfolio_url?: string;
+
   // Job search preferences — pre-fills feed filters on demand
   headline?: string;
   desired_titles?: string[];
@@ -58,6 +63,8 @@ export interface JobListing {
   match_flags: string[];
   location_str?: string;
   description_snippet?: string | null;
+  // Email extracted at search time when available from job board API data
+  hr_email?: string | null;
 }
 
 export interface SearchResponse {
@@ -68,6 +75,8 @@ export interface SearchResponse {
 
 // ---------- Job Detail ----------
 
+export type ApplyMethod = "email" | "easy_apply" | "external" | "direct";
+
 export interface JobDetail {
   title: string;
   company: string;
@@ -75,6 +84,7 @@ export interface JobDetail {
   email: string | null;
   email_found: boolean;
   apply_url: string | null;
+  apply_method: ApplyMethod;
   error_message: string | null;
 }
 
@@ -90,6 +100,9 @@ export interface ApplyRequest {
   cv_url?: string | null;
   match_score?: number | null;
   match_level?: MatchLevel | null;
+  cover_letter?: string | null;
+  email_subject?: string | null;
+  extra_cv_urls?: string[] | null;
   profile?: UserProfile | null;
 }
 

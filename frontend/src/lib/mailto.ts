@@ -23,10 +23,15 @@ export function buildMailtoUrl(
     lines.push("", `CV Link: ${cvUrl}`);
   }
 
+  const contactLines = [`Email: ${profile.email}`];
+  if (profile.phone) contactLines.push(`Phone: ${profile.phone}`);
+  if (profile.linkedin_url) contactLines.push(`LinkedIn: ${profile.linkedin_url}`);
+  if (profile.portfolio_url) contactLines.push(`Portfolio: ${profile.portfolio_url}`);
+
   lines.push(
     "",
     "Contact details:",
-    `Email: ${profile.email}`,
+    ...contactLines,
     "",
     "Best regards,",
     nameFull,

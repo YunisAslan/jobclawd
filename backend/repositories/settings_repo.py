@@ -9,22 +9,52 @@ from db.database import get_db
 from models.schemas import SMTPSettings
 
 
-def get_smtp_config() -> Optional[SMTPSettings]:
+def _smtp_key(user_email: Optional[str]) -> str:
+    return f"smtp_config_{user_email}" if user_email else "smtp_config"
+
+
+def get_smtp_config(user_email: Optional[str] = None) -> Optional[SMTPSettings]:
+    key = _smtp_key(user_email)
     with get_db() as conn:
         row = conn.execute(
-            "SELECT value FROM settings WHERE key = 'smtp_config'"
+            "SELECT value FROM settings WHERE key = ?", (key,)
         ).fetchone()
     if not row:
         return None
     return SMTPSettings(**json.loads(row["value"]))
 
 
-def save_smtp_config(settings: SMTPSettings) -> None:
+def delete_smtp_config(user_email: Optional[str] = None) -> None:
+    key = _smtp_key(user_email)
+    with get_db() as conn:
+        conn.execute("DELETE FROM settings WHERE key = ?", (key,))
+
+
+def save_smtp_config(settings: SMTPSettings, user_email: Optional[str] = None) -> None:
+    key = _smtp_key(user_email)
     with get_db() as conn:
         conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES ('smtp_config', ?)",
-            (json.dumps(settings.model_dump()),),
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+            (key, json.dumps(settings.model_dump())),
         )
+
+
+def save_google_refresh_token(user_email: str, refresh_token: str) -> None:
+    key = f"google_refresh_token_{user_email}"
+    with get_db() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+            (key, refresh_token),
+        )
+
+
+def get_google_refresh_token(user_email: str) -> Optional[str]:
+    key = f"google_refresh_token_{user_email}"
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT value FROM settings WHERE key = ?", (key,)
+        ).fetchone()
+    return row["value"] if row else None
 
 
 def get_autopilot_enabled() -> bool:

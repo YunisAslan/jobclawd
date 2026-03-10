@@ -80,7 +80,7 @@ function MatchScore({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center rounded-xl px-3 py-2 min-w-[58px] shrink-0",
+        "flex flex-col items-center justify-center rounded-xl px-3 py-2 min-w-14.5 shrink-0",
         isHigh
           ? "bg-match-high/10 border border-match-high/20"
           : "bg-match-review/10 border border-match-review/20",

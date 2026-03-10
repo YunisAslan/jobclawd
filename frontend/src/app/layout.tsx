@@ -21,6 +21,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { TooltipProvider } from "@/components/ui/Tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import QueryProvider from "@/components/providers/QueryProvider";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "JobClawd - Job Application Automation",
@@ -45,6 +46,7 @@ export default function RootLayout({
                   <AppShell>
                     {children}
                   </AppShell>
+                  <Toaster position="bottom-right" richColors />
                 </SidebarShellProvider>
               </ProfileProvider>
             </TooltipProvider>

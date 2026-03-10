@@ -68,7 +68,7 @@ async def upload_cv(
 
 
 @router.get("/files/cv/{filename}")
-async def serve_cv(filename: str, email: str = Depends(get_current_email)):
+async def serve_cv(filename: str):
     # Prevent path traversal — only allow safe chars
     safe = "".join(c for c in filename if c.isalnum() or c in "-_.")
     if safe != filename:

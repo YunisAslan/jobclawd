@@ -65,6 +65,11 @@ class UserProfile(BaseModel):
     # legacy field kept for backward compat
     cvLink: str = ""
 
+    # Contact fields — used to pre-fill job applications
+    phone: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    portfolio_url: Optional[str] = None
+
     # Job search preference fields — used to pre-fill feed filters + apply cover letter
     headline: Optional[str] = None
     desired_titles: list[str] = []
@@ -105,6 +110,8 @@ class JobListing(BaseModel):
     work_mode_str: Optional[str] = None
     experience_str: Optional[str] = None
     description_snippet: Optional[str] = None
+    # Email extracted at search time (when available from API data)
+    hr_email: Optional[str] = None
 
 
 class SearchResponse(BaseModel):
@@ -120,6 +127,13 @@ class JobDetailRequest(BaseModel):
     url: str
 
 
+class ApplyMethod(str, Enum):
+    email = "email"
+    easy_apply = "easy_apply"
+    external = "external"
+    direct = "direct"
+
+
 class JobDetailResponse(BaseModel):
     title: str
     company: str
@@ -127,6 +141,7 @@ class JobDetailResponse(BaseModel):
     email: Optional[str] = None
     email_found: bool
     apply_url: Optional[str] = None
+    apply_method: ApplyMethod = ApplyMethod.direct
     error_message: Optional[str] = None
 
 
@@ -142,6 +157,9 @@ class ApplyRequest(BaseModel):
     cv_url: Optional[str] = None
     match_score: Optional[int] = None
     match_level: Optional[MatchLevel] = None
+    cover_letter: Optional[str] = None
+    email_subject: Optional[str] = None
+    extra_cv_urls: Optional[list] = None
     profile: Optional[UserProfile] = None
 
 

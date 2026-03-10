@@ -1,8 +1,33 @@
+from typing import Optional
 import asyncio
 from typing import Optional
 
 from scraper import get_browser
 from models.schemas import JobListing, LocationFilter, JobSource
+from utils.email_extractor import extract_emails
+
+
+def _extract_email_from_item(item: dict) -> Optional[str]:
+    """Try to get HR email from jobsearch.az API item fields."""
+    # Direct email fields
+    for key in ("email", "contact_email", "hr_email"):
+        v = item.get(key)
+        if isinstance(v, str) and "@" in v:
+            return v.strip()
+
+    # Nested contacts object
+    contacts = item.get("contacts") or item.get("contact") or {}
+    if isinstance(contacts, dict):
+        for key in ("email", "contact_email"):
+            v = contacts.get(key)
+            if isinstance(v, str) and "@" in v:
+                return v.strip()
+
+    # Fallback: regex scan over the item JSON text
+    import json
+    raw = json.dumps(item)
+    found = extract_emails(raw)
+    return found[0] if found else None
 
 BASE_URL = "https://www.jobsearch.az"
 
@@ -253,6 +278,7 @@ async def scrape_search(
                     source=JobSource.jobsearch,
                     logo_url=logo_url,
                     location_str=city_value,
+                    hr_email=_extract_email_from_item(item),
                 )
             )
         

@@ -5,6 +5,7 @@ import { FeedFilterValues } from "@/validations/feed";
 import TopBar from "@/components/layout/TopBar";
 import FeedFilterForm from "@/components/feed/FeedFilterForm";
 import FeedResults from "@/components/feed/FeedResults";
+import ApplyDrawer from "@/components/feed/ApplyDrawer";
 import { useFeed } from "@/hooks/use-feed";
 import { useProfile } from "@/contexts/ProfileContext";
 import { JobSource, JobListing } from "@/types";
@@ -178,10 +179,16 @@ export default function FeedPage() {
   const {
     highMatch,
     needsReview,
+    selected,
+    drawerJob,
+    setDrawerJob,
     setQuery,
     setSources,
     setLocation,
     handleSearch,
+    handleSkip,
+    handleApplied,
+    toggleSelect,
     loading,
     hasSearched,
   } = useFeed();
@@ -279,8 +286,18 @@ export default function FeedPage() {
           loading={loading}
           hasSearched={hasSearched}
           activeFilterCount={activeFilterCount}
+          selected={selected}
+          onToggleSelect={toggleSelect}
+          onApply={(job) => setDrawerJob(job)}
+          onSkip={(url) => handleSkip(url)}
         />
       </div>
+
+      <ApplyDrawer
+        job={drawerJob}
+        onClose={() => setDrawerJob(null)}
+        onApplied={handleApplied}
+      />
     </div>
   );
 }

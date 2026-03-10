@@ -23,4 +23,8 @@ export const ENDPOINTS = {
   // Profile
   PROFILE: "/api/profile",
   CV_UPLOAD: "/api/profile/cv/upload",
+
+  // Settings
+  SMTP_SETTINGS: "/api/settings/smtp",
+  GMAIL_STATUS: "/api/settings/gmail-status",
 } as const;
