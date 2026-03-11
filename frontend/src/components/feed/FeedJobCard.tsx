@@ -127,19 +127,7 @@ export default function FeedJobCard({
         isHigh && "border-match-high/30",
       )}
     >
-      {/* <div
-        className={cn(
-          "h-[3px] w-full shrink-0",
-          job.match_level === "high"
-            ? "bg-linear-to-r from-match-high/70 to-match-high"
-            : job.match_level === "review"
-              ? "bg-linear-to-r from-match-review/70 to-match-review"
-              : "bg-border/40",
-        )}
-      /> */}
-
       <CardContent className="px-4 pt-4 pb-4 space-y-3.5 relative">
-        {/* Floating Source Badge */}
         <div className="absolute top-2 right-2">
           <SourceBadge source={job.source} />
         </div>

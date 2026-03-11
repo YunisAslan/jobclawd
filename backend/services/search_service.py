@@ -1,15 +1,18 @@
 """
 Service: orchestrates multi-source scraping, scoring, and result filtering.
-Contains the business logic that was previously mixed into the router.
+Wraps the scraping pipeline with a PostgreSQL-backed cache (TTL = 1 hour).
 """
 import asyncio
+import json
 from typing import Optional
 
-from models.schemas import JobSource, SearchResponse, LocationFilter
+from models.schemas import JobListing, JobSource, SearchResponse, LocationFilter
 from scraper.search import scrape_search
 from scraper.linkedin import scrape_linkedin
 from scraper.indeed import scrape_indeed
 from db.database import get_db
+from services.cache_service import make_cache_key
+from repositories.cache_repo import get_cached_result, set_cached_result
 
 
 async def run_search(
@@ -23,20 +26,43 @@ async def run_search(
     salary_min: Optional[str] = None,
     sort_by: Optional[str] = None,
 ) -> SearchResponse:
-    """Fan out scrapers per selected location in parallel, merge, deduplicate, then AI filter."""
+    """
+    1. Build a deterministic cache key from all filters.
+    2. Return instantly if a fresh cache entry exists.
+    3. Otherwise run the full scraping pipeline, then store the result.
+    """
 
-    # --- Expand multi-value location into individual per-country LocationFilters ---
-    # When user selects e.g. [AZ, TR], we run scrapers once per country so each
-    # gets a proper single-location URL, then merge all results before AI filtering.
+    # ── Build filter dict matching the SearchRequest shape ──────────────────
+    filters_dict = {
+        "query": query,
+        "sources": [s.value if hasattr(s, "value") else s for s in sources],
+        "location": location.model_dump() if location else None,
+        "workModes": work_modes,
+        "experience": experience,
+        "jobTypes": job_types,
+        "datePosted": date_posted,
+        "salaryMin": salary_min,
+        "sortBy": sort_by,
+    }
+
+    cache_key = make_cache_key(filters_dict)
+
+    # ── Cache HIT ────────────────────────────────────────────────────────────
+    cached = get_cached_result(cache_key)
+    if cached is not None:
+        return SearchResponse(**cached)
+
+    # ── Cache MISS — run full scraping pipeline ──────────────────────────────
+    # Expand multi-value location into per-country shards so each scraper
+    # receives a proper single-location URL, then merge all results.
     location_shards: list[Optional[LocationFilter]] = []
-
     if location and location.values and len(location.values) > 1:
         for val in location.values:
             location_shards.append(LocationFilter(type=location.type, value=val, values=[val]))
     else:
         location_shards.append(location)
 
-    # Resolve currency from first shard
+    # Resolve display currency from first shard
     currency = "USD"
     first_loc = location_shards[0] if location_shards else None
     if first_loc and first_loc.type in ["country", "city"]:
@@ -46,19 +72,19 @@ async def run_search(
         elif first_loc.type == "city" and first_loc.values:
             with get_db() as conn:
                 row = conn.execute(
-                    "SELECT country_code FROM cities WHERE value = ?", (first_loc.values[0],)
+                    "SELECT country_code FROM cities WHERE value = %s", (first_loc.values[0],)
                 ).fetchone()
                 if row:
                     country_code = row["country_code"]
         if country_code:
             with get_db() as conn:
                 row = conn.execute(
-                    "SELECT currency FROM countries WHERE code = ?", (country_code,)
+                    "SELECT currency FROM countries WHERE code = %s", (country_code,)
                 ).fetchone()
                 if row:
                     currency = row["currency"]
 
-    # --- Build scraper tasks, one set per location shard ---
+    # Build scraper tasks — one set per location shard
     tasks = []
     for shard in location_shards:
         shard_country = None
@@ -67,13 +93,12 @@ async def run_search(
         elif shard and shard.type == "city" and shard.values:
             with get_db() as conn:
                 row = conn.execute(
-                    "SELECT country_code FROM cities WHERE value = ?", (shard.values[0],)
+                    "SELECT country_code FROM cities WHERE value = %s", (shard.values[0],)
                 ).fetchone()
                 if row:
                     shard_country = row["country_code"]
 
         if JobSource.jobsearch in sources:
-            # Only fire jobsearch.az for AZ or when country is unspecified
             if not shard_country or shard_country.lower() == "az":
                 tasks.append(scrape_search(
                     query, shard,
@@ -91,12 +116,12 @@ async def run_search(
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    # Merge all results and deduplicate by URL
+    # Merge and deduplicate by URL
     seen_urls: set[str] = set()
     all_jobs: list[JobListing] = []
     for result in results:
         if isinstance(result, Exception):
-            print(f"Scraper error: {result}")
+            print(f"[Search] Scraper error: {result}")
             continue
         if isinstance(result, list):
             for job in result:
@@ -106,7 +131,7 @@ async def run_search(
 
     print(f"[Search] Total unique jobs after merge: {len(all_jobs)} from {len(tasks)} scraper tasks")
 
-    # Apply strict AI inference filter for all jobs
+    # Semantic AI filter
     from services.ai_filter import ai_filter_jobs
     visible = await ai_filter_jobs(
         jobs=all_jobs,
@@ -116,14 +141,35 @@ async def run_search(
         experience=experience,
         job_types=job_types,
         salary_min=salary_min,
-        date_posted=date_posted
+        date_posted=date_posted,
     )
 
-    # Apply sorting if requested
+    # Sort
     if sort_by == "job-title-ascending":
         visible.sort(key=lambda j: j.title.lower())
     elif sort_by == "job-title-descending":
         visible.sort(key=lambda j: j.title.lower(), reverse=True)
-    # else "latest" or by score (default if profile present)
 
-    return SearchResponse(jobs=visible, total=len(visible), query=query, currency=currency)
+    response = SearchResponse(jobs=visible, total=len(visible), query=query, currency=currency)
+
+    # ── Write to cache (fire-and-forget — don't delay the response) ──────────
+    asyncio.create_task(
+        _store_cache(cache_key, filters_dict, response, len(visible))
+    )
+
+    return response
+
+
+async def _store_cache(cache_key: str, filters_dict: dict, response: SearchResponse, job_count: int) -> None:
+    """Runs in the background after the response is returned to the client."""
+    try:
+        result_dict = json.loads(response.model_dump_json())
+        set_cached_result(
+            filters_hash=cache_key,
+            filters_dict=filters_dict,
+            result=result_dict,
+            job_count=job_count,
+        )
+        print(f"[Cache] Stored {job_count} jobs for key {cache_key[:12]}...")
+    except Exception as e:
+        print(f"[Cache] Store error: {e}")

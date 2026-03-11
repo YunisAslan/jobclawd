@@ -4,6 +4,7 @@ import { JobListing, CVLink } from "@/types";
 import { jobsService } from "@/services/jobs.service";
 import { applyService } from "@/services/apply.service";
 import { useProfile } from "@/contexts/ProfileContext";
+import { extractApiError } from "@/lib/utils";
 import { buildMailtoUrl } from "@/lib/mailto";
 
 export function useJobDetail(job: JobListing | null, onApplied: () => void) {
@@ -48,11 +49,8 @@ export function useJobDetail(job: JobListing | null, onApplied: () => void) {
       }
       onApplied();
     },
-    onError: (err) => {
-      const msg =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail ?? (err instanceof Error ? err.message : "An error occurred.");
-      setMessage(msg);
+    onError: (err: unknown) => {
+      setMessage(extractApiError(err));
     },
   });
 

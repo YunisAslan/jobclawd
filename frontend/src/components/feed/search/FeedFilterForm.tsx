@@ -29,6 +29,19 @@ import LocationPicker from "@/components/feed/search/LocationPicker";
 import { LocationValue } from "@/types";
 import { SALARY_PERIOD_OPTIONS } from "@/constants";
 
+const EMPTY_FILTERS: FeedFilterValues = {
+  query: "",
+  sources: [],
+  workModes: [],
+  location: undefined,
+  experience: [],
+  jobTypes: [],
+  salaryMin: "",
+  salaryPeriod: "annual",
+  datePosted: "",
+  sortBy: "",
+};
+
 interface FeedFilterFormProps {
   onSubmit: (values: FeedFilterValues) => void;
   onChange?: (values: FeedFilterValues) => void;
@@ -53,22 +66,9 @@ export default function FeedFilterForm({
     setValue,
   } = useForm<FeedFilterValues>({
     resolver: zodResolver(feedFilterSchema),
-    defaultValues: {
-      query: "",
-      sources: [],
-      workModes: [],
-      location: undefined,
-      experience: [],
-      jobTypes: [],
-      salaryMin: "",
-      salaryPeriod: "annual",
-      datePosted: "",
-      sortBy: "",
-      ...initialValues,
-    },
+    defaultValues: { ...EMPTY_FILTERS, ...initialValues },
   });
 
-  // ── Search history ──────────────────────────────────────────────────────────
   const HISTORY_KEY = "jc_search_history";
   const MAX_HISTORY = 8;
 
@@ -97,7 +97,6 @@ export default function FeedFilterForm({
     });
   };
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
@@ -113,19 +112,7 @@ export default function FeedFilterForm({
     if (appliedInitialRef.current) return;
     if (!initialValues || Object.keys(initialValues).length === 0) return;
     appliedInitialRef.current = true;
-    reset({
-      query: "",
-      sources: [],
-      workModes: [],
-      location: undefined,
-      experience: [],
-      jobTypes: [],
-      salaryMin: "",
-      salaryPeriod: "annual",
-      datePosted: "",
-      sortBy: "",
-      ...initialValues,
-    });
+    reset({ ...EMPTY_FILTERS, ...initialValues });
   }, [initialValues, reset]);
 
   useEffect(() => {
@@ -185,7 +172,6 @@ export default function FeedFilterForm({
     <Card className="py-0 shadow-sm border-border/60">
       <CardContent className="pt-5 pb-4 space-y-4">
         <form onSubmit={handleSubmit((values) => { pushHistory(values.query ?? ""); onSubmit(values); })} className="space-y-4">
-          {/* Search row */}
           <div className="flex gap-2">
             <div className="relative flex-1" ref={searchRef}>
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-muted-foreground pointer-events-none z-10" />
@@ -203,7 +189,6 @@ export default function FeedFilterForm({
                   />
                 )}
               />
-              {/* History dropdown */}
               {showHistory && history.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl border border-border/60 bg-popover shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
                   <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
@@ -257,19 +242,7 @@ export default function FeedFilterForm({
                 disabled={loading}
                 className="gap-1.5 h-12 shrink-0 text-muted-foreground"
                 onClick={() =>
-                  reset({
-                    query: "",
-                    sources: [],
-                    workModes: [],
-                    location: undefined,
-                    experience: [],
-                    jobTypes: [],
-                    salaryMin: "",
-                    salaryPeriod: "annual",
-                    datePosted: "",
-                    sortBy: "",
-                    ...profileDefaults,
-                  })
+                  reset({ ...EMPTY_FILTERS, ...profileDefaults })
                 }
               >
                 <Sparkles className="size-4" />
@@ -290,7 +263,6 @@ export default function FeedFilterForm({
             </Button>
           </div>
 
-          {/* Primary filters */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-2">
             <Controller
               name="sources"
@@ -375,9 +347,7 @@ export default function FeedFilterForm({
             />
           </div>
 
-          {/* Secondary filters — salary / date / sort */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-2 border-t border-border/60 pt-3.5">
-            {/* Salary — spans 3 cols to make room for period selector */}
             <div className="xl:col-span-3 flex flex-col gap-1">
               <div
                 className={cn(
@@ -412,7 +382,6 @@ export default function FeedFilterForm({
                   )}
                 />
 
-                {/* Period selector */}
                 <div className="flex items-center gap-0.5 border-l border-border/60 pl-2 shrink-0">
                   <Controller
                     name="salaryPeriod"
@@ -445,7 +414,6 @@ export default function FeedFilterForm({
                 </span>
               </div>
 
-              {/* Salary disclaimer — only visible when a value is entered */}
               {watchedSalaryMin && (
                 <p className="text-[10px] text-muted-foreground/50 pl-1 leading-tight">
                   Only filters jobs with salary stated in the title. Most

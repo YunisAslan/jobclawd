@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { SMTPSettings } from "@/components/settings/types";
 import { settingsService } from "@/services/settings.service";
+import { extractApiError } from "@/lib/utils";
 
 export function useSMTPForm() {
   const [form, setForm] = useState<Partial<SMTPSettings>>({
@@ -11,11 +12,8 @@ export function useSMTPForm() {
     from_name: "",
   });
 
-  // The username that was last confirmed saved to the backend
   const [savedUsername, setSavedUsername] = useState<string>("");
-  // true = a password is already stored in the backend (we never receive it back)
   const [passwordSaved, setPasswordSaved] = useState(false);
-  // true = user is actively changing the password
   const [editingPassword, setEditingPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -27,16 +25,15 @@ export function useSMTPForm() {
   useEffect(() => {
     settingsService.getSMTP()
       .then((data) => {
-        // Password is omitted from GET response — keep field empty but mark as saved
         setForm({ ...data, password: "" });
         setPasswordSaved(true);
         setSavedUsername(data.username ?? "");
       })
-      .catch(() => {}) // 404 = not configured yet, keep defaults
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  const update = (key: keyof SMTPSettings, value: any) => {
+  const update = (key: keyof SMTPSettings, value: string | number) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -45,7 +42,6 @@ export function useSMTPForm() {
       setError("Gmail address is required.");
       return;
     }
-    // Need a password either already saved or freshly entered
     if (!passwordSaved && !form.password) {
       setError("App password is required.");
       return;
@@ -58,7 +54,6 @@ export function useSMTPForm() {
         host: form.host || "smtp.gmail.com",
         port: form.port || 587,
         username: form.username,
-        // Only send password if user actually typed a new one
         password: form.password || undefined,
         from_name: form.from_name || form.username,
       });
@@ -68,8 +63,8 @@ export function useSMTPForm() {
       setForm((prev) => ({ ...prev, password: "" }));
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } catch (e: any) {
-      setError(e?.response?.data?.detail ?? "Failed to save. Please try again.");
+    } catch (e: unknown) {
+      setError(extractApiError(e, "Failed to save. Please try again."));
     } finally {
       setSaving(false);
     }
@@ -84,8 +79,8 @@ export function useSMTPForm() {
       setPasswordSaved(false);
       setEditingPassword(false);
       setForm({ host: "smtp.gmail.com", port: 587, username: "", password: "", from_name: "" });
-    } catch (e: any) {
-      setError(e?.response?.data?.detail ?? "Failed to disconnect. Please try again.");
+    } catch (e: unknown) {
+      setError(extractApiError(e, "Failed to disconnect. Please try again."));
     } finally {
       setDisconnecting(false);
     }

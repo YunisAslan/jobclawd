@@ -47,12 +47,12 @@ async def scrape_linkedin(
             if val:
                 if location.type == "country":
                     with get_db() as conn:
-                        row = conn.execute("SELECT name FROM countries WHERE code = ?", (val,)).fetchone()
+                        row = conn.execute("SELECT name FROM countries WHERE code = %s", (val,)).fetchone()
                         if row:
                             target_location = row["name"]
                 elif location.type == "city":
                     with get_db() as conn:
-                        row = conn.execute("SELECT name FROM cities WHERE value = ?", (val,)).fetchone()
+                        row = conn.execute("SELECT name FROM cities WHERE value = %s", (val,)).fetchone()
                         if row:
                             target_location = row["name"]
                         else:

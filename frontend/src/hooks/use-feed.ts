@@ -2,8 +2,9 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { jobsService } from "@/services/jobs.service";
 import { applyService } from "@/services/apply.service";
-import { JobListing, JobSource } from "@/types";
+import { JobListing, JobSource, LocationValue } from "@/types";
 import { useProfile } from "@/contexts/ProfileContext";
+import { extractApiError } from "@/lib/utils";
 import { FeedFilterValues } from "@/validations/feed";
 
 /**
@@ -32,7 +33,6 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
   const [drawerJob, setDrawerJob] = useState<JobListing | null>(null);
   const [bulkApplying, setBulkApplying] = useState(false);
 
-  // Normalize salary to annual before passing to backend
   const normalizedSalaryMin = (() => {
     const raw = filters.salaryMin?.replace(/,/g, "");
     if (!raw) return undefined;
@@ -51,7 +51,7 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
       jobsService.search(
         filters.query ?? "",
         ((filters.sources?.length ? filters.sources : ["jobsearch", "linkedin", "indeed"]) as JobSource[]),
-        filters.location,
+        (filters.location as LocationValue) ?? undefined,
         {
           workModes: filters.workModes,
           experience: filters.experience,
@@ -62,18 +62,14 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
         },
       ),
 
-    // ── Cache behaviour ─────────────────────────────────────────────────────
-    // staleTime mirrors the backend TTL (1 hour). React Query will NOT refetch
-    // until data is older than 1 hour — matching when the PG cache expires.
     enabled: hasQuery,
-    staleTime: 60 * 60 * 1000,      // 1 hour — data is fresh, skip network call
-    gcTime: 2 * 60 * 60 * 1000,     // 2 hours — keep in memory after unmount
-    refetchOnWindowFocus: false,     // tab regaining focus must not trigger re-scrape
+    staleTime: 60 * 60 * 1000,
+    gcTime: 2 * 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     retry: 1,
   });
 
-  // Reset skipped/selected whenever the active filter set changes (new search)
   const prevKeyRef = useRef<string>("");
   const currentKey = JSON.stringify(buildQueryKey(filters));
   useEffect(() => {
@@ -138,10 +134,7 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
   const needsReview = visible.filter((j) => j.match_level === "review");
   const hasScoring = profile.name.length > 0;
 
-  const errorMsg = error
-    ? ((error as { response?: { data?: { detail?: string } } })
-        ?.response?.data?.detail ?? "Search error")
-    : null;
+  const errorMsg = error ? extractApiError(error, "Search error") : null;
 
   return {
     jobs,

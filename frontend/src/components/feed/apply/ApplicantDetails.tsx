@@ -1,3 +1,4 @@
+import { LucideIcon } from "lucide-react";
 import { UserProfile } from "@/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
@@ -9,6 +10,16 @@ import {
   RotateCcw, ArrowRight, PenLine,
 } from "lucide-react";
 import { ApplyFormValues } from "../types";
+
+function DetailRow({ icon: Icon, value }: { icon: LucideIcon; value: string }) {
+  if (!value) return null;
+  return (
+    <div className="flex items-center gap-1.5 text-muted-foreground">
+      <Icon className="size-3 shrink-0 opacity-50" />
+      <span className="truncate text-foreground">{value}</span>
+    </div>
+  );
+}
 
 interface Props {
   form: ApplyFormValues;
@@ -70,42 +81,12 @@ export default function ApplicantDetails({
 
       {!showDetails && (
         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs px-1">
-          {form.fullName && (
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <UserRound className="size-3 shrink-0 opacity-50" />
-              <span className="truncate text-foreground">{form.fullName}</span>
-            </div>
-          )}
-          {form.email && (
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Mail className="size-3 shrink-0 opacity-50" />
-              <span className="truncate text-foreground">{form.email}</span>
-            </div>
-          )}
-          {form.phone && (
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Phone className="size-3 shrink-0 opacity-50" />
-              <span className="truncate text-foreground">{form.phone}</span>
-            </div>
-          )}
-          {form.selectedCV && (
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <FileText className="size-3 shrink-0 opacity-50" />
-              <span className="truncate text-foreground">{form.selectedCV.name}</span>
-            </div>
-          )}
-          {form.linkedin_url && (
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Linkedin className="size-3 shrink-0 opacity-50" />
-              <span className="truncate text-foreground">{form.linkedin_url}</span>
-            </div>
-          )}
-          {form.portfolio_url && (
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Globe className="size-3 shrink-0 opacity-50" />
-              <span className="truncate text-foreground">{form.portfolio_url}</span>
-            </div>
-          )}
+          <DetailRow icon={UserRound} value={form.fullName} />
+          <DetailRow icon={Mail} value={form.email} />
+          <DetailRow icon={Phone} value={form.phone} />
+          <DetailRow icon={FileText} value={form.selectedCV?.name ?? ""} />
+          <DetailRow icon={Linkedin} value={form.linkedin_url} />
+          <DetailRow icon={Globe} value={form.portfolio_url} />
         </div>
       )}
 

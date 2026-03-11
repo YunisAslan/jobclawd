@@ -119,6 +119,7 @@ class SearchResponse(BaseModel):
     total: int
     query: str
     currency: str = "USD"
+    cached: bool = False
 
 
 # ---------- Job Detail ----------

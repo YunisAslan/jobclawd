@@ -52,7 +52,6 @@ function LoadingStages() {
 
   return (
     <div className="relative animate-in fade-in duration-700">
-      {/* Ghost skeleton cards — background layer */}
       <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 pointer-events-none select-none">
         {[1, 2, 3, 4, 5, 6].map((i) => (
           <div
@@ -71,7 +70,6 @@ function LoadingStages() {
         ))}
       </div>
 
-      {/* Progress card — overlay */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="w-full max-w-sm p-5 sm:p-6 rounded-2xl bg-card/95 border border-border/60 shadow-xl backdrop-blur-sm space-y-5">
           <div className="flex items-center gap-3">
@@ -152,7 +150,6 @@ export default function FeedResults({
           </span>
         </p>
 
-        {/* Filter tips */}
         <div className="flex flex-col gap-2.5 text-left max-w-xs w-full">
           <p className="text-[11px] font-medium text-muted-foreground/50 uppercase tracking-wider">
             Tips for better results
@@ -209,7 +206,6 @@ export default function FeedResults({
 
   return (
     <div className="space-y-6">
-      {/* Results meta bar */}
       <div className="flex items-center justify-between text-xs text-muted-foreground border-b border-border/40 pb-2.5">
         <span>
           {totalVisible} position{totalVisible !== 1 ? "s" : ""} found
@@ -222,52 +218,29 @@ export default function FeedResults({
         )}
       </div>
 
-      {highMatch.length > 0 && (
-        <section className="space-y-3">
-          <FeedResultSectionHeader
-            color="primary"
-            label="High Match"
-            count={highMatch.length}
-          />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {highMatch.map((job) => (
-              <FeedJobCard
-                key={job.url}
-                job={job}
-                selected={selected?.has(job.url) ?? false}
-                onToggleSelect={() => onToggleSelect?.(job.url)}
-                onApply={() => onApply?.(job)}
-                onSkip={() => onSkip?.(job.url)}
-                onDetails={() => onApply?.(job)}
-                onHideCompany={(c) => onHideCompany?.(c)}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {needsReview.length > 0 && (
-        <section className="space-y-3">
-          <FeedResultSectionHeader
-            color="warning"
-            label="Needs Review"
-            count={needsReview.length}
-          />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {needsReview.map((job) => (
-              <FeedJobCard
-                key={job.url}
-                job={job}
-                selected={selected?.has(job.url) ?? false}
-                onToggleSelect={() => onToggleSelect?.(job.url)}
-                onApply={() => onApply?.(job)}
-                onSkip={() => onSkip?.(job.url)}
-                onDetails={() => onApply?.(job)}
-                onHideCompany={(c) => onHideCompany?.(c)}
-              />
-            ))}
-          </div>
-        </section>
+      {([
+        { jobs: highMatch, color: "primary" as const, label: "High Match" },
+        { jobs: needsReview, color: "warning" as const, label: "Needs Review" },
+      ]).map(({ jobs: sectionJobs, color, label }) =>
+        sectionJobs.length > 0 && (
+          <section key={label} className="space-y-3">
+            <FeedResultSectionHeader color={color} label={label} count={sectionJobs.length} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {sectionJobs.map((job) => (
+                <FeedJobCard
+                  key={job.url}
+                  job={job}
+                  selected={selected?.has(job.url) ?? false}
+                  onToggleSelect={() => onToggleSelect?.(job.url)}
+                  onApply={() => onApply?.(job)}
+                  onSkip={() => onSkip?.(job.url)}
+                  onDetails={() => onApply?.(job)}
+                  onHideCompany={(c) => onHideCompany?.(c)}
+                />
+              ))}
+            </div>
+          </section>
+        ),
       )}
     </div>
   );

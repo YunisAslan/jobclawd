@@ -9,6 +9,7 @@ import { applyService } from "@/services/apply.service";
 import { settingsService } from "@/services/settings.service";
 import { profileService } from "@/services/profile.service";
 import { useProfile } from "@/contexts/ProfileContext";
+import { extractApiError } from "@/lib/utils";
 import { generateCoverLetter, generateEmailSubject } from "@/lib/cover-letter";
 import { ApplyFormValues } from "@/components/feed/types";
 import { formFromProfile, resolveApplyMethod, getReadiness } from "@/components/feed/apply/utils";
@@ -127,11 +128,8 @@ export function useApplyDrawer(job: JobListing | null, onApplied: () => void) {
       }
       onApplied();
     },
-    onError: (err) => {
-      const msg =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        (err instanceof Error ? err.message : "An error occurred.");
-      setMessage(msg);
+    onError: (err: Error) => {
+      setMessage(extractApiError(err));
       setSuccess(false);
     },
   });

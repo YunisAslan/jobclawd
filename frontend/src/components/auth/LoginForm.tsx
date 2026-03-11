@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { Label } from "@/components/ui/Label";
 import { Icons } from "@/components/Icons";
 import { authService } from "@/services/auth.service";
+import { extractApiError } from "@/lib/utils";
 import { API_BASE_URL } from "@/lib/endpoints";
 
 const FEATURES = [
@@ -49,11 +50,8 @@ function LoginForm() {
   const sendMutation = useMutation({
     mutationFn: (addr: string) => authService.sendMagicLink(addr),
     onSuccess: () => setSent(true),
-    onError: (err) => {
-      const msg =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail ?? "Could not send email. Please try again.";
-      setError(msg);
+    onError: (err: unknown) => {
+      setError(extractApiError(err, "Could not send email. Please try again."));
     },
   });
 
@@ -66,7 +64,7 @@ function LoginForm() {
 
   return (
     <div className="min-h-screen flex bg-background">
-      {/* ── Left: Deep dark visual panel ── */}
+      {/* Left panel */}
       <div className="w-1/2 hidden lg:flex shrink-0 bg-sidebar border-r border-sidebar-border flex-col justify-between p-12 relative overflow-hidden">
         <div className="absolute -top-20 -right-20 w-[480px] h-[480px] bg-primary/12 rounded-full blur-[130px] pointer-events-none" />
         <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-primary/6 rounded-full blur-[80px] pointer-events-none" />
@@ -131,7 +129,7 @@ function LoginForm() {
         </div>
       </div>
 
-      {/* ── Right: Form panel ── */}
+      {/* Form panel */}
       <div className="w-1/2 flex-1 flex flex-col justify-center bg-card px-[clamp(2rem,8vw,5.5rem)] py-12">
         <Link href="/" className="flex items-center gap-2.5 mb-12 w-fit">
           <Image

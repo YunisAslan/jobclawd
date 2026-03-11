@@ -56,7 +56,6 @@ export default function SMTPForm() {
   return (
     <div className="space-y-5">
 
-      {/* ── Status card ── */}
       {isConfigured ? (
         <div className="rounded-xl border border-success/25 bg-success/5 overflow-hidden">
           <div className="flex items-center gap-3 p-4">
@@ -79,7 +78,6 @@ export default function SMTPForm() {
               </Button>
             )}
           </div>
-          {/* Inline disconnect confirm */}
           {confirmDisconnect && (
             <div className="px-4 pb-4 pt-0 border-t border-success/15 bg-destructive/5 space-y-3">
               <div className="flex items-start gap-2 pt-3">
@@ -127,7 +125,6 @@ export default function SMTPForm() {
         </div>
       )}
 
-      {/* ── How-to instructions ── */}
       <div className="p-3.5 rounded-xl bg-muted/40 border border-border/50 text-xs text-muted-foreground space-y-1.5 leading-relaxed">
         <p className="font-semibold text-foreground">How to get a Gmail App Password</p>
         <ol className="list-decimal list-inside space-y-1">
@@ -148,7 +145,6 @@ export default function SMTPForm() {
         </ol>
       </div>
 
-      {/* ── Fields ── */}
       <div className="space-y-3">
         <div className="space-y-1.5">
           <Label htmlFor="smtp-user" className="flex items-center gap-1.5 text-sm">
@@ -222,7 +218,6 @@ export default function SMTPForm() {
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      {/* ── Actions ── */}
       <div className="flex items-center gap-3">
         <Button onClick={handleSave} disabled={saving} className="gap-2">
           {saving ? "Saving..." : isConfigured ? "Update" : "Connect Gmail"}
