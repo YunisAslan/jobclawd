@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { useMetaFilters } from "@/hooks/use-meta";
 import SelectBox from "@/components/SelectBox";
-import LocationPicker from "@/components/feed/LocationPicker";
+import LocationPicker from "@/components/feed/search/LocationPicker";
 import { LocationValue } from "@/types";
 import { SALARY_PERIOD_OPTIONS } from "@/constants";
 
@@ -34,6 +34,7 @@ interface FeedFilterFormProps {
   onChange?: (values: FeedFilterValues) => void;
   loading?: boolean;
   profileDefaults?: Partial<FeedFilterValues>;
+  initialValues?: Partial<FeedFilterValues>;
 }
 
 export default function FeedFilterForm({
@@ -41,6 +42,7 @@ export default function FeedFilterForm({
   onChange,
   loading,
   profileDefaults,
+  initialValues,
 }: FeedFilterFormProps) {
   const { data: meta } = useMetaFilters();
   const {
@@ -62,6 +64,7 @@ export default function FeedFilterForm({
       salaryPeriod: "annual",
       datePosted: "",
       sortBy: "",
+      ...initialValues,
     },
   });
 
@@ -104,6 +107,28 @@ export default function FeedFilterForm({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // When initialValues arrive after mount (URL params restored from sessionStorage),
+  // reset the form so fields reflect the restored values.
+  const appliedInitialRef = useRef(false);
+  useEffect(() => {
+    if (appliedInitialRef.current) return;
+    if (!initialValues || Object.keys(initialValues).length === 0) return;
+    appliedInitialRef.current = true;
+    reset({
+      query: "",
+      sources: [],
+      workModes: [],
+      location: undefined,
+      experience: [],
+      jobTypes: [],
+      salaryMin: "",
+      salaryPeriod: "annual",
+      datePosted: "",
+      sortBy: "",
+      ...initialValues,
+    });
+  }, [initialValues, reset]);
 
   useEffect(() => {
     if (onChange) {
@@ -188,13 +213,15 @@ export default function FeedFilterForm({
                       <History className="size-3" />
                       Recent searches
                     </span>
-                    <button
+                    <Button
                       type="button"
-                      className="text-[10px] text-muted-foreground/50 hover:text-destructive transition-colors"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto p-0 text-[10px] text-muted-foreground/50 hover:text-destructive hover:bg-transparent"
                       onClick={() => { setHistory([]); localStorage.removeItem(HISTORY_KEY); }}
                     >
                       Clear all
-                    </button>
+                    </Button>
                   </div>
                   <ul className="py-1">
                     {history.map((item) => (
@@ -210,13 +237,15 @@ export default function FeedFilterForm({
                         >
                           {item}
                         </span>
-                        <button
+                        <Button
                           type="button"
-                          className="opacity-0 group-hover:opacity-100 text-muted-foreground/40 hover:text-destructive transition-all shrink-0"
+                          variant="ghost"
+                          size="icon"
+                          className="size-5 opacity-0 group-hover:opacity-100 text-muted-foreground/40 hover:text-destructive hover:bg-transparent transition-all shrink-0"
                           onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeHistory(item); }}
                         >
                           <X className="size-3" />
-                        </button>
+                        </Button>
                       </li>
                     ))}
                   </ul>

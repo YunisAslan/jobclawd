@@ -10,11 +10,11 @@ import { useProfileQuery, useSaveProfile } from "@/hooks/use-profile";
 import { Button } from "@/components/ui/Button";
 import { Check, Loader2 } from "lucide-react";
 import ProfileIdentityCard from "@/components/profile/ProfileIdentityCard";
-import IdentitySection from "@/components/profile/IdentitySection";
-import TargetingSection from "@/components/profile/TargetingSection";
-import PreferencesSection from "@/components/profile/PreferencesSection";
-import AvailabilitySection from "@/components/profile/AvailabilitySection";
-import DocumentsSection from "@/components/profile/DocumentsSection";
+import IdentitySection from "@/components/profile/sections/IdentitySection";
+import TargetingSection from "@/components/profile/sections/TargetingSection";
+import PreferencesSection from "@/components/profile/sections/PreferencesSection";
+import AvailabilitySection from "@/components/profile/sections/AvailabilitySection";
+import DocumentsSection from "@/components/profile/sections/DocumentsSection";
 
 export default function ExtendedProfileForm() {
   const { profile, setProfile } = useProfile();

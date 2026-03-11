@@ -1,6 +1,6 @@
 import { APIService } from "@/services/api.service";
 import { API_BASE_URL, ENDPOINTS } from "@/lib/endpoints";
-import { MetaFiltersResponse } from "@/types";
+import { MetaFiltersResponse } from "@/components/feed/types";
 
 class MetaService extends APIService {
   constructor() {

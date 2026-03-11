@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { Control, Controller } from "react-hook-form";
 import { UserProfile } from "@/types";
-import { MetaFiltersResponse } from "@/types";
+import { MetaFiltersResponse } from "@/components/feed/types";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Label } from "@/components/ui/Label";
 import SelectBox from "@/components/SelectBox";
-import LocationPicker from "@/components/feed/LocationPicker";
+import LocationPicker from "@/components/feed/search/LocationPicker";
 import { DollarSign } from "lucide-react";
 import SectionLabel from "@/components/profile/SectionLabel";
 import { SALARY_PERIOD_OPTIONS } from "@/constants";

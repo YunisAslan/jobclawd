@@ -1,6 +1,6 @@
 "use client";
 
-import { WeeklyChartEntry } from "@/types";
+import { WeeklyChartEntry } from "@/components/dashboard/types";
 
 const EN_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 

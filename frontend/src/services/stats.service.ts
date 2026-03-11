@@ -1,6 +1,6 @@
 import { APIService } from "@/services/api.service";
 import { API_BASE_URL, ENDPOINTS } from "@/lib/endpoints";
-import { StatsResponse } from "@/types";
+import { StatsResponse } from "@/components/dashboard/types";
 
 class StatsService extends APIService {
   constructor() {

@@ -10,7 +10,8 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
-import { CountryOption, LocationValue } from "@/types";
+import { CountryOption } from "@/components/feed/types";
+import { LocationValue } from "@/types";
 
 export default function LocationModal({
   value,

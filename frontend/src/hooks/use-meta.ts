@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { metaService } from "@/services/meta.service";
-import { MetaFiltersResponse } from "@/types";
+import { MetaFiltersResponse } from "@/components/feed/types";
 
 export function useMetaFilters() {
   return useQuery<MetaFiltersResponse>({

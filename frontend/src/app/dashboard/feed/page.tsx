@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { FeedFilterValues } from "@/validations/feed";
+import { paramsToFilters, filtersToParams } from "@/lib/feed-params";
 import TopBar from "@/components/layout/TopBar";
-import FeedFilterForm from "@/components/feed/FeedFilterForm";
+import FeedFilterForm from "@/components/feed/search/FeedFilterForm";
 import FeedResults from "@/components/feed/FeedResults";
-import ApplyDrawer from "@/components/feed/ApplyDrawer";
+import ApplyDrawer from "@/components/feed/apply/ApplyDrawer";
 import { useFeed } from "@/hooks/use-feed";
 import { useProfile } from "@/contexts/ProfileContext";
 import { JobSource, JobListing } from "@/types";
@@ -176,6 +178,29 @@ function applyLocalFilters(
 }
 
 export default function FeedPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const FEED_PARAMS_KEY = "jc_feed_params";
+
+  // On mount: if URL has no params but sessionStorage has saved ones, restore them.
+  // This handles navigating back via the sidebar (which links to /feed without params).
+  useEffect(() => {
+    if (searchParams.toString().length === 0) {
+      const saved = sessionStorage.getItem(FEED_PARAMS_KEY);
+      if (saved) {
+        router.replace(`${pathname}?${saved}`, { scroll: false });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const urlFilters = useMemo(
+    () => paramsToFilters(searchParams),
+    [searchParams],
+  );
+
   const {
     highMatch,
     needsReview,
@@ -213,7 +238,7 @@ export default function FeedPage() {
     return result;
   }, [profile]);
 
-  const [localFilters, setLocalFilters] = useState<Partial<FeedFilterValues>>({});
+  const [localFilters, setLocalFilters] = useState<Partial<FeedFilterValues>>(urlFilters);
 
   const filteredHighMatch = useMemo(
     () => applyLocalFilters(highMatch, localFilters),
@@ -267,6 +292,11 @@ export default function FeedPage() {
     });
 
     setLocalFilters(values);
+
+    // Persist filters to URL and sessionStorage so they survive navigation / refresh
+    const qs = filtersToParams(values).toString();
+    if (qs) sessionStorage.setItem(FEED_PARAMS_KEY, qs);
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
 
   return (
@@ -279,6 +309,7 @@ export default function FeedPage() {
           onChange={setLocalFilters}
           loading={loading}
           profileDefaults={profileDefaults}
+          initialValues={urlFilters}
         />
         <FeedResults
           highMatch={filteredHighMatch}

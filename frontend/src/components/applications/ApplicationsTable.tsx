@@ -1,6 +1,6 @@
 "use client";
 
-import { ApplicationRecord, ApplicationStatus } from "@/types";
+import { ApplicationRecord, ApplicationStatus } from "./types";
 import StatusBadge from "./StatusBadge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import {

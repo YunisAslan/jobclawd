@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { SMTPSettings } from "@/types";
+import { SMTPSettings } from "@/components/settings/types";
 import { settingsService } from "@/services/settings.service";
 
 export function useSMTPForm() {

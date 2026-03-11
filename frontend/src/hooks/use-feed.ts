@@ -1,25 +1,46 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { jobsService } from "@/services/jobs.service";
 import { applyService } from "@/services/apply.service";
 import { JobListing, JobSource } from "@/types";
 import { useProfile } from "@/contexts/ProfileContext";
 
+const FEED_JOBS_KEY = "jc_feed_jobs";
+
+function loadCachedJobs(): { jobs: JobListing[]; hasSearched: boolean } {
+  if (typeof window === "undefined") return { jobs: [], hasSearched: false };
+  try {
+    const raw = sessionStorage.getItem(FEED_JOBS_KEY);
+    if (!raw) return { jobs: [], hasSearched: false };
+    const parsed = JSON.parse(raw);
+    return { jobs: parsed.jobs ?? [], hasSearched: parsed.hasSearched ?? false };
+  } catch {
+    return { jobs: [], hasSearched: false };
+  }
+}
+
+function saveCachedJobs(jobs: JobListing[], hasSearched: boolean) {
+  try {
+    sessionStorage.setItem(FEED_JOBS_KEY, JSON.stringify({ jobs, hasSearched }));
+  } catch {}
+}
+
 export function useFeed() {
   const { profile } = useProfile();
+  const cached = loadCachedJobs();
   const [query, setQuery] = useState("");
-  const [sources, setSources] = useState<JobSource[]>([
-    "jobsearch",
-    "linkedin",
-  ]);
+  const [sources, setSources] = useState<JobSource[]>(["jobsearch", "linkedin"]);
   const [location, setLocation] = useState<any>();
-  const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [jobs, setJobs] = useState<JobListing[]>([]);
+  const [hasSearched, setHasSearched] = useState(cached.hasSearched);
+  const [jobs, setJobs] = useState<JobListing[]>(cached.jobs);
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [drawerJob, setDrawerJob] = useState<JobListing | null>(null);
   const [bulkApplying, setBulkApplying] = useState(false);
+
+  useEffect(() => {
+    saveCachedJobs(jobs, hasSearched);
+  }, [jobs, hasSearched]);
 
   const searchMutation = useMutation({
     mutationFn: ({

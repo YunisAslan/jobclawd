@@ -1,19 +1,14 @@
 import { API_BASE_URL, ENDPOINTS } from "@/lib/endpoints";
 import { APIService } from "@/services/api.service";
+import { SMTPSettings } from "@/components/settings/types";
+
+export type { SMTPSettings };
 
 function getAuthHeader(): Record<string, string> {
   if (typeof document === "undefined") return {};
   const match = document.cookie.match(/(?:^|; )jc_token=([^;]*)/);
   const token = match ? decodeURIComponent(match[1]) : null;
   return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-export interface SMTPSettings {
-  host: string;
-  port: number;
-  username: string;
-  password?: string | null;
-  from_name?: string;
 }
 
 class SettingsService extends APIService {

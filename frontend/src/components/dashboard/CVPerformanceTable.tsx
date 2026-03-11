@@ -1,4 +1,4 @@
-import { CVPerformanceEntry } from "@/types";
+import { CVPerformanceEntry } from "@/components/dashboard/types";
 import {
   Table,
   TableBody,

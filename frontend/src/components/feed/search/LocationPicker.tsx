@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/Popover";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
-import { CountryOption, LocationValue } from "@/types";
+import { CountryOption } from "@/components/feed/types";
+import { LocationValue } from "@/types";
 import LocationModal from "./LocationModal";
 
 interface LocationPickerProps {

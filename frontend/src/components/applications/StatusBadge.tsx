@@ -1,6 +1,6 @@
 "use client";
 
-import { ApplicationStatus } from "@/types";
+import { ApplicationStatus } from "./types";
 import { Badge } from "@/components/ui/Badge";
 import {
   DropdownMenu,

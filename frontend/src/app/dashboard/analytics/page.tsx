@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Send, List, CircleCheck, TrendingUp } from "lucide-react";
 import { useStats } from "@/hooks/use-stats";
-import { StatsResponse } from "@/types";
+import { StatsResponse } from "@/components/dashboard/types";
 import TopBar from "@/components/layout/TopBar";
 import StatsCard from "@/components/dashboard/StatsCard";
 import WeeklyChart from "@/components/dashboard/WeeklyChart";

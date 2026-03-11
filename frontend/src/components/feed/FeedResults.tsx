@@ -124,8 +124,6 @@ function LoadingStages() {
   );
 }
 
-const noop = () => {};
-
 export default function FeedResults({
   highMatch,
   needsReview,
@@ -237,11 +235,11 @@ export default function FeedResults({
                 key={job.url}
                 job={job}
                 selected={selected?.has(job.url) ?? false}
-                onToggleSelect={() => onToggleSelect?.(job.url) ?? noop()}
-                onApply={() => onApply?.(job) ?? noop()}
-                onSkip={() => onSkip?.(job.url) ?? noop()}
-                onDetails={() => onApply?.(job) ?? noop()}
-                onHideCompany={(c) => onHideCompany?.(c) ?? noop()}
+                onToggleSelect={() => onToggleSelect?.(job.url)}
+                onApply={() => onApply?.(job)}
+                onSkip={() => onSkip?.(job.url)}
+                onDetails={() => onApply?.(job)}
+                onHideCompany={(c) => onHideCompany?.(c)}
               />
             ))}
           </div>
@@ -261,11 +259,11 @@ export default function FeedResults({
                 key={job.url}
                 job={job}
                 selected={selected?.has(job.url) ?? false}
-                onToggleSelect={() => onToggleSelect?.(job.url) ?? noop()}
-                onApply={() => onApply?.(job) ?? noop()}
-                onSkip={() => onSkip?.(job.url) ?? noop()}
-                onDetails={() => onApply?.(job) ?? noop()}
-                onHideCompany={(c) => onHideCompany?.(c) ?? noop()}
+                onToggleSelect={() => onToggleSelect?.(job.url)}
+                onApply={() => onApply?.(job)}
+                onSkip={() => onSkip?.(job.url)}
+                onDetails={() => onApply?.(job)}
+                onHideCompany={(c) => onHideCompany?.(c)}
               />
             ))}
           </div>
