@@ -30,7 +30,7 @@ load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-FRONTEND_URL = "http://localhost:3000"
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 TOKEN_TTL_MINUTES = 15
 JWT_TTL_DAYS = 30
 
