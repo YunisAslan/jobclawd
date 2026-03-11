@@ -17,6 +17,7 @@ const monoFont = JetBrains_Mono({
 });
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import { SidebarShellProvider } from "@/contexts/SidebarShellContext";
+import { FeedUrlProvider } from "@/contexts/FeedUrlContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { TooltipProvider } from "@/components/ui/Tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -43,9 +44,11 @@ export default function RootLayout({
             <TooltipProvider delayDuration={200}>
               <ProfileProvider>
                 <SidebarShellProvider>
+                <FeedUrlProvider>
                   <AppShell>
                     {children}
                   </AppShell>
+                </FeedUrlProvider>
                   <Toaster position="bottom-right" richColors />
                 </SidebarShellProvider>
               </ProfileProvider>

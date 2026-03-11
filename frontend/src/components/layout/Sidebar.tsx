@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import { Search, BarChart2, Inbox, User, Settings, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSidebarShell } from "@/contexts/SidebarShellContext";
+import { useFeedUrl } from "@/contexts/FeedUrlContext";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -57,11 +58,13 @@ function NavItem({
   collapsed: boolean;
 }) {
   const pathname = usePathname();
+  const { feedUrl } = useFeedUrl();
   const isActive = pathname === href || pathname.startsWith(href + "/");
+  const resolvedHref = href === "/dashboard/feed" ? feedUrl : href;
 
   const inner = (
     <Link
-      href={href}
+      href={resolvedHref}
       className={cn(
         "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 w-full",
         isActive

@@ -53,6 +53,7 @@ export interface SearchResponse {
   jobs: JobListing[];
   total: number;
   query: string;
+  cached?: boolean;
 }
 
 // Detail & apply method

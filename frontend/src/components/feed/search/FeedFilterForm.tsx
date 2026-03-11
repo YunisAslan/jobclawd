@@ -108,8 +108,6 @@ export default function FeedFilterForm({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // When initialValues arrive after mount (URL params restored from sessionStorage),
-  // reset the form so fields reflect the restored values.
   const appliedInitialRef = useRef(false);
   useEffect(() => {
     if (appliedInitialRef.current) return;

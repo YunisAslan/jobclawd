@@ -1,85 +1,88 @@
-import { useState, useCallback, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { jobsService } from "@/services/jobs.service";
 import { applyService } from "@/services/apply.service";
 import { JobListing, JobSource } from "@/types";
 import { useProfile } from "@/contexts/ProfileContext";
+import { FeedFilterValues } from "@/validations/feed";
 
-const FEED_JOBS_KEY = "jc_feed_jobs";
-
-function loadCachedJobs(): { jobs: JobListing[]; hasSearched: boolean } {
-  if (typeof window === "undefined") return { jobs: [], hasSearched: false };
-  try {
-    const raw = sessionStorage.getItem(FEED_JOBS_KEY);
-    if (!raw) return { jobs: [], hasSearched: false };
-    const parsed = JSON.parse(raw);
-    return { jobs: parsed.jobs ?? [], hasSearched: parsed.hasSearched ?? false };
-  } catch {
-    return { jobs: [], hasSearched: false };
-  }
+/**
+ * Build a stable React Query key from feed filters.
+ * Arrays are sorted so ["az","tr"] and ["tr","az"] produce identical keys.
+ */
+function buildQueryKey(filters: Partial<FeedFilterValues>) {
+  return [
+    "feed",
+    (filters.query ?? "").trim().toLowerCase(),
+    [...(filters.sources ?? [])].sort(),
+    [...(filters.workModes ?? [])].sort(),
+    [...(filters.experience ?? [])].sort(),
+    [...(filters.jobTypes ?? [])].sort(),
+    filters.datePosted ?? "",
+    filters.salaryMin ?? "",
+    filters.sortBy ?? "",
+    filters.location ?? null,
+  ];
 }
 
-function saveCachedJobs(jobs: JobListing[], hasSearched: boolean) {
-  try {
-    sessionStorage.setItem(FEED_JOBS_KEY, JSON.stringify({ jobs, hasSearched }));
-  } catch {}
-}
-
-export function useFeed() {
+export function useFeed(filters: Partial<FeedFilterValues>) {
   const { profile } = useProfile();
-  const cached = loadCachedJobs();
-  const [query, setQuery] = useState("");
-  const [sources, setSources] = useState<JobSource[]>(["jobsearch", "linkedin"]);
-  const [location, setLocation] = useState<any>();
-  const [hasSearched, setHasSearched] = useState(cached.hasSearched);
-  const [jobs, setJobs] = useState<JobListing[]>(cached.jobs);
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [drawerJob, setDrawerJob] = useState<JobListing | null>(null);
   const [bulkApplying, setBulkApplying] = useState(false);
 
-  useEffect(() => {
-    saveCachedJobs(jobs, hasSearched);
-  }, [jobs, hasSearched]);
+  // Normalize salary to annual before passing to backend
+  const normalizedSalaryMin = (() => {
+    const raw = filters.salaryMin?.replace(/,/g, "");
+    if (!raw) return undefined;
+    const n = parseInt(raw, 10);
+    if (isNaN(n)) return raw;
+    if (filters.salaryPeriod === "monthly") return String(n * 12);
+    if (filters.salaryPeriod === "hourly") return String(n * 2080);
+    return raw;
+  })();
 
-  const searchMutation = useMutation({
-    mutationFn: ({
-      q,
-      srcs,
-      loc,
-      workModes,
-      experience,
-      jobTypes,
-      datePosted,
-      salaryMin,
-      sortBy,
-    }: {
-      q: string;
-      srcs: JobSource[];
-      loc?: any;
-      workModes?: string[];
-      experience?: string[];
-      jobTypes?: string[];
-      datePosted?: string;
-      salaryMin?: string;
-      sortBy?: string;
-    }) => {
-      setHasSearched(true);
-      return jobsService.search(q, srcs, loc, {
-        workModes,
-        experience,
-        jobTypes,
-        datePosted,
-        salaryMin,
-        sortBy,
-      });
-    },
-    onSuccess: (data) => {
-      setJobs(data.jobs);
+  const hasQuery = !!(filters.query?.trim());
+
+  const { data, isLoading, isFetching, isFetched, error } = useQuery({
+    queryKey: buildQueryKey(filters),
+    queryFn: () =>
+      jobsService.search(
+        filters.query ?? "",
+        ((filters.sources?.length ? filters.sources : ["jobsearch", "linkedin", "indeed"]) as JobSource[]),
+        filters.location,
+        {
+          workModes: filters.workModes,
+          experience: filters.experience,
+          jobTypes: filters.jobTypes,
+          datePosted: filters.datePosted,
+          salaryMin: normalizedSalaryMin,
+          sortBy: filters.sortBy,
+        },
+      ),
+
+    // ── Cache behaviour ─────────────────────────────────────────────────────
+    // staleTime mirrors the backend TTL (1 hour). React Query will NOT refetch
+    // until data is older than 1 hour — matching when the PG cache expires.
+    enabled: hasQuery,
+    staleTime: 60 * 60 * 1000,      // 1 hour — data is fresh, skip network call
+    gcTime: 2 * 60 * 60 * 1000,     // 2 hours — keep in memory after unmount
+    refetchOnWindowFocus: false,     // tab regaining focus must not trigger re-scrape
+    refetchOnReconnect: false,
+    retry: 1,
+  });
+
+  // Reset skipped/selected whenever the active filter set changes (new search)
+  const prevKeyRef = useRef<string>("");
+  const currentKey = JSON.stringify(buildQueryKey(filters));
+  useEffect(() => {
+    if (prevKeyRef.current && prevKeyRef.current !== currentKey) {
       setSkipped(new Set());
       setSelected(new Set());
-    },
-  });
+    }
+    prevKeyRef.current = currentKey;
+  }, [currentKey]);
 
   const applyMutation = useMutation({
     mutationFn: (job: JobListing) =>
@@ -93,49 +96,6 @@ export function useFeed() {
         profile,
       }),
   });
-
-  const handleSearch = useCallback(
-    (overrides?: {
-      q?: string;
-      srcs?: JobSource[];
-      loc?: any;
-      workModes?: string[];
-      experience?: string[];
-      jobTypes?: string[];
-      datePosted?: string;
-      salaryMin?: string;
-      sortBy?: string;
-    }) => {
-      // Always use explicit overrides — never pollute new searches with stale state
-      const finalQ = overrides?.q ?? query;
-      const finalSrcs = overrides?.srcs ?? sources;
-      const finalLoc = overrides?.loc !== undefined ? overrides.loc : location;
-
-      if (
-        !finalQ?.trim() &&
-        !finalLoc &&
-        !overrides?.workModes?.length &&
-        !overrides?.experience?.length &&
-        !overrides?.jobTypes?.length
-      ) {
-        return;
-      }
-
-      searchMutation.mutate({
-        q: finalQ ?? "",
-        srcs: finalSrcs,
-        loc: finalLoc,
-        // Always pass explicit filter values — empty array beats undefined (signals "no filter selected")
-        workModes: overrides?.workModes ?? [],
-        experience: overrides?.experience ?? [],
-        jobTypes: overrides?.jobTypes ?? [],
-        datePosted: overrides?.datePosted ?? "",
-        salaryMin: overrides?.salaryMin ?? "",
-        sortBy: overrides?.sortBy ?? "",
-      });
-    },
-    [query, sources, location, searchMutation],
-  );
 
   const toggleSelect = (url: string) =>
     setSelected((prev) => {
@@ -160,42 +120,37 @@ export function useFeed() {
     }
   };
 
-  const handleBulkApply = async () => {
+  const handleBulkApply = useCallback(async () => {
+    if (!data?.jobs) return;
     setBulkApplying(true);
-    const toApply = jobs.filter((j) => selected.has(j.url));
+    const toApply = data.jobs.filter((j) => selected.has(j.url));
     await Promise.all(
       toApply.map((job) => applyMutation.mutateAsync(job).catch(() => {})),
     );
     setSkipped((prev) => new Set([...prev, ...toApply.map((j) => j.url)]));
     setSelected(new Set());
     setBulkApplying(false);
-  };
+  }, [data?.jobs, selected, applyMutation]);
 
+  const jobs = data?.jobs ?? [];
   const visible = jobs.filter((j) => !skipped.has(j.url));
   const highMatch = visible.filter((j) => j.match_level === "high");
   const needsReview = visible.filter((j) => j.match_level === "review");
   const hasScoring = profile.name.length > 0;
 
-  const errorMsg = searchMutation.error
-    ? ((searchMutation.error as { response?: { data?: { detail?: string } } })
+  const errorMsg = error
+    ? ((error as { response?: { data?: { detail?: string } } })
         ?.response?.data?.detail ?? "Search error")
     : null;
 
   return {
-    query,
-    setQuery,
-    sources,
-    setSources,
-    location,
-    setLocation,
     jobs,
-    loading: searchMutation.isPending,
+    loading: isLoading || isFetching,
     error: errorMsg,
     selected,
     drawerJob,
     setDrawerJob,
     bulkApplying,
-    handleSearch,
     toggleSelect,
     handleSkip,
     handleApplied,
@@ -206,6 +161,7 @@ export function useFeed() {
     needsReview,
     hasScoring,
     allVisible: hasScoring ? [] : visible,
-    hasSearched,
+    hasSearched: isFetched,
+    isCached: data?.cached ?? false,
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, Suspense, useEffect } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { FeedFilterValues } from "@/validations/feed";
 import { paramsToFilters, filtersToParams } from "@/lib/feed-params";
@@ -10,6 +10,7 @@ import FeedResults from "@/components/feed/FeedResults";
 import ApplyDrawer from "@/components/feed/apply/ApplyDrawer";
 import { useFeed } from "@/hooks/use-feed";
 import { useProfile } from "@/contexts/ProfileContext";
+import { useFeedUrl } from "@/contexts/FeedUrlContext";
 import { JobSource, JobListing } from "@/types";
 
 const DATE_RANGES: Record<string, number> = {
@@ -177,48 +178,42 @@ function applyLocalFilters(
   return filtered;
 }
 
-export default function FeedPage() {
+function FeedPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-
-  const FEED_PARAMS_KEY = "jc_feed_params";
-
-  // On mount: if URL has no params but sessionStorage has saved ones, restore them.
-  // This handles navigating back via the sidebar (which links to /feed without params).
-  useEffect(() => {
-    if (searchParams.toString().length === 0) {
-      const saved = sessionStorage.getItem(FEED_PARAMS_KEY);
-      if (saved) {
-        router.replace(`${pathname}?${saved}`, { scroll: false });
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const urlFilters = useMemo(
     () => paramsToFilters(searchParams),
     [searchParams],
   );
 
+  // localFilters tracks form state before submission (for live onChange preview).
+  // Starts from URL so it's always in sync on load / refresh.
+  const [localFilters, setLocalFilters] = useState<Partial<FeedFilterValues>>(urlFilters);
+
+  // URL is the single source of truth for the active search — useFeed fires
+  // useQuery automatically whenever urlFilters change.
   const {
     highMatch,
     needsReview,
     selected,
     drawerJob,
     setDrawerJob,
-    setQuery,
-    setSources,
-    setLocation,
-    handleSearch,
     handleSkip,
     handleApplied,
     toggleSelect,
     loading,
     hasSearched,
-  } = useFeed();
+  } = useFeed(urlFilters);
 
   const { profile } = useProfile();
+  const { setFeedUrl } = useFeedUrl();
+
+  useEffect(() => {
+    const qs = searchParams.toString();
+    setFeedUrl(qs ? `/dashboard/feed?${qs}` : "/dashboard/feed");
+  }, [searchParams, setFeedUrl]);
 
   const profileDefaults = useMemo<Partial<FeedFilterValues>>(() => {
     const result: Partial<FeedFilterValues> = {};
@@ -237,8 +232,6 @@ export default function FeedPage() {
     }
     return result;
   }, [profile]);
-
-  const [localFilters, setLocalFilters] = useState<Partial<FeedFilterValues>>(urlFilters);
 
   const filteredHighMatch = useMemo(
     () => applyLocalFilters(highMatch, localFilters),
@@ -264,43 +257,15 @@ export default function FeedPage() {
   }, [localFilters]);
 
   function onSearchSubmit(values: FeedFilterValues) {
-    if (values.query) setQuery(values.query);
-    if (values.sources) setSources(values.sources as JobSource[]);
-    if (values.location) setLocation(values.location);
-
-    // Normalize salary to annual so the backend always receives a consistent unit.
-    // Most job boards list salaries annually; monthly × 12, hourly × 2080 (52w × 40h).
-    let salaryMin = values.salaryMin?.replace(/,/g, "");
-    if (salaryMin) {
-      const n = parseInt(salaryMin, 10);
-      if (!isNaN(n)) {
-        if (values.salaryPeriod === "monthly") salaryMin = String(n * 12);
-        else if (values.salaryPeriod === "hourly") salaryMin = String(n * 2080);
-      }
-    }
-
-    handleSearch({
-      q: values.query,
-      srcs: values.sources as JobSource[],
-      loc: values.location,
-      workModes: values.workModes,
-      experience: values.experience,
-      jobTypes: values.jobTypes,
-      datePosted: values.datePosted,
-      salaryMin,
-      sortBy: values.sortBy,
-    });
-
     setLocalFilters(values);
 
-    // Persist filters to URL and sessionStorage so they survive navigation / refresh
+    // Write filters to URL — useQuery in useFeed fires automatically via urlFilters change.
     const qs = filtersToParams(values).toString();
-    if (qs) sessionStorage.setItem(FEED_PARAMS_KEY, qs);
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
 
   return (
-    <div>
+    <>
       <TopBar title="Job Feed" />
 
       <div className="p-6 space-y-5">
@@ -329,6 +294,14 @@ export default function FeedPage() {
         onClose={() => setDrawerJob(null)}
         onApplied={handleApplied}
       />
-    </div>
+    </>
+  );
+}
+
+export default function FeedPage() {
+  return (
+    <Suspense>
+      <FeedPageInner />
+    </Suspense>
   );
 }
