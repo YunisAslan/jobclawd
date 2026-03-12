@@ -49,7 +49,7 @@ export default function RootLayout({
                     {children}
                   </AppShell>
                 </FeedUrlProvider>
-                  <Toaster position="bottom-right" richColors />
+                  <Toaster position="top-center" richColors />
                 </SidebarShellProvider>
               </ProfileProvider>
             </TooltipProvider>

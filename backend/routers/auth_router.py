@@ -1,9 +1,10 @@
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
+from repositories.profile_repo import delete_account
 from services.auth_service import (
     create_and_store_token,
     send_magic_link_email,
@@ -12,6 +13,7 @@ from services.auth_service import (
     handle_google_callback,
     FRONTEND_URL,
 )
+from utils.auth_utils import get_current_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -51,6 +53,15 @@ async def google_oauth_start():
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
     return RedirectResponse(url)
+
+
+@router.delete("/account")
+async def delete_user_account(email: str = Depends(get_current_email)):
+    try:
+        delete_account(email)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to delete account: {exc}")
+    return {"success": True}
 
 
 @router.get("/callback/google")

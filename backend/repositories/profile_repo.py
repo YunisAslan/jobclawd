@@ -25,3 +25,11 @@ def save_profile(email: str, data: dict) -> None:
             "ON CONFLICT (email) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()",
             (email, json.dumps(data)),
         )
+
+
+def delete_account(email: str) -> None:
+    """Delete all data associated with the given user email."""
+    with get_db() as db:
+        db.execute("DELETE FROM profiles WHERE email = %s", (email,))
+        # Delete per-user settings (smtp config, google refresh token, etc.)
+        db.execute("DELETE FROM settings WHERE key LIKE %s", (f"%_{email}",))

@@ -1,6 +1,7 @@
 import TopBar from "@/components/layout/TopBar";
 import SMTPForm from "@/components/settings/SMTPForm";
-import { Mail } from "lucide-react";
+import DeleteAccountSection from "@/components/settings/DeleteAccountSection";
+import { Mail, ShieldAlert } from "lucide-react";
 
 export default function SettingsPage() {
   return (
@@ -27,11 +28,14 @@ export default function SettingsPage() {
             <SMTPForm />
           </SettingsSection>
 
-          {/* Future sections go here, e.g.:
-          <SettingsSection icon={...} title="Notifications" description="...">
-            ...
+          {/* ── Danger zone ── */}
+          <SettingsSection
+            icon={<ShieldAlert className="size-4" />}
+            title="Danger Zone"
+            description="Irreversible actions that affect your account and data."
+          >
+            <DeleteAccountSection />
           </SettingsSection>
-          */}
 
         </div>
       </div>
