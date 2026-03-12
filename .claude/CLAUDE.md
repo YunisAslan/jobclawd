@@ -4,12 +4,27 @@
 
 **JobClawd** is a full SaaS-style job application dashboard. It searches multiple job boards (jobsearch.az, LinkedIn, Indeed) using Playwright browser automation, scores vacancies against the user's profile.
 
+## Monorepo Structure
+
+```
+repo/
+  apps/
+    api/   -> FastAPI backend
+    web/   -> Next.js frontend
+  packages/
+  docker/
+  docs/
+  .env
+  .gitignore
+  docker-compose.yml
+```
+
 ## Running the Application
 
 **Backend:**
 
 ```bash
-cd backend
+cd apps/api
 source venv/bin/activate
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -17,15 +32,21 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 **Frontend:**
 
 ```bash
-cd frontend
+cd apps/web
 npm run dev   # http://localhost:3000
+```
+
+**Docker (all services):**
+
+```bash
+docker compose up
 ```
 
 ## Backend Structure && design rules
 
 - **Modular architecture:** routers → endpoints, services → logic (filter/score/apply), scrapers → external sources, repositories → DB, utils → helpers.
-- **Database:** SQLite (`jobclawd.db`), initialized on startup.
-- **Env/configs:** sensitive info in `.env` (SMTP, JWT, OAuth).
+- **Database:** PostgreSQL, connection via `DATABASE_URL` env var.
+- **Env/configs:** sensitive info in root `.env` (SMTP, JWT, OAuth).
 - **Automation:** singleton browser for scrapers, main commands for build, test, lint, scraping, applying.
 - **Best practices:** keep modules reusable, reference detailed schemas/docs only when needed, use linters/hooks for code style.
 - Routers are thin — no business logic, only HTTP handling and delegation to services/repos
@@ -50,5 +71,5 @@ npm run dev   # http://localhost:3000
 - Use **React Query** for data fetching and mutations
 - All URL constants live in `src/lib/endpoints.ts` — **never hardcode paths elsewhere**.
 - Use **shadcn/ui components** for all UI elements. Never use raw HTML `<button>`, `<input>`, `<select>`, `<textarea>`, or `<a>`(instead of a use next.js Link component) for actions.
-- **Color system & theme:** Defined in `frontend/src/styles/globals.css`. Use the CSS variables provided there (`--background`, `--foreground`, `--primary`, etc.). Do not hardcode colors elsewhere.
+- **Color system & theme:** Defined in `apps/web/src/styles/globals.css`. Use the CSS variables provided there (`--background`, `--foreground`, `--primary`, etc.). Do not hardcode colors elsewhere.
 - All error messages in English — no Azerbaijani strings anywhere

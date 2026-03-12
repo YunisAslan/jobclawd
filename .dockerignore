@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+
+# Environment (injected via docker-compose env_file)
+.env
+.env.*
+!.env.example
+
+# IDE / tooling
+.vscode
+.idea
+.claude
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+**/__pycache__
+**/*.pyc
+**/venv
+**/.venv
+*.egg-info
+
+# Node
+**/node_modules
+**/.next
+**/out
+**/tsconfig.tsbuildinfo
+
+# Docker (no need to copy compose into image)
+docker-compose.yml
+
+# Misc
+*.log
+*.md
+!apps/web/README.md
