@@ -18,8 +18,14 @@ import { Textarea } from "@/components/ui/Textarea";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
-  Mail, FileText, RotateCcw, Send, ExternalLink,
-  AlertCircle, CheckCircle2, X,
+  Mail,
+  FileText,
+  RotateCcw,
+  Send,
+  ExternalLink,
+  AlertCircle,
+  CheckCircle2,
+  X,
 } from "lucide-react";
 import { ApplyFormValues } from "../types";
 
@@ -78,7 +84,11 @@ export default function EmailComposeModal({
           <div className="space-y-4 py-4">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">From</Label>
-              <Input value={fromEmail} disabled className="text-sm bg-muted/40" />
+              <Input
+                value={fromEmail}
+                disabled
+                className="text-sm bg-muted/40"
+              />
               {!smtpUsername && (
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
                   <AlertCircle className="size-3 inline-block mr-1 text-warning -translate-y-px" />
@@ -96,7 +106,11 @@ export default function EmailComposeModal({
 
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">To</Label>
-              <Input value={effectiveEmail ?? ""} disabled className="text-sm bg-muted/40" />
+              <Input
+                value={effectiveEmail ?? ""}
+                disabled
+                className="text-sm bg-muted/40"
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -117,7 +131,11 @@ export default function EmailComposeModal({
                   variant="ghost"
                   size="sm"
                   className="h-6 text-[11px] gap-1 text-primary hover:text-primary px-2"
-                  onClick={() => setCoverLetter(generateCoverLetter(profile, job, detail ?? null))}
+                  onClick={() =>
+                    setCoverLetter(
+                      generateCoverLetter(profile, job, detail ?? null),
+                    )
+                  }
                 >
                   <RotateCcw className="size-2.5" />
                   Regenerate
@@ -132,12 +150,16 @@ export default function EmailComposeModal({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Attachments</Label>
+              <Label className="text-xs text-muted-foreground">
+                Attachments
+              </Label>
 
               {form.selectedCV ? (
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/40 border border-border/50 text-xs">
                   <FileText className="size-3.5 shrink-0 text-primary" />
-                  <span className="truncate font-medium text-foreground flex-1">{form.selectedCV.name}</span>
+                  <span className="truncate font-medium text-foreground flex-1">
+                    {form.selectedCV.name}
+                  </span>
                   <span className="text-muted-foreground/50 shrink-0">CV</span>
                   <Link
                     href={`${API_BASE_URL}${form.selectedCV.url}`}
@@ -151,20 +173,30 @@ export default function EmailComposeModal({
                 </div>
               ) : (
                 <div className="px-3 py-2 rounded-lg bg-muted/40 border border-border/50 text-xs text-muted-foreground text-center">
-                  No CV attached — add one in your Profile
+                  No CV attached — add one in your{" "}
+                  <Link href="/dashboard/profile" rel="noopener noreferrer">
+                    Profile
+                  </Link>
                 </div>
               )}
 
               {extraFiles.map((file, i) => (
-                <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/40 border border-border/50 text-xs">
+                <div
+                  key={i}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/40 border border-border/50 text-xs"
+                >
                   <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-                  <span className="truncate font-medium text-foreground flex-1">{file.name}</span>
+                  <span className="truncate font-medium text-foreground flex-1">
+                    {file.name}
+                  </span>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     className="size-5 shrink-0 text-muted-foreground hover:text-destructive"
-                    onClick={() => setExtraFiles((prev) => prev.filter((_, j) => j !== i))}
+                    onClick={() =>
+                      setExtraFiles((prev) => prev.filter((_, j) => j !== i))
+                    }
                   >
                     <X className="size-3" />
                   </Button>
@@ -173,7 +205,11 @@ export default function EmailComposeModal({
 
               <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border/50 hover:border-border text-xs text-muted-foreground cursor-pointer transition-colors hover:bg-muted/30">
                 <FileText className="size-3.5 shrink-0" />
-                <span>{extraFiles.length === 0 ? "Attach cover letter or extra file" : "Add another file"}</span>
+                <span>
+                  {extraFiles.length === 0
+                    ? "Attach cover letter or extra file"
+                    : "Add another file"}
+                </span>
                 <input
                   type="file"
                   className="hidden"
@@ -196,7 +232,11 @@ export default function EmailComposeModal({
                     : "bg-destructive/8 text-destructive border-destructive/20",
                 )}
               >
-                {success ? <CheckCircle2 className="size-4 shrink-0" /> : <AlertCircle className="size-4 shrink-0" />}
+                {success ? (
+                  <CheckCircle2 className="size-4 shrink-0" />
+                ) : (
+                  <AlertCircle className="size-4 shrink-0" />
+                )}
                 {message}
               </div>
             )}
@@ -205,7 +245,11 @@ export default function EmailComposeModal({
 
         <DialogFooter className="px-6 pb-6 pt-4 border-t border-border/50 flex-col items-stretch gap-2 shrink-0">
           <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose} disabled={applyMutation.isPending}>
+            <Button
+              variant="outline"
+              onClick={onClose}
+              disabled={applyMutation.isPending}
+            >
               Cancel
             </Button>
             <Button
