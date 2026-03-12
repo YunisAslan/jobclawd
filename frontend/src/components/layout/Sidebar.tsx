@@ -100,7 +100,7 @@ function NavItem({
 
 export default function AppSidebar() {
   const { open } = useSidebarShell();
-  const { theme } = useTheme();
+  const { resolved: theme } = useTheme();
   const { logout } = useAuth();
   const router = useRouter();
   const collapsed = !open;

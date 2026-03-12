@@ -18,6 +18,7 @@ import {
   Wifi,
   AlertTriangle,
 } from "lucide-react";
+import Link from "next/link";
 
 export default function SMTPForm() {
   const {
@@ -131,7 +132,7 @@ export default function SMTPForm() {
           <li>Enable 2-Step Verification on your Google account</li>
           <li>
             Go to{" "}
-            <a
+            <Link
               href="https://myaccount.google.com/apppasswords"
               target="_blank"
               rel="noopener noreferrer"
@@ -139,7 +140,7 @@ export default function SMTPForm() {
             >
               myaccount.google.com/apppasswords
               <ExternalLink className="size-2.5" />
-            </a>
+            </Link>
           </li>
           <li>Create a new app password → copy and paste it below</li>
         </ol>

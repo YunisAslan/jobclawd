@@ -36,12 +36,6 @@ async def save_smtp_settings(
     return {"success": True, "message": "SMTP configuration saved."}
 
 
-@router.get("/settings/gmail-status")
-async def gmail_status(email: str = Depends(get_current_email)):
-    """Returns whether the user has a stored Google refresh token (can send via Gmail API)."""
-    token = settings_repo.get_google_refresh_token(email)
-    return {"connected": token is not None}
-
 
 @router.get("/settings/autopilot", response_model=AutopilotSettings)
 async def get_autopilot():

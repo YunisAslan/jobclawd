@@ -36,7 +36,7 @@ export default function IdentitySection({ control, email }: Props) {
                   name="name"
                   control={control}
                   render={({ field }) => (
-                    <Input placeholder="Alex" {...field} />
+                    <Input placeholder="Jordan" {...field} />
                   )}
                 />
               </div>
@@ -48,7 +48,7 @@ export default function IdentitySection({ control, email }: Props) {
                   name="surname"
                   control={control}
                   render={({ field }) => (
-                    <Input placeholder="Johnson" {...field} />
+                    <Input placeholder="Smith" {...field} />
                   )}
                 />
               </div>
@@ -78,7 +78,7 @@ export default function IdentitySection({ control, email }: Props) {
                 control={control}
                 render={({ field }) => (
                   <Input
-                    placeholder="Senior Frontend Developer"
+                    placeholder="e.g. Marketing Manager, Sales Lead"
                     {...field}
                     value={field.value ?? ""}
                   />

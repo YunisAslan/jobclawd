@@ -35,12 +35,6 @@ class SettingsService extends APIService {
     });
   }
 
-  async getGmailStatus(): Promise<{ connected: boolean }> {
-    const res = await this.get(ENDPOINTS.GMAIL_STATUS, {}, {
-      headers: getAuthHeader(),
-    });
-    return res.data;
-  }
 }
 
 export const settingsService = new SettingsService();

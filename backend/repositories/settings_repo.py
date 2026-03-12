@@ -40,24 +40,6 @@ def save_smtp_config(settings: SMTPSettings, user_email: Optional[str] = None) -
         )
 
 
-def save_google_refresh_token(user_email: str, refresh_token: str) -> None:
-    key = f"google_refresh_token_{user_email}"
-    with get_db() as conn:
-        conn.execute(
-            "INSERT INTO settings (key, value) VALUES (%s, %s) "
-            "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
-            (key, refresh_token),
-        )
-
-
-def get_google_refresh_token(user_email: str) -> Optional[str]:
-    key = f"google_refresh_token_{user_email}"
-    with get_db() as conn:
-        row = conn.execute(
-            "SELECT value FROM settings WHERE key = %s", (key,)
-        ).fetchone()
-    return row["value"] if row else None
-
 
 def get_autopilot_enabled() -> bool:
     with get_db() as conn:

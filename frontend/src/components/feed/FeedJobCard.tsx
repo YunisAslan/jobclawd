@@ -22,6 +22,7 @@ import {
   MoreHorizontal,
   X,
 } from "lucide-react";
+import Link from "next/link";
 
 interface FeedJobCardProps {
   job: JobListing;
@@ -200,10 +201,10 @@ export default function FeedJobCard({
             variant="outline"
             className="flex-1 h-8 text-xs gap-1.5"
           >
-            <a href={job.url} target="_blank" rel="noopener noreferrer">
+            <Link href={job.url} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="size-3.5" />
               Details
-            </a>
+            </Link>
           </Button>
           <Button
             onClick={onSkip}

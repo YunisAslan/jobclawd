@@ -2,38 +2,62 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
-type Theme = "dark" | "light";
+export type ThemePreference = "dark" | "light" | "system";
 
 interface ThemeContextValue {
-  theme: Theme;
-  toggleTheme: () => void;
+  preference: ThemePreference;
+  resolved: "dark" | "light";
+  setTheme: (t: ThemePreference) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme: "dark",
-  toggleTheme: () => {},
+  preference: "system",
+  resolved: "dark",
+  setTheme: () => {},
 });
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark");
+function resolveTheme(pref: ThemePreference): "dark" | "light" {
+  if (pref === "system") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  return pref;
+}
 
-  // On mount: read persisted preference, default to dark
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [preference, setPreference] = useState<ThemePreference>("system");
+  const [resolved, setResolved] = useState<"dark" | "light">("dark");
+
   useEffect(() => {
-    const stored = localStorage.getItem("jc_theme") as Theme | null;
-    const initial: Theme = stored === "light" ? "light" : "dark";
-    setTheme(initial);
-    document.documentElement.classList.toggle("dark", initial === "dark");
+    const stored = (localStorage.getItem("jc_theme") as ThemePreference | null) ?? "system";
+    const r = resolveTheme(stored);
+    setPreference(stored);
+    setResolved(r);
+    document.documentElement.classList.toggle("dark", r === "dark");
+
+    // Keep "system" in sync with OS changes
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = () => {
+      const pref = (localStorage.getItem("jc_theme") as ThemePreference | null) ?? "system";
+      if (pref === "system") {
+        const next = mq.matches ? "dark" : "light";
+        setResolved(next);
+        document.documentElement.classList.toggle("dark", next === "dark");
+      }
+    };
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
   }, []);
 
-  function toggleTheme() {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    localStorage.setItem("jc_theme", next);
-    document.documentElement.classList.toggle("dark", next === "dark");
+  function setTheme(t: ThemePreference) {
+    const r = resolveTheme(t);
+    setPreference(t);
+    setResolved(r);
+    localStorage.setItem("jc_theme", t);
+    document.documentElement.classList.toggle("dark", r === "dark");
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ preference, resolved, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );

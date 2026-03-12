@@ -55,7 +55,7 @@ export default function TargetingSection({ control, setValue }: Props) {
             </div>
             <div className="flex gap-2">
               <Input
-                placeholder="React Developer, Frontend Engineer..."
+                placeholder="e.g. Sales Manager, HR Specialist..."
                 value={titleInput}
                 onChange={(e) => setTitleInput(e.target.value)}
                 onKeyDown={(e) => {

@@ -19,12 +19,14 @@ interface ProfileIdentityCardProps {
   control: Control<UserProfile>;
   saving: boolean;
   saved: boolean;
+  isDirty: boolean;
 }
 
 export default function ProfileIdentityCard({
   control,
   saving,
   saved,
+  isDirty,
 }: ProfileIdentityCardProps) {
   const { data: meta } = useMetaFilters();
 
@@ -211,23 +213,31 @@ export default function ProfileIdentityCard({
       </div>
 
       {/* Desktop save button */}
-      <Button
-        type="submit"
-        className="w-full gap-2 hidden lg:flex justify-center"
-        disabled={saving}
-      >
-        {saving ? (
-          <>
-            <Loader2 className="size-4 animate-spin" /> Saving...
-          </>
-        ) : saved ? (
-          <>
-            <Check className="size-4" /> Saved
-          </>
-        ) : (
-          "Save profile"
+      <div className="hidden lg:flex flex-col gap-1.5">
+        <Button
+          type="submit"
+          className="w-full gap-2 justify-center"
+          disabled={saving}
+        >
+          {saving ? (
+            <>
+              <Loader2 className="size-4 animate-spin" /> Saving...
+            </>
+          ) : saved ? (
+            <>
+              <Check className="size-4" /> Saved
+            </>
+          ) : (
+            "Save profile"
+          )}
+        </Button>
+        {isDirty && !saving && !saved && (
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground justify-center">
+            <span className="size-1.5 rounded-full bg-amber-400 shrink-0" />
+            Unsaved changes
+          </p>
         )}
-      </Button>
+      </div>
     </div>
   );
 }

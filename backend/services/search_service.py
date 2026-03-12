@@ -6,13 +6,14 @@ import asyncio
 import json
 from typing import Optional
 
-from models.schemas import JobListing, JobSource, SearchResponse, LocationFilter
+from models.schemas import JobListing, JobSource, SearchResponse, LocationFilter, UserProfile
 from scraper.search import scrape_search
 from scraper.linkedin import scrape_linkedin
 from scraper.indeed import scrape_indeed
 from db.database import get_db
 from services.cache_service import make_cache_key
 from repositories.cache_repo import get_cached_result, set_cached_result
+from engine.scoring import score_job
 
 
 async def run_search(
@@ -25,6 +26,7 @@ async def run_search(
     date_posted: Optional[str] = None,
     salary_min: Optional[str] = None,
     sort_by: Optional[str] = None,
+    profile: Optional[UserProfile] = None,
 ) -> SearchResponse:
     """
     1. Build a deterministic cache key from all filters.
@@ -143,6 +145,10 @@ async def run_search(
         salary_min=salary_min,
         date_posted=date_posted,
     )
+
+    # Score jobs against user profile
+    if profile:
+        visible = [score_job(job, profile) for job in visible]
 
     # Sort
     if sort_by == "job-title-ascending":

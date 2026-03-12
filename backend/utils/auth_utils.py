@@ -27,3 +27,15 @@ def get_current_email(authorization: Optional[str] = Header(default=None)) -> st
         raise HTTPException(status_code=401, detail="Token expired.")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token.")
+
+
+def get_optional_email(authorization: Optional[str] = Header(default=None)) -> Optional[str]:
+    """Like get_current_email but returns None instead of raising for unauthenticated requests."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    token = authorization.split(" ", 1)[1]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        return payload.get("sub") or None
+    except jwt.InvalidTokenError:
+        return None

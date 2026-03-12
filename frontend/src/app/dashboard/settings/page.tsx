@@ -9,7 +9,7 @@ export default function SettingsPage() {
       <TopBar title="Settings" />
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-6 py-8 space-y-2">
+        <div className="max-w-2xl mx-auto px-6 py-8 space-y-4">
 
           {/* Page intro */}
           <div className="mb-8">
@@ -31,12 +31,11 @@ export default function SettingsPage() {
           {/* ── Danger zone ── */}
           <SettingsSection
             icon={<ShieldAlert className="size-4" />}
-            title="Danger Zone"
+            title="Danger zone"
             description="Irreversible actions that affect your account and data."
           >
             <DeleteAccountSection />
           </SettingsSection>
-
         </div>
       </div>
     </div>

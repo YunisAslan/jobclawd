@@ -58,32 +58,39 @@ export default function FeedFilterForm({
   initialValues,
 }: FeedFilterFormProps) {
   const { data: meta } = useMetaFilters();
-  const {
-    control,
-    handleSubmit,
-    watch,
-    reset,
-    setValue,
-  } = useForm<FeedFilterValues>({
-    resolver: zodResolver(feedFilterSchema),
-    defaultValues: { ...EMPTY_FILTERS, ...initialValues },
-  });
+  const { control, handleSubmit, watch, reset, setValue } =
+    useForm<FeedFilterValues>({
+      resolver: zodResolver(feedFilterSchema),
+      defaultValues: { ...EMPTY_FILTERS, ...initialValues },
+    });
 
   const HISTORY_KEY = "jc_search_history";
   const MAX_HISTORY = 8;
 
   const [history, setHistory] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
-    try { return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? "[]"); } catch { return []; }
+    try {
+      return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? "[]");
+    } catch {
+      return [];
+    }
   });
   const [showHistory, setShowHistory] = useState(false);
+  const [historyIndex, setHistoryIndex] = useState(-1);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setHistoryIndex(-1);
+  }, [showHistory]);
 
   const pushHistory = (q: string) => {
     const trimmed = q.trim();
     if (!trimmed) return;
     setHistory((prev) => {
-      const next = [trimmed, ...prev.filter((h) => h !== trimmed)].slice(0, MAX_HISTORY);
+      const next = [trimmed, ...prev.filter((h) => h !== trimmed)].slice(
+        0,
+        MAX_HISTORY,
+      );
       localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
       return next;
     });
@@ -171,7 +178,13 @@ export default function FeedFilterForm({
   return (
     <Card className="py-0 shadow-sm border-border/60">
       <CardContent className="pt-5 pb-4 space-y-4">
-        <form onSubmit={handleSubmit((values) => { pushHistory(values.query ?? ""); onSubmit(values); })} className="space-y-4">
+        <form
+          onSubmit={handleSubmit((values) => {
+            pushHistory(values.query ?? "");
+            onSubmit(values);
+          })}
+          className="space-y-4"
+        >
           <div className="flex gap-2">
             <div className="relative flex-1" ref={searchRef}>
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-muted-foreground pointer-events-none z-10" />
@@ -186,6 +199,24 @@ export default function FeedFilterForm({
                     className="pl-10 h-12 text-[15px]"
                     autoComplete="off"
                     onFocus={() => setShowHistory(true)}
+                    onKeyDown={(e) => {
+                      if (!showHistory || history.length === 0) return;
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setHistoryIndex((i) =>
+                          Math.min(i + 1, history.length - 1),
+                        );
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setHistoryIndex((i) => Math.max(i - 1, -1));
+                      } else if (e.key === "Enter" && historyIndex >= 0) {
+                        e.preventDefault();
+                        setValue("query", history[historyIndex]);
+                        setShowHistory(false);
+                      } else if (e.key === "Escape") {
+                        setShowHistory(false);
+                      }
+                    }}
                   />
                 )}
               />
@@ -201,23 +232,34 @@ export default function FeedFilterForm({
                       variant="ghost"
                       size="sm"
                       className="h-auto p-0 text-[10px] text-muted-foreground/50 hover:text-destructive hover:bg-transparent"
-                      onClick={() => { setHistory([]); localStorage.removeItem(HISTORY_KEY); }}
+                      onClick={() => {
+                        setHistory([]);
+                        localStorage.removeItem(HISTORY_KEY);
+                      }}
                     >
                       Clear all
                     </Button>
                   </div>
                   <ul className="py-1">
-                    {history.map((item) => (
-                      <li key={item} className="flex items-center gap-2 px-3 py-2 hover:bg-muted/60 cursor-pointer group transition-colors">
+                    {history.map((item, i) => (
+                      <li
+                        key={item}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-2 cursor-pointer group transition-colors",
+                          i === historyIndex
+                            ? "bg-muted/80"
+                            : "hover:bg-muted/60",
+                        )}
+                        onMouseEnter={() => setHistoryIndex(i)}
+                        onMouseLeave={() => setHistoryIndex(-1)}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setValue("query", item);
+                          setShowHistory(false);
+                        }}
+                      >
                         <History className="size-3.5 text-muted-foreground/40 shrink-0" />
-                        <span
-                          className="flex-1 text-sm text-foreground/80 truncate"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            setValue("query", item);
-                            setShowHistory(false);
-                          }}
-                        >
+                        <span className="flex-1 text-sm text-foreground/80 truncate">
                           {item}
                         </span>
                         <Button
@@ -225,7 +267,11 @@ export default function FeedFilterForm({
                           variant="ghost"
                           size="icon"
                           className="size-5 opacity-0 group-hover:opacity-100 text-muted-foreground/40 hover:text-destructive hover:bg-transparent transition-all shrink-0"
-                          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeHistory(item); }}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            removeHistory(item);
+                          }}
                         >
                           <X className="size-3" />
                         </Button>
@@ -241,9 +287,7 @@ export default function FeedFilterForm({
                 variant="outline"
                 disabled={loading}
                 className="gap-1.5 h-12 shrink-0 text-muted-foreground"
-                onClick={() =>
-                  reset({ ...EMPTY_FILTERS, ...profileDefaults })
-                }
+                onClick={() => reset({ ...EMPTY_FILTERS, ...profileDefaults })}
               >
                 <Sparkles className="size-4" />
                 Fill from profile

@@ -11,7 +11,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from db.database import get_db
-from repositories.settings_repo import save_google_refresh_token
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 
@@ -66,25 +65,48 @@ async def send_magic_link_email(email: str, token: str):
     msg["To"] = email
 
     html_body = f"""
-    <div style="font-family:-apple-system,sans-serif;max-width:480px;margin:0 auto;
-                padding:40px 32px;background:#0a0a0a;color:#fff;border-radius:16px;
-                border:1px solid rgba(255,255,255,0.08)">
-      <p style="font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
-                color:#10B981;margin:0 0 20px">JobClawd</p>
-      <h2 style="color:#fff;font-size:22px;margin:0 0 12px">Your sign-in link</h2>
-      <p style="color:#888;font-size:14px;margin:0 0 28px;line-height:1.6">
-        This link expires in <strong style="color:#fff">{TOKEN_TTL_MINUTES} minutes</strong>
-        and can only be used once.
-      </p>
-      <a href="{magic_url}"
-         style="display:inline-block;background:#10B981;color:#fff;padding:14px 28px;
-                border-radius:10px;text-decoration:none;font-weight:700;font-size:15px">
-        Sign in →
-      </a>
-      <p style="color:#444;font-size:12px;margin:28px 0 0;line-height:1.6">
-        If you did not request this, you can safely ignore this email.
-      </p>
-    </div>
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+    <body style="margin:0;padding:32px 16px;background:#f1f3f9;font-family:'Inter','Avenir Next',sans-serif">
+      <div style="max-width:460px;margin:0 auto;background:#ffffff;border-radius:8px;
+                  border:1px solid #e1e5ee;overflow:hidden">
+
+        <!-- Header -->
+        <div style="padding:28px 32px 24px;border-bottom:1px solid #e1e5ee">
+          <span style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+                       color:#7b7cff">JobClawd</span>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:32px">
+          <h2 style="margin:0 0 10px;font-size:20px;font-weight:700;color:#0e0f14;letter-spacing:-.01em">
+            Your sign-in link
+          </h2>
+          <p style="margin:0 0 28px;font-size:14px;color:#5b6275;line-height:1.65">
+            Click the button below to sign in to your JobClawd account.<br>
+            This link expires in <strong style="color:#0e0f14;font-weight:600">{TOKEN_TTL_MINUTES} minutes</strong>
+            and can only be used once.
+          </p>
+
+          <a href="{magic_url}"
+             style="display:inline-block;background:#7b7cff;color:#ffffff;
+                    padding:13px 28px;border-radius:5px;text-decoration:none;
+                    font-size:14px;font-weight:700;letter-spacing:.01em">
+            Sign in to JobClawd →
+          </a>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:20px 32px;border-top:1px solid #e1e5ee;background:#f8f9fd">
+          <p style="margin:0;font-size:12px;color:#a9b0c2;line-height:1.6">
+            If you did not request this email, you can safely ignore it.
+          </p>
+        </div>
+
+      </div>
+    </body>
+    </html>
     """
 
     msg.attach(MIMEText(html_body, "html"))
@@ -140,7 +162,7 @@ def get_google_auth_url() -> str:
         "client_id": GOOGLE_CLIENT_ID,
         "redirect_uri": GOOGLE_REDIRECT_URI,
         "response_type": "code",
-        "scope": "email profile https://www.googleapis.com/auth/gmail.send",
+        "scope": "email profile",
         "access_type": "offline",
         "prompt": "consent",
     }
@@ -179,10 +201,6 @@ async def handle_google_callback(code: str) -> str:
 
     if not email:
         raise RuntimeError("google_no_email")
-
-    refresh_token = token_data.get("refresh_token")
-    if refresh_token:
-        save_google_refresh_token(email, refresh_token)
 
     jwt_token = _issue_jwt(email, name)
     return f"{FRONTEND_URL}/auth/google-callback?token={jwt_token}"

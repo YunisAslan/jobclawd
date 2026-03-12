@@ -26,7 +26,6 @@ export const ENDPOINTS = {
 
   // Settings
   SMTP_SETTINGS: "/api/settings/smtp",
-  GMAIL_STATUS: "/api/settings/gmail-status",
 
   // Account
   DELETE_ACCOUNT: "/api/auth/account",

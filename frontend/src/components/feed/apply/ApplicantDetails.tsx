@@ -100,7 +100,7 @@ export default function ApplicantDetails({
               <Input
                 value={form.fullName}
                 onChange={(e) => updateField("fullName", e.target.value)}
-                placeholder="Alex Johnson"
+                placeholder="Jordan Smith"
               />
             </div>
             <div className="space-y-1.5">

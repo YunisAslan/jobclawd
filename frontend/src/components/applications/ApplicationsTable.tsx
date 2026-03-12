@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/Table";
 import { formatDate } from "@/lib/utils";
+import Link from "next/link";
 
 const TABS: { value: ApplicationStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -58,14 +59,14 @@ function RecordsTable({
               {r.company}
             </TableCell>
             <TableCell className="max-w-[200px]">
-              <a
+              <Link
                 href={r.job_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-primary transition-colors line-clamp-1"
               >
                 {r.job_title}
-              </a>
+              </Link>
             </TableCell>
             <TableCell className="text-muted-foreground whitespace-nowrap">
               {formatDate(r.sent_at, { year: "numeric" })}

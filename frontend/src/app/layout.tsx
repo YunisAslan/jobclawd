@@ -36,7 +36,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`dark ${sansFont.variable} ${monoFont.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${sansFont.variable} ${monoFont.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Blocking script — runs before paint to prevent theme flash */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){var s=localStorage.getItem('jc_theme');var d=s==='dark'||((!s||s==='system')&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);})();` }} />
+      </head>
       <body className="antialiased">
         <QueryProvider>
         <AuthProvider>

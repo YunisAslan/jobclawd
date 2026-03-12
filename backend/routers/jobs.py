@@ -2,7 +2,8 @@
 Router: HTTP handlers for job search and job detail.
 Thin layer — delegates all business logic to services.
 """
-from fastapi import APIRouter, HTTPException
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException
 
 from models.schemas import (
     SearchRequest,
@@ -10,9 +11,12 @@ from models.schemas import (
     JobDetailRequest,
     JobDetailResponse,
     JobSource,
+    UserProfile,
 )
 from scraper.detail import scrape_job_detail
 from services.search_service import run_search
+from repositories import profile_repo
+from utils.auth_utils import get_optional_email
 
 router = APIRouter()
 
@@ -20,8 +24,17 @@ _ALLOWED_HOSTS = ["jobsearch.az", "linkedin.com", "indeed.com", "az.indeed.com"]
 
 
 @router.post("/search", response_model=SearchResponse)
-async def search_jobs(request: SearchRequest):
+async def search_jobs(request: SearchRequest, email: Optional[str] = Depends(get_optional_email)):
     sources = request.sources if request.sources else [JobSource.jobsearch, JobSource.linkedin, JobSource.indeed]
+
+    profile: UserProfile | None = None
+    raw = profile_repo.get_profile(email) if email else None
+    if raw:
+        try:
+            profile = UserProfile(**raw)
+        except Exception:
+            profile = None
+
     try:
         return await run_search(
             query=request.query,
@@ -33,6 +46,7 @@ async def search_jobs(request: SearchRequest):
             date_posted=request.datePosted,
             salary_min=request.salaryMin,
             sort_by=request.sortBy,
+            profile=profile,
         )
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Search error: {e}")

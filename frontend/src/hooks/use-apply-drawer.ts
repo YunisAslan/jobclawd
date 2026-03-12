@@ -41,7 +41,8 @@ export function useApplyDrawer(job: JobListing | null, onApplied: () => void) {
   });
 
   const effectiveEmail = detail?.email ?? job?.hr_email ?? null;
-  const fromEmail = smtpSettings?.username || form.email;
+  const jobclawdEmail = process.env.NEXT_PUBLIC_JOBCLAWD_EMAIL;
+  const fromEmail = smtpSettings?.username || jobclawdEmail;
 
   const method = useMemo(
     () => (job ? resolveApplyMethod(job, detail ?? null) : "direct"),

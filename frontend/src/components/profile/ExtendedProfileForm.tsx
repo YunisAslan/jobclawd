@@ -27,7 +27,7 @@ export default function ExtendedProfileForm() {
   } = useSaveProfile();
   const [saved, setSaved] = useState(false);
 
-  const { control, handleSubmit, setValue, reset } = useForm<UserProfile>({
+  const { control, handleSubmit, setValue, reset, formState: { isDirty } } = useForm<UserProfile>({
     defaultValues: DEFAULT_PROFILE,
   });
 
@@ -50,13 +50,14 @@ export default function ExtendedProfileForm() {
   async function onSubmit(values: UserProfile) {
     setProfile(values);
     await saveProfile(values);
+    reset(values);
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-8 items-start">
         {/* LEFT: sticky identity card */}
-        <ProfileIdentityCard control={control} saving={saving} saved={saved} />
+        <ProfileIdentityCard control={control} saving={saving} saved={saved} isDirty={isDirty} />
 
         {/* RIGHT: form sections */}
         <div className="space-y-3 bg-card border border-border/60 shadow-sm rounded-xl p-6">
@@ -67,10 +68,16 @@ export default function ExtendedProfileForm() {
           <DocumentsSection control={control} />
 
           {/* Mobile save */}
-          <div className="flex justify-end lg:hidden pb-2">
+          <div className="flex items-center justify-end gap-3 lg:hidden pb-2">
+            {isDirty && !saving && !saved && (
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="size-1.5 rounded-full bg-amber-400 shrink-0" />
+                Unsaved changes
+              </p>
+            )}
             <Button
               type="submit"
-              className="gap-2 min-w-[120px]"
+              className="gap-2 min-w-30"
               disabled={saving}
             >
               {saving ? (

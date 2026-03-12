@@ -6,7 +6,6 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { ScrollArea } from "@/components/ui/ScrollArea";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { Separator } from "@/components/ui/Separator";
 import { cn } from "@/lib/utils";
 import { Send, ExternalLink, CheckCircle2, Zap, AlertCircle } from "lucide-react";
@@ -18,6 +17,8 @@ import EmailComposeModal from "./EmailComposeModal";
 import { useApplyDrawer } from "@/hooks/use-apply-drawer";
 import { ApplyDrawerProps } from "../types";
 import { METHOD_CONFIG } from "./utils";
+import Link from "next/link";
+
 
 export default function ApplyDrawer({ job, onClose, onApplied }: ApplyDrawerProps) {
   const {
@@ -64,7 +65,16 @@ export default function ApplyDrawer({ job, onClose, onApplied }: ApplyDrawerProp
           <ScrollArea className="flex-1 min-h-0">
             <div className="p-5 space-y-5">
               {loadingDetail ? (
-                <Skeleton className="h-16 w-full rounded-xl" />
+                <div className="p-3.5 rounded-xl border border-border/50 bg-card">
+                  <div className="flex items-center gap-2.5">
+                    <div className="size-8 rounded-lg bg-muted animate-pulse shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 w-24 rounded bg-muted animate-pulse" />
+                      <div className="h-2.5 w-40 rounded bg-muted animate-pulse" />
+                    </div>
+                    <span className="text-[11px] text-muted-foreground/60 italic shrink-0">Detecting apply method…</span>
+                  </div>
+                </div>
               ) : (
                 <div className="p-3.5 rounded-xl border border-border/50 bg-card">
                   <div className="flex items-center gap-2.5">
@@ -157,19 +167,19 @@ export default function ApplyDrawer({ job, onClose, onApplied }: ApplyDrawerProp
               <div className="flex gap-2 w-full">
                 <TrackButton isPending={applyMutation.isPending} success={success} onClick={() => applyMutation.mutate()} />
                 <Button asChild className="flex-1 gap-2">
-                  <a href={job.url} target="_blank" rel="noopener noreferrer">
+                  <Link href={job.url} target="_blank" rel="noopener noreferrer">
                     <Zap className="size-3.5" />
                     {job.source === "linkedin" ? "Apply on LinkedIn" : "Quick Apply"}
-                  </a>
+                  </Link>
                 </Button>
               </div>
             ) : (
               <div className="flex gap-2 w-full">
                 <TrackButton isPending={applyMutation.isPending} success={success} onClick={() => applyMutation.mutate()} />
                 <Button asChild className="flex-1 gap-2">
-                  <a href={job.url} target="_blank" rel="noopener noreferrer">
+                  <Link href={job.url} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="size-3.5" /> Apply on site
-                  </a>
+                  </Link>
                 </Button>
               </div>
             )}
@@ -180,7 +190,7 @@ export default function ApplyDrawer({ job, onClose, onApplied }: ApplyDrawerProp
       <EmailComposeModal
         open={showEmailModal}
         onClose={() => setShowEmailModal(false)}
-        fromEmail={fromEmail}
+        fromEmail={fromEmail as string}
         smtpUsername={smtpSettings?.username}
         effectiveEmail={effectiveEmail}
         emailSubject={emailSubject}

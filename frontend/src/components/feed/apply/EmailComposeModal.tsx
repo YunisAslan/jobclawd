@@ -139,7 +139,7 @@ export default function EmailComposeModal({
                   <FileText className="size-3.5 shrink-0 text-primary" />
                   <span className="truncate font-medium text-foreground flex-1">{form.selectedCV.name}</span>
                   <span className="text-muted-foreground/50 shrink-0">CV</span>
-                  <a
+                  <Link
                     href={`${API_BASE_URL}${form.selectedCV.url}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -147,7 +147,7 @@ export default function EmailComposeModal({
                   >
                     <ExternalLink className="size-3" />
                     Open
-                  </a>
+                  </Link>
                 </div>
               ) : (
                 <div className="px-3 py-2 rounded-lg bg-muted/40 border border-border/50 text-xs text-muted-foreground text-center">
