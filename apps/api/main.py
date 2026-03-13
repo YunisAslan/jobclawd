@@ -6,8 +6,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI
 
-# Load root .env (monorepo root)
-load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent.parent / ".env")
+ROOT_ENV_PATH = Path(__file__).resolve().parent.parent.parent.parent / ".env"
+
+if ROOT_ENV_PATH.exists():
+    load_dotenv(dotenv_path=ROOT_ENV_PATH)
+
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers import jobs

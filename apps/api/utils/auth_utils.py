@@ -7,8 +7,11 @@ import jwt
 from dotenv import load_dotenv
 from fastapi import Header, HTTPException
 
-load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent.parent.parent / ".env")
+ROOT_ENV_PATH = Path(__file__).resolve().parent.parent.parent.parent / ".env"
 
+if ROOT_ENV_PATH.exists():
+    load_dotenv(dotenv_path=ROOT_ENV_PATH)
+    
 JWT_SECRET = os.getenv("JWT_SECRET", "changeme-local-dev-only")
 
 

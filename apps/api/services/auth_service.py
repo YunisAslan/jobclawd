@@ -12,8 +12,11 @@ from email.mime.text import MIMEText
 
 from db.database import get_db
 
-load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent.parent.parent / ".env")
+ROOT_ENV_PATH = Path(__file__).resolve().parent.parent.parent.parent / ".env"
 
+if ROOT_ENV_PATH.exists():
+    load_dotenv(dotenv_path=ROOT_ENV_PATH)
+         
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 TOKEN_TTL_MINUTES = 15
 JWT_TTL_DAYS = 30
