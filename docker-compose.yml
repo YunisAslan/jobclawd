@@ -43,10 +43,10 @@ services:
     env_file:
       - .env
     volumes:
-      - ./apps/web:/app
-      - ./packages/shared:/packages/shared
-      - /app/node_modules
-      - /app/.next
+      - ./apps/web:/repo/apps/web
+      - ./packages/shared:/repo/packages/shared
+      - /repo/apps/web/node_modules
+      - /repo/apps/web/.next
     depends_on:
       - api
     command: npm run dev:docker
