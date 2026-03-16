@@ -72,6 +72,7 @@ class UserProfile(BaseModel):
 
     # Job search preference fields — used to pre-fill feed filters + apply cover letter
     headline: Optional[str] = None
+    avatar_url: Optional[str] = None
     desired_titles: list[str] = []
     job_types: list[str] = []
     preferred_location: Optional[LocationFilter] = None
@@ -93,6 +94,7 @@ class SearchRequest(BaseModel):
     datePosted: Optional[str] = None
     salaryMin: Optional[str] = None
     sortBy: Optional[str] = None
+    forceRefresh: bool = False
 
 
 class JobListing(BaseModel):

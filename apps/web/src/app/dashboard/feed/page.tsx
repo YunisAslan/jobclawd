@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, Suspense, useEffect } from "react";
+import { useState, useMemo, Suspense, useEffect, useRef } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { FeedFilterValues } from "@/validations/feed";
 import { paramsToFilters, filtersToParams } from "@/lib/feed-params";
@@ -224,6 +224,12 @@ function FeedPageInner() {
     toggleSelect,
     loading,
     hasSearched,
+    creditsLeft,
+    maxCredits,
+    outOfCredits,
+    dataUpdatedAt,
+    invalidateFeed,
+    refreshFeed,
   } = useFeed(urlFilters);
 
   const { profile } = useProfile();
@@ -278,12 +284,23 @@ function FeedPageInner() {
     return n;
   }, [localFilters]);
 
+  const [flash, setFlash] = useState(false);
+  const flashTimer = useRef<ReturnType<typeof setTimeout>>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+
   function onSearchSubmit(values: FeedFilterValues) {
     setLocalFilters(values);
+    invalidateFeed();
 
     // Write filters to URL — useQuery in useFeed fires automatically via urlFilters change.
     const qs = filtersToParams(values).toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+
+    // Visual feedback for cache hits — driven from event handler, not an effect
+    clearTimeout(flashTimer.current!);
+    setFlash(true);
+    flashTimer.current = setTimeout(() => setFlash(false), 600);
+    resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   return (
@@ -298,17 +315,25 @@ function FeedPageInner() {
           profileDefaults={profileDefaults}
           initialValues={urlFilters}
         />
-        <FeedResults
-          highMatch={filteredHighMatch}
-          needsReview={filteredNeedsReview}
-          loading={loading}
-          hasSearched={hasSearched}
-          activeFilterCount={activeFilterCount}
-          selected={selected}
-          onToggleSelect={toggleSelect}
-          onApply={(job) => setDrawerJob(job)}
-          onSkip={(url) => handleSkip(url)}
-        />
+        <div ref={resultsRef}>
+          <FeedResults
+            highMatch={filteredHighMatch}
+            needsReview={filteredNeedsReview}
+            loading={loading}
+            hasSearched={hasSearched}
+            flash={flash}
+            activeFilterCount={activeFilterCount}
+            creditsLeft={creditsLeft}
+            maxCredits={maxCredits}
+            outOfCredits={outOfCredits}
+            dataUpdatedAt={dataUpdatedAt}
+            onRefresh={refreshFeed}
+            selected={selected}
+            onToggleSelect={toggleSelect}
+            onApply={(job) => setDrawerJob(job)}
+            onSkip={(url) => handleSkip(url)}
+          />
+        </div>
       </div>
 
       <ApplyDrawer job={drawerJob} onClose={() => setDrawerJob(null)} onApplied={handleApplied} />

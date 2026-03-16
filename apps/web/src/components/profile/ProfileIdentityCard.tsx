@@ -1,15 +1,28 @@
 "use client";
 
-import { useWatch, Control } from "react-hook-form";
+import Image from "next/image";
+import { useRef, useState } from "react";
+import { useWatch, Control, UseFormSetValue } from "react-hook-form";
 import { UserProfile } from "@/types";
 import { useMetaFilters } from "@/hooks/use-meta";
+import { profileService } from "@/services/profile.service";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Separator } from "@/components/ui/Separator";
-import { Check, Monitor, GraduationCap, Briefcase, DollarSign, Loader2 } from "lucide-react";
+import {
+  Check,
+  Monitor,
+  GraduationCap,
+  Briefcase,
+  DollarSign,
+  Loader2,
+  Camera,
+} from "lucide-react";
+import { API_BASE_URL } from "@/lib/endpoints";
 
 interface ProfileIdentityCardProps {
   control: Control<UserProfile>;
+  setValue: UseFormSetValue<UserProfile>;
   saving: boolean;
   saved: boolean;
   isDirty: boolean;
@@ -17,14 +30,18 @@ interface ProfileIdentityCardProps {
 
 export default function ProfileIdentityCard({
   control,
+  setValue,
   saving,
   saved,
   isDirty,
 }: ProfileIdentityCardProps) {
   const { data: meta } = useMetaFilters();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   const name = useWatch({ control, name: "name" }) ?? "";
   const surname = useWatch({ control, name: "surname" }) ?? "";
+  const avatarUrl = useWatch({ control, name: "avatar_url" }) ?? "";
   const headline = useWatch({ control, name: "headline" }) ?? "";
   const workModes = useWatch({ control, name: "work_modes" }) ?? [];
   const expLevel = useWatch({ control, name: "experience_level" }) ?? [];
@@ -59,6 +76,11 @@ export default function ProfileIdentityCard({
       .filter(Boolean)
       .map((s) => s[0].toUpperCase())
       .join("") || "–";
+  const avatarSrc = avatarUrl
+    ? avatarUrl.startsWith("http")
+      ? avatarUrl
+      : `${API_BASE_URL}${avatarUrl}`
+    : null;
 
   return (
     <div className="lg:sticky lg:top-20.25 lg:self-start flex flex-col gap-4">
@@ -68,10 +90,56 @@ export default function ProfileIdentityCard({
         <div className="p-5 space-y-5">
           {/* Avatar + name */}
           <div className="flex flex-col items-center text-center gap-3 pt-1">
-            <div className="relative">
-              <div className="size-15 rounded-2xl bg-primary flex items-center justify-center text-[22px] font-bold text-white select-none tracking-tight">
-                {initials}
-              </div>
+            <div className="relative group">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    setUploading(true);
+                    const { url } = await profileService.uploadAvatar(file);
+                    setValue("avatar_url", url);
+                  } catch {
+                    // upload failed silently
+                  } finally {
+                    setUploading(false);
+                    e.target.value = "";
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="size-15 rounded-2xl overflow-hidden relative cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {avatarSrc ? (
+                  <Image
+                    src={avatarSrc}
+                    alt="Profile"
+                    fill
+                    className="object-cover"
+                    unoptimized
+                    placeholder="blur"
+                    blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjN2I3Y2ZmIiBvcGFjaXR5PSIwLjMiLz48L3N2Zz4="
+                  />
+                ) : (
+                  <div className="size-full bg-primary flex items-center justify-center text-[22px] font-bold text-white select-none tracking-tight">
+                    {initials}
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                  {uploading ? (
+                    <Loader2 className="size-4 text-white animate-spin opacity-0 group-hover:opacity-100 transition-opacity" />
+                  ) : (
+                    <Camera className="size-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  )}
+                </div>
+              </button>
               {pct === 100 && (
                 <div className="absolute -bottom-1 -right-1 size-4.5 rounded-full bg-success flex items-center justify-center shadow">
                   <Check className="size-2.5 text-white" strokeWidth={3} />

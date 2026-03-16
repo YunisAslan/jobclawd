@@ -56,6 +56,14 @@ CREATE TABLE IF NOT EXISTS profiles (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS user_credits (
+  email       TEXT PRIMARY KEY,
+  credits     INTEGER NOT NULL DEFAULT 10,
+  max_credits INTEGER NOT NULL DEFAULT 10,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS search_cache (
   id           SERIAL PRIMARY KEY,
   filters_hash TEXT NOT NULL UNIQUE,

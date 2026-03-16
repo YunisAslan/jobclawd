@@ -41,6 +41,7 @@ export interface UserProfile {
   linkedin_url?: string;
   portfolio_url?: string;
   headline?: string;
+  avatar_url?: string;
   desired_titles?: string[];
   job_types?: string[];
   preferred_location?: LocationValue;

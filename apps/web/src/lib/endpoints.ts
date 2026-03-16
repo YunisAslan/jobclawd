@@ -19,9 +19,13 @@ export const ENDPOINTS = {
   // Meta
   META_FILTERS: "/api/meta/filters",
 
+  // Credits
+  CREDITS: "/api/credits",
+
   // Profile
   PROFILE: "/api/profile",
   CV_UPLOAD: "/api/profile/cv/upload",
+  AVATAR_UPLOAD: "/api/profile/avatar/upload",
 
   // Settings
   SMTP_SETTINGS: "/api/settings/smtp",

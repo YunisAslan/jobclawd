@@ -27,6 +27,7 @@ async def run_search(
     salary_min: Optional[str] = None,
     sort_by: Optional[str] = None,
     profile: Optional[UserProfile] = None,
+    force_refresh: bool = False,
 ) -> SearchResponse:
     """
     1. Build a deterministic cache key from all filters.
@@ -50,9 +51,11 @@ async def run_search(
     cache_key = make_cache_key(filters_dict)
 
     # ── Cache HIT ────────────────────────────────────────────────────────────
-    cached = get_cached_result(cache_key)
+    cached = get_cached_result(cache_key) if not force_refresh else None
     if cached is not None:
-        return SearchResponse(**cached)
+        resp = SearchResponse(**cached)
+        resp.cached = True
+        return resp
 
     # ── Cache MISS — run full scraping pipeline ──────────────────────────────
     # Expand multi-value location into per-country shards so each scraper

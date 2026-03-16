@@ -42,6 +42,18 @@ class ProfileService extends APIService {
     });
     return res.data;
   }
+
+  async uploadAvatar(file: File): Promise<{ url: string }> {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await this.post(ENDPOINTS.AVATAR_UPLOAD, form, {
+      headers: {
+        ...getAuthHeader(),
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return res.data;
+  }
 }
 
 export const profileService = new ProfileService();

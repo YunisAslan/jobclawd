@@ -3,6 +3,7 @@
 import { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Badge } from "@/components/ui/Badge";
 import { Separator } from "@/components/ui/Separator";
 import { Button } from "@/components/ui/Button";
@@ -15,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
 import { cn } from "@/lib/utils";
+import { API_BASE_URL } from "@/lib/endpoints";
 import { useSidebarShell } from "@/contexts/SidebarShellContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/contexts/ProfileContext";
@@ -43,6 +45,12 @@ export default function TopBar({ title, action, autopilotEnabled, className }: T
   const { profile } = useProfile();
   const { resolved: theme, preference, setTheme } = useTheme();
   const router = useRouter();
+
+  const avatarUrl = profile.avatar_url
+    ? profile.avatar_url.startsWith("http")
+      ? profile.avatar_url
+      : `${API_BASE_URL}${profile.avatar_url}`
+    : null;
 
   const initials =
     `${profile.name?.[0] ?? ""}${profile.surname?.[0] ?? ""}`.toUpperCase() ||
@@ -139,8 +147,18 @@ export default function TopBar({ title, action, autopilotEnabled, className }: T
                 className="rounded-full hover:bg-accent p-0 size-8"
                 aria-label="User menu"
               >
-                <div className="size-7 rounded-full flex items-center justify-center bg-primary text-primary-foreground text-[11px] font-bold">
-                  {initials}
+                <div className="size-7 rounded-full flex items-center justify-center bg-primary text-primary-foreground text-[11px] font-bold overflow-hidden relative">
+                  {avatarUrl ? (
+                    <Image
+                      src={avatarUrl}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  ) : (
+                    initials
+                  )}
                 </div>
               </Button>
             </DropdownMenuTrigger>

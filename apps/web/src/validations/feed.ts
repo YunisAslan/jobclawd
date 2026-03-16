@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const feedFilterSchema = z.object({
-  query: z.string().optional(),
+  query: z.string().min(1, "Enter a job title or keyword to search"),
   sources: z.array(z.string()).optional(),
   workModes: z.array(z.string()).optional(),
   location: z

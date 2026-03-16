@@ -16,7 +16,8 @@ from models.schemas import (
 from scraper.detail import scrape_job_detail
 from services.search_service import run_search
 from repositories import profile_repo
-from utils.auth_utils import get_optional_email
+from repositories.credits_repo import get_credits, use_credit
+from utils.auth_utils import get_optional_email, get_current_email
 
 router = APIRouter()
 
@@ -27,6 +28,15 @@ _ALLOWED_HOSTS = ["jobsearch.az", "linkedin.com", "indeed.com", "az.indeed.com"]
 async def search_jobs(request: SearchRequest, email: Optional[str] = Depends(get_optional_email)):
     sources = request.sources if request.sources else [JobSource.jobsearch, JobSource.linkedin, JobSource.indeed]
 
+    # Check credits before searching (only matters for cache misses, checked after)
+    if email:
+        credits = get_credits(email)
+        if credits["credits"] <= 0:
+            raise HTTPException(
+                status_code=429,
+                detail="No search credits remaining.",
+            )
+
     profile: UserProfile | None = None
     raw = profile_repo.get_profile(email) if email else None
     if raw:
@@ -36,7 +46,7 @@ async def search_jobs(request: SearchRequest, email: Optional[str] = Depends(get
             profile = None
 
     try:
-        return await run_search(
+        result = await run_search(
             query=request.query,
             sources=sources,
             location=request.location,
@@ -47,9 +57,21 @@ async def search_jobs(request: SearchRequest, email: Optional[str] = Depends(get
             salary_min=request.salaryMin,
             sort_by=request.sortBy,
             profile=profile,
+            force_refresh=request.forceRefresh,
         )
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Search error: {e}")
+
+    # Deduct credit only on cache miss (actual scraping)
+    if email and not result.cached:
+        use_credit(email)
+
+    return result
+
+
+@router.get("/credits")
+async def get_user_credits(email: str = Depends(get_current_email)):
+    return get_credits(email)
 
 
 @router.post("/job-details", response_model=JobDetailResponse)
