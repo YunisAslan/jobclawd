@@ -17,13 +17,26 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile.prod
     restart: unless-stopped
-    ports:
-      - "8000:8000"
     env_file:
       - .env.prod
     depends_on:
       postgres:
         condition: service_healthy
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
 
   web:
     build:
@@ -42,3 +55,5 @@ services:
 
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:
