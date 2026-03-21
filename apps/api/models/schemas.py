@@ -52,6 +52,24 @@ class LocationFilter(BaseModel):
     values: list[str] = []
 
 
+class EducationEntry(BaseModel):
+    institution: str = ""
+    degree: str = ""
+    field_of_study: str = ""
+    start_year: Optional[int] = None
+    end_year: Optional[int] = None
+
+
+class LanguageEntry(BaseModel):
+    language: str = ""
+    level: str = ""  # "native" | "fluent" | "advanced" | "intermediate" | "basic"
+
+
+class CoverLetterTemplate(BaseModel):
+    name: str = ""
+    body: str = ""
+
+
 class UserProfile(BaseModel):
     name: str
     surname: str = ""
@@ -69,6 +87,7 @@ class UserProfile(BaseModel):
     phone: Optional[str] = None
     linkedin_url: Optional[str] = None
     portfolio_url: Optional[str] = None
+    github_url: Optional[str] = None
 
     # Job search preference fields — used to pre-fill feed filters + apply cover letter
     headline: Optional[str] = None
@@ -80,6 +99,14 @@ class UserProfile(BaseModel):
     salary_period: Optional[str] = None          # "annual" | "monthly" | "hourly"
     years_of_experience: Optional[int] = None
     availability: Optional[str] = None
+
+    # Extended profile fields — Phase 2
+    work_authorization: Optional[str] = None     # "citizen" | "permanent_resident" | "visa_required" | "no_sponsorship"
+    notice_period: Optional[str] = None          # "immediately" | "2-weeks" | "1-month" | "3-months"
+    education: list[EducationEntry] = []
+    skills: list[str] = []
+    language_levels: list[LanguageEntry] = []
+    cover_letter_templates: list[CoverLetterTemplate] = []
 
 
 # ---------- Search ----------
@@ -110,10 +137,18 @@ class JobListing(BaseModel):
     match_flags: list[str] = []
     location_str: Optional[str] = None
     work_mode_str: Optional[str] = None
+    work_mode_src: Optional[str] = None
     experience_str: Optional[str] = None
+    experience_src: Optional[str] = None
+    job_type_str: Optional[str] = None
+    job_type_src: Optional[str] = None
+    salary_str: Optional[str] = None
+    salary_src: Optional[str] = None
     description_snippet: Optional[str] = None
     # Email extracted at search time (when available from API data)
     hr_email: Optional[str] = None
+    # How the user can apply — set at scrape time based on source & email availability
+    apply_method: Optional[str] = None
 
 
 class SearchResponse(BaseModel):
@@ -137,6 +172,28 @@ class ApplyMethod(str, Enum):
     direct = "direct"
 
 
+class EasyApplyAnalysis(BaseModel):
+    """LinkedIn Easy Apply flow complexity analysis."""
+    tier: str = "unknown"                       # "A" | "B" | "C" | "unknown"
+    tier_label: str = ""                        # human-readable label
+    step_count: int = 0                         # number of form steps detected
+    has_resume_upload: bool = False
+    has_custom_questions: bool = False
+    has_cover_letter: bool = False
+    unknown_fields: list[str] = []              # fields not auto-fillable from profile
+    safe_to_auto_submit: bool = False
+
+
+class ATSInfo(BaseModel):
+    """External ATS platform detection."""
+    platform: Optional[str] = None              # "greenhouse" | "lever" | "workable" | "smartrecruiters" | "breezy" | "ashby" | None
+    platform_label: str = ""                    # human-readable label
+    confidence: float = 0.0                     # 0.0–1.0
+    prefillable_fields: list[str] = []          # fields we can auto-fill from profile
+    missing_fields: list[str] = []              # fields user must fill manually
+    apply_url: Optional[str] = None             # direct application form URL if detected
+
+
 class JobDetailResponse(BaseModel):
     title: str
     company: str
@@ -146,6 +203,10 @@ class JobDetailResponse(BaseModel):
     apply_url: Optional[str] = None
     apply_method: ApplyMethod = ApplyMethod.direct
     error_message: Optional[str] = None
+    # Phase 4: Easy Apply tier classification
+    easy_apply: Optional[EasyApplyAnalysis] = None
+    # Phase 5: ATS platform detection
+    ats_info: Optional[ATSInfo] = None
 
 
 # ---------- Apply ----------
@@ -250,6 +311,25 @@ class CountryOption(BaseModel):
     currency: str
     cities: list[CityOption] = []
 
+
+# ---------- Screening Answers ----------
+
+class ScreeningAnswer(BaseModel):
+    id: Optional[int] = None
+    question: str
+    answer: str = ""
+
+
+class ScreeningAnswersResponse(BaseModel):
+    answers: list[ScreeningAnswer]
+
+
+class ScreeningAnswerUpsert(BaseModel):
+    question: str
+    answer: str
+
+
+# ---------- Meta ----------
 
 class MetaFiltersResponse(BaseModel):
     sources: list[FilterOption]

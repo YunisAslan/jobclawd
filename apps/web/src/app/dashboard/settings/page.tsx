@@ -1,7 +1,8 @@
 import TopBar from "@/components/layout/TopBar";
 import SMTPForm from "@/components/settings/SMTPForm";
+import ScreeningAnswersManager from "@/components/settings/ScreeningAnswersManager";
 import DeleteAccountSection from "@/components/settings/DeleteAccountSection";
-import { Mail, ShieldAlert } from "lucide-react";
+import { Mail, MessageSquareText, ShieldAlert } from "lucide-react";
 
 export default function SettingsPage() {
   return (
@@ -25,6 +26,15 @@ export default function SettingsPage() {
             description="Configure how job applications are sent on your behalf."
           >
             <SMTPForm />
+          </SettingsSection>
+
+          {/* ── Screening answers ── */}
+          <SettingsSection
+            icon={<MessageSquareText className="size-4" />}
+            title="Screening answers"
+            description="Save reusable answers to common application questions."
+          >
+            <ScreeningAnswersManager />
           </SettingsSection>
 
           {/* ── Danger zone ── */}

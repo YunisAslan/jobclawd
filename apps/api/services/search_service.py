@@ -14,6 +14,7 @@ from db.database import get_db
 from services.cache_service import make_cache_key
 from repositories.cache_repo import get_cached_result, set_cached_result
 from engine.scoring import score_job
+from services.enrichment_service import enrich_jobs, merge_metadata_into_jobs, prepare_jobs_for_search
 
 
 async def run_search(
@@ -53,6 +54,9 @@ async def run_search(
     # ── Cache HIT ────────────────────────────────────────────────────────────
     cached = get_cached_result(cache_key) if not force_refresh else None
     if cached is not None:
+        # Merge any metadata that was enriched in the background since last cache write
+        if "jobs" in cached:
+            cached["jobs"] = merge_metadata_into_jobs(cached["jobs"])
         resp = SearchResponse(**cached)
         resp.cached = True
         return resp
@@ -136,6 +140,16 @@ async def run_search(
 
     print(f"[Search] Total unique jobs after merge: {len(all_jobs)} from {len(tasks)} scraper tasks")
 
+    # Merge cached enrichment and synchronously hydrate uncached jobs from
+    # detail pages so filtering runs on richer metadata, not card guesses.
+    try:
+        all_job_dicts = [json.loads(j.model_dump_json()) for j in all_jobs]
+        all_job_dicts = merge_metadata_into_jobs(all_job_dicts)
+        all_job_dicts = await prepare_jobs_for_search(all_job_dicts)
+        all_jobs = [JobListing(**d) for d in all_job_dicts]
+    except Exception as e:
+        print(f"[Search] Pre-filter metadata prep error (non-fatal): {e}")
+
     # Semantic AI filter
     from services.ai_filter import ai_filter_jobs
     visible = await ai_filter_jobs(
@@ -159,12 +173,28 @@ async def run_search(
     elif sort_by == "job-title-descending":
         visible.sort(key=lambda j: j.title.lower(), reverse=True)
 
-    response = SearchResponse(jobs=visible, total=len(visible), query=query, currency=currency)
+    # ── Merge any previously-enriched metadata into listings ────────────────
+    try:
+        job_dicts = [json.loads(j.model_dump_json()) for j in visible]
+        job_dicts = merge_metadata_into_jobs(job_dicts)
+        merged_jobs = [JobListing(**d) for d in job_dicts]
+    except Exception as e:
+        print(f"[Search] Metadata merge error (non-fatal): {e}")
+        merged_jobs = visible
+
+    response = SearchResponse(jobs=merged_jobs, total=len(merged_jobs), query=query, currency=currency)
 
     # ── Write to cache (fire-and-forget — don't delay the response) ──────────
     asyncio.create_task(
-        _store_cache(cache_key, filters_dict, response, len(visible))
+        _store_cache(cache_key, filters_dict, response, len(merged_jobs))
     )
+
+    # ── Background enrichment: fetch full descriptions for jobs missing metadata
+    try:
+        job_dicts_for_enrich = [json.loads(j.model_dump_json()) for j in merged_jobs]
+        asyncio.create_task(enrich_jobs(job_dicts_for_enrich))
+    except Exception as e:
+        print(f"[Search] Enrichment launch error (non-fatal): {e}")
 
     return response
 
@@ -173,6 +203,10 @@ async def _store_cache(cache_key: str, filters_dict: dict, response: SearchRespo
     """Runs in the background after the response is returned to the client."""
     try:
         result_dict = json.loads(response.model_dump_json())
+        for job in result_dict.get("jobs", []):
+            if isinstance(job, dict):
+                # Keep DB cache minimal: do not persist scraped free-text snippets.
+                job["description_snippet"] = None
         set_cached_result(
             filters_hash=cache_key,
             filters_dict=filters_dict,

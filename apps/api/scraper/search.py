@@ -1,10 +1,19 @@
 from typing import Optional
 import asyncio
-from typing import Optional
+import re
 
 from scraper import get_browser
 from models.schemas import JobListing, LocationFilter, JobSource
 from utils.email_extractor import extract_emails
+from utils.job_meta_extractor import extract_all as extract_meta
+from services.ai_metadata_extractor import extract_metadata_ai_batch
+from services.apply_method_detector import detect_from_jobsearch_item
+
+
+def _strip_html(text: str) -> str:
+    """Remove HTML tags and normalize whitespace."""
+    clean = re.sub(r"<[^>]+>", " ", text)
+    return re.sub(r"\s+", " ", clean).strip()
 
 
 def _extract_email_from_item(item: dict) -> Optional[str]:
@@ -30,6 +39,27 @@ def _extract_email_from_item(item: dict) -> Optional[str]:
     return found[0] if found else None
 
 BASE_URL = "https://www.jobsearch.az"
+
+
+def _has_missing_metadata(job: JobListing) -> bool:
+    return not all([job.salary_str, job.job_type_str, job.experience_str, job.work_mode_str])
+
+
+def _merge_missing_fields_ai(job: JobListing, meta: dict) -> None:
+    """Merge AI results into job — but NEVER set work_mode from AI for jobsearch.
+    The structured API employment_type field is authoritative for work mode."""
+    if not job.salary_str and meta.get("salary_str"):
+        job.salary_str = meta["salary_str"]
+        job.salary_src = "openai"
+    if not job.job_type_str and meta.get("job_type_str"):
+        job.job_type_str = meta["job_type_str"]
+        job.job_type_src = "openai"
+    if not job.experience_str and meta.get("experience_str"):
+        job.experience_str = meta["experience_str"]
+        job.experience_src = "openai"
+    # work_mode is NOT set from AI for jobsearch — the structured
+    # employment_type field from the API is the only reliable source.
+    # AI reads "distant" or "remote" in descriptions and falsely tags jobs.
 
 
 async def scrape_search(
@@ -259,6 +289,19 @@ async def scrape_search(
             print(f"[JobSearch] Logo scrape warning: {e}")
 
         results = []
+        # Debug: log first item structure to understand API fields
+        if all_items:
+            sample = all_items[0]
+            print(
+                f"[JobSearch] API item sample keys: {list(sample.keys())}"
+            )
+            if "employment_type" in sample:
+                print(f"[JobSearch] employment_type sample: {sample['employment_type']}")
+            if "work_type" in sample:
+                print(f"[JobSearch] work_type sample: {sample['work_type']}")
+            if "type" in sample:
+                print(f"[JobSearch] type sample: {sample['type']}")
+
         for item in all_items:
             # Extract location from city field or title
             city_value = None
@@ -268,6 +311,65 @@ async def scrape_search(
             item_slug = item['slug']
             logo_url = slug_to_logo.get(item_slug) or item.get("company", {}).get("logo") or None
             
+            hr_email = _extract_email_from_item(item)
+            apply_method = detect_from_jobsearch_item(item, hr_email)
+
+            # --- Extract structured metadata from API item fields ---
+            experience_str = None
+            job_type_str = None
+            work_mode_str = None
+
+            # employment_type from API: 0=Tam(Full-time), 1=Natamam(Part-time),
+            # 2=Təcrübə(Internship), 3=Müvəqqəti(Temporary), 4=Distant(Remote), 5=Frilans
+            emp_type = item.get("employment_type")
+            if isinstance(emp_type, dict):
+                emp_id = emp_type.get("id")
+                if emp_id == 4:
+                    work_mode_str = "Remote"
+                elif emp_id == 0:
+                    job_type_str = "Full-time"
+                elif emp_id == 1:
+                    job_type_str = "Part-time"
+                elif emp_id == 2:
+                    job_type_str = "Internship"
+                elif emp_id == 3:
+                    job_type_str = "Temporary"
+                elif emp_id == 5:
+                    job_type_str = "Freelance"
+            elif isinstance(emp_type, list):
+                for et in emp_type:
+                    if isinstance(et, dict):
+                        eid = et.get("id")
+                        if eid == 4:
+                            work_mode_str = "Remote"
+                        elif eid == 0 and not job_type_str:
+                            job_type_str = "Full-time"
+                        elif eid == 1 and not job_type_str:
+                            job_type_str = "Part-time"
+                        elif eid == 2 and not job_type_str:
+                            job_type_str = "Internship"
+                        elif eid == 3 and not job_type_str:
+                            job_type_str = "Temporary"
+                        elif eid == 5 and not job_type_str:
+                            job_type_str = "Freelance"
+
+            # Salary: regex on description + API salary object (numeric, reliable)
+            desc_text = item.get("description") or item.get("short_description") or ""
+            meta = extract_meta(desc_text) if desc_text else {}
+            salary_str = meta.get("salary_str")
+            if not salary_str:
+                salary_obj = item.get("salary")
+                if isinstance(salary_obj, dict):
+                    s_min = salary_obj.get("min") or salary_obj.get("from")
+                    s_max = salary_obj.get("max") or salary_obj.get("to")
+                    s_cur = salary_obj.get("currency", "")
+                    if s_min and s_max:
+                        salary_str = f"{s_min}-{s_max} {s_cur}".strip()
+                    elif s_min:
+                        salary_str = f"{s_min}+ {s_cur}".strip()
+                elif isinstance(salary_obj, str) and salary_obj.strip():
+                    salary_str = salary_obj.strip()
+
             results.append(
                 JobListing(
                     title=item["title"],
@@ -278,10 +380,75 @@ async def scrape_search(
                     source=JobSource.jobsearch,
                     logo_url=logo_url,
                     location_str=city_value,
-                    hr_email=_extract_email_from_item(item),
+                    hr_email=hr_email,
+                    apply_method=apply_method,
+                    salary_str=salary_str,
+                    job_type_str=job_type_str,
+                    experience_str=experience_str,
+                    work_mode_str=work_mode_str,
                 )
             )
         
+        # ── AI extraction for jobs still missing metadata ──
+        # JobSearch API provides full descriptions, so AI gets rich text.
+        ai_candidates = []
+        ai_index_map: dict[str, int] = {}
+        for idx, job in enumerate(results):
+            if not _has_missing_metadata(job):
+                continue
+            item_id = str(idx)
+            ai_index_map[item_id] = idx
+            # Get description from original API items (strip HTML)
+            orig_item = all_items[idx] if idx < len(all_items) else {}
+            raw_desc = orig_item.get("description") or orig_item.get("short_description") or ""
+            desc = _strip_html(raw_desc)
+            ai_candidates.append(
+                {
+                    "id": item_id,
+                    "title": job.title,
+                    "company": job.company,
+                    "location_str": job.location_str or "",
+                    "snippet": "",
+                    "detail_text": desc,
+                }
+            )
+
+        if ai_candidates:
+            print(
+                f"[JobSearch] AI extracting from {len(ai_candidates)} jobs "
+                f"(have descriptions)..."
+            )
+            try:
+                ai_results = await extract_metadata_ai_batch(
+                    ai_candidates,
+                    source="jobsearch",
+                    context="api-description",
+                )
+                for item_id, meta in ai_results.items():
+                    idx = ai_index_map.get(item_id)
+                    if idx is None:
+                        continue
+                    _merge_missing_fields_ai(results[idx], meta)
+            except Exception as e:
+                print(f"[JobSearch] AI extraction error: {e}")
+
+        # Log final metadata coverage
+        total = len(results)
+        if total > 0:
+            filled = {
+                "salary": sum(1 for j in results if j.salary_str),
+                "job_type": sum(1 for j in results if j.job_type_str),
+                "experience": sum(1 for j in results if j.experience_str),
+                "work_mode": sum(1 for j in results if j.work_mode_str),
+            }
+            print(
+                f"[JobSearch] Metadata coverage ({total} jobs): "
+                f"salary={filled['salary']} "
+                f"job_type={filled['job_type']} "
+                f"experience={filled['experience']} "
+                f"work_mode={filled['work_mode']}"
+            )
+
         # Sort by most recent by default
         if sort_by == "job-title-ascending":
             results.sort(key=lambda x: x.title.lower())
@@ -290,7 +457,7 @@ async def scrape_search(
         else:
             # Default: sort by date posted descending (newest first)
             results.sort(key=lambda x: x.date_posted, reverse=True)
-            
+
         return results
 
     finally:

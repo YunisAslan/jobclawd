@@ -1,1 +1,1 @@
-export type { SMTPSettings, AutopilotSettings } from "@jobclawd/shared";
+export type { SMTPSettings, AutopilotSettings, ScreeningAnswer } from "@jobclawd/shared";

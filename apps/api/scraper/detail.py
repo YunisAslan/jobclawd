@@ -4,18 +4,9 @@ import json as _json
 from scraper import get_browser
 from models.schemas import JobDetailResponse, ApplyMethod
 from utils.email_extractor import extract_emails
-
-
-def detect_apply_method(url: str, email: Optional[str]) -> ApplyMethod:
-    if email:
-        return ApplyMethod.email
-    if "linkedin.com" in url:
-        return ApplyMethod.easy_apply
-    if "jobsearch.az" in url:
-        return ApplyMethod.direct
-    if "indeed.com" in url:
-        return ApplyMethod.external
-    return ApplyMethod.direct
+from services.easy_apply_analyzer import analyze_easy_apply
+from services.ats_detector import detect_ats
+from services.apply_method_detector import detect_from_page
 
 
 def _email_from_api_item(item: dict) -> Optional[str]:
@@ -231,18 +222,47 @@ async def scrape_job_detail(url: str) -> JobDetailResponse:
             }
         """)
 
-        # 1. Email from API response (most reliable)
+        # 1. Email from API response (most reliable for jobsearch.az)
         email = api_email[0]
 
-        # 2. Click Apply button to reveal email in modal
+        # 2. Click Apply button to reveal email in modal (jobsearch.az specific)
         if not email and "jobsearch.az" in url:
             email = await _click_apply_and_extract_email(page)
 
-        # 3. Full-page scan fallback
+        # 3. Check only mailto: links — NOT a full-page regex scan.
+        #    Random emails in footers/contact sections are NOT apply emails.
         if not email:
-            email = await _extract_email_from_page(page)
+            email = await page.evaluate("""
+                () => {
+                    const mailtos = document.querySelectorAll('a[href^="mailto:"]');
+                    for (const a of mailtos) {
+                        const e = a.href.replace('mailto:', '').split('?')[0].trim();
+                        if (e.includes('@')) return e;
+                    }
+                    return null;
+                }
+            """)
 
-        method = detect_apply_method(url, email)
+        # Determine apply method by analyzing what the apply button does —
+        # NOT based on source, NOT based on email existence.
+        detected = await detect_from_page(page, url, email)
+        method = ApplyMethod(detected)
+
+        # Phase 4: LinkedIn Easy Apply tier analysis
+        easy_apply_result = None
+        if "linkedin.com" in url and method == ApplyMethod.easy_apply:
+            try:
+                easy_apply_result = await analyze_easy_apply(page, url)
+            except Exception as e:
+                print(f"[Detail] Easy Apply analysis error: {e}")
+
+        # Phase 5: ATS platform detection for external/direct jobs
+        ats_result = None
+        if method in (ApplyMethod.external, ApplyMethod.direct):
+            try:
+                ats_result = await detect_ats(page, url)
+            except Exception as e:
+                print(f"[Detail] ATS detection error: {e}")
 
         return JobDetailResponse(
             title=(title or "N/A")[:200],
@@ -255,6 +275,8 @@ async def scrape_job_detail(url: str) -> JobDetailResponse:
             error_message=(
                 None if email else "No email found — apply directly on the site."
             ),
+            easy_apply=easy_apply_result,
+            ats_info=ats_result,
         )
 
     finally:

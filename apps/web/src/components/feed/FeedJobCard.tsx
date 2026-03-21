@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { JobListing } from "@/types";
 import SourceBadge from "@/components/ui/SourceBadge";
@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
 import { cn, formatDate } from "@/lib/utils";
-import { CircleCheck, ExternalLink, MapPin, MoreHorizontal, X } from "lucide-react";
+import { Banknote, Bot, Briefcase, CircleCheck, ExternalLink, GraduationCap, Laptop, MapPin, MoreHorizontal, X } from "lucide-react";
 import Link from "next/link";
 
 interface FeedJobCardProps {
@@ -89,6 +89,35 @@ function MatchScore({ score, level }: { score: number; level: "high" | "review" 
   );
 }
 
+function MetaChip({
+  icon,
+  children,
+  className,
+  source,
+}: {
+  icon: ReactNode;
+  children: ReactNode;
+  className: string;
+  source?: string | null;
+}) {
+  const isAI = source === "openai" || source === "gemini" || source === "ai";
+  return (
+    <span className={className}>
+      {icon}
+      {children}
+      {isAI && (
+        <span
+          className="inline-flex items-center gap-0.5 rounded-sm bg-primary/10 px-1 py-px text-[9px] font-semibold text-primary"
+          title="Extracted by AI"
+        >
+          <Bot className="size-2" />
+          AI
+        </span>
+      )}
+    </span>
+  );
+}
+
 export default function FeedJobCard({
   job,
   selected,
@@ -131,12 +160,54 @@ export default function FeedJobCard({
                 </>
               )}
             </div>
-            {job.location_str && (
-              <div className="flex items-center gap-1 mt-1">
-                <MapPin className="size-3 text-muted-foreground/60 shrink-0" />
-                <span className="text-xs text-muted-foreground/70 truncate">
-                  {job.location_str}
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {job.location_str && (
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="size-3 text-muted-foreground/60 shrink-0" />
+                  <span className="text-xs text-muted-foreground/70 truncate">
+                    {job.location_str}
+                  </span>
                 </span>
+              )}
+            </div>
+            {(job.experience_str || job.job_type_str || job.salary_str || job.work_mode_str) && (
+              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                {job.experience_str && (
+                  <MetaChip
+                    className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 border border-border/60 rounded-md px-1.5 py-0.5"
+                    icon={<GraduationCap className="size-2.5" />}
+                    source={job.experience_src}
+                  >
+                    {job.experience_str}
+                  </MetaChip>
+                )}
+                {job.job_type_str && (
+                  <MetaChip
+                    className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 border border-border/60 rounded-md px-1.5 py-0.5"
+                    icon={<Briefcase className="size-2.5" />}
+                    source={job.job_type_src}
+                  >
+                    {job.job_type_str}
+                  </MetaChip>
+                )}
+                {job.salary_str && (
+                  <MetaChip
+                    className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-500/8 border border-emerald-500/20 rounded-md px-1.5 py-0.5"
+                    icon={<Banknote className="size-2.5" />}
+                    source={job.salary_src}
+                  >
+                    {job.salary_str}
+                  </MetaChip>
+                )}
+                {job.work_mode_str && (
+                  <MetaChip
+                    className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 border border-border/60 rounded-md px-1.5 py-0.5"
+                    icon={<Laptop className="size-2.5" />}
+                    source={job.work_mode_src}
+                  >
+                    {job.work_mode_str}
+                  </MetaChip>
+                )}
               </div>
             )}
           </div>

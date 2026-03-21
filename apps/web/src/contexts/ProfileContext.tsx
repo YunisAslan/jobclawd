@@ -21,6 +21,7 @@ export const DEFAULT_PROFILE: UserProfile = {
   phone: "",
   linkedin_url: "",
   portfolio_url: "",
+  github_url: "",
   headline: "",
   desired_titles: [],
   job_types: [],
@@ -29,6 +30,12 @@ export const DEFAULT_PROFILE: UserProfile = {
   salary_period: "annual",
   years_of_experience: null,
   availability: "",
+  work_authorization: "",
+  notice_period: "",
+  education: [],
+  skills: [],
+  language_levels: [],
+  cover_letter_templates: [],
 };
 
 interface ProfileContextValue {

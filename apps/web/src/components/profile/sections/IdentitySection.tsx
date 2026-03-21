@@ -101,6 +101,17 @@ export default function IdentitySection({ control, email }: Props) {
                 />
               </div>
             </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">GitHub URL</Label>
+              <Controller
+                name="github_url"
+                control={control}
+                render={({ field }) => (
+                  <Input placeholder="github.com/you" {...field} value={field.value ?? ""} />
+                )}
+              />
+            </div>
           </div>
         </div>
       </div>

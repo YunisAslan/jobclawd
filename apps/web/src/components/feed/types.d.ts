@@ -14,4 +14,10 @@ export type {
   ApplyDrawerProps,
   ApplyFormValues,
   ReadinessField,
+  EducationEntry,
+  LanguageEntry,
+  CoverLetterTemplate,
+  ScreeningAnswer,
+  EasyApplyAnalysis,
+  ATSInfo,
 } from "@jobclawd/shared";

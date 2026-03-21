@@ -54,8 +54,11 @@ export default function ProfileIdentityCard({
   const cvLinks = useWatch({ control, name: "cv_links" }) ?? [];
   const currentEmployer = useWatch({ control, name: "current_employer" }) ?? "";
   const blacklist = useWatch({ control, name: "blacklist" }) ?? [];
+  const skills = useWatch({ control, name: "skills" }) ?? [];
+  const education = useWatch({ control, name: "education" }) ?? [];
+  const languages = useWatch({ control, name: "language_levels" }) ?? [];
 
-  // One check per section: Identity, Targeting, Preferences, Availability, CVs & Documents, Blocklist
+  // One check per section: Identity, Targeting, Preferences, Availability, Skills, Education, Languages, CVs & Documents, Blocklist
   const completionChecks = [
     name.length > 0, // Identity
     desiredTitles.length > 0, // Targeting
@@ -64,6 +67,9 @@ export default function ProfileIdentityCard({
       salaryMin.length > 0 ||
       !!(preferredLocation?.value || (preferredLocation?.values?.length ?? 0) > 0), // Preferences
     availability.length > 0 || (years != null && years > 0), // Availability
+    skills.length > 0, // Skills
+    education.length > 0, // Education
+    languages.length > 0, // Languages
     cvLinks.length > 0, // CVs & Documents
     currentEmployer.length > 0 || blacklist.length > 0, // Blocklist
   ];

@@ -77,3 +77,37 @@ CREATE TABLE IF NOT EXISTS search_cache (
 
 CREATE INDEX IF NOT EXISTS idx_search_cache_expires
   ON search_cache (expires_at);
+
+CREATE TABLE IF NOT EXISTS job_metadata (
+  url            TEXT PRIMARY KEY,
+  experience_str TEXT,
+  experience_src TEXT,
+  job_type_str   TEXT,
+  job_type_src   TEXT,
+  salary_str     TEXT,
+  salary_src     TEXT,
+  work_mode_str  TEXT,
+  work_mode_src  TEXT,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at     TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '24 hours'
+);
+
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS experience_src TEXT;
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS job_type_src TEXT;
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS salary_src TEXT;
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS work_mode_src TEXT;
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+UPDATE job_metadata SET expires_at = NOW() + INTERVAL '24 hours' WHERE expires_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_job_metadata_expires
+  ON job_metadata (expires_at);
+
+CREATE TABLE IF NOT EXISTS screening_answers (
+  id         SERIAL PRIMARY KEY,
+  email      TEXT NOT NULL,
+  question   TEXT NOT NULL,
+  answer     TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT screening_answers_email_question_key UNIQUE (email, question)
+);

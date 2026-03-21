@@ -20,19 +20,24 @@ from routers import auth_router
 from routers import meta
 from routers import settings_router
 from routers import profile_router
+from routers import screening_router
 from scraper import shutdown_browser
 from db.database import init_db
 
 
 async def _cache_cleanup_loop() -> None:
-    """Background task: delete expired search_cache rows every hour."""
+    """Background task: delete expired cache and metadata rows every hour."""
     while True:
         await asyncio.sleep(3600)
         try:
             from repositories.cache_repo import delete_expired_cache
+            from repositories.metadata_repo import delete_expired_metadata
             deleted = delete_expired_cache()
+            deleted_meta = delete_expired_metadata()
             if deleted:
                 print(f"[Cache] Cleaned up {deleted} expired entries")
+            if deleted_meta:
+                print(f"[Metadata] Cleaned up {deleted_meta} expired entries")
         except Exception as exc:
             print(f"[Cache] Cleanup error: {exc}")
 
@@ -40,6 +45,15 @@ async def _cache_cleanup_loop() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+
+    # ── AI metadata status ──
+    from services.ai_metadata_extractor import ai_metadata_enabled, _OPENAI_MODEL, _OPENAI_BASE_URL
+    if ai_metadata_enabled():
+        print(f"[AIMetadata] ENABLED — model={_OPENAI_MODEL} base_url={_OPENAI_BASE_URL}")
+    else:
+        print("[AIMetadata] DISABLED — OPENAI_API_KEY is missing or empty. "
+              "Job metadata extraction will use regex fallback only.")
+
     cleanup_task = asyncio.create_task(_cache_cleanup_loop())
     yield
     cleanup_task.cancel()
@@ -70,6 +84,7 @@ app.include_router(auth_router.router, prefix="/api")
 app.include_router(meta.router, prefix="/api")
 app.include_router(settings_router.router, prefix="/api")
 app.include_router(profile_router.router, prefix="/api")
+app.include_router(screening_router.router, prefix="/api")
 
 
 @app.get("/health")

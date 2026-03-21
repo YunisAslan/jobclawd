@@ -14,10 +14,10 @@ export function formFromProfile(profile: UserProfile): ApplyFormValues {
 }
 
 export function resolveApplyMethod(job: JobListing, detail: JobDetail | null): ApplyMethod {
-  if (detail?.apply_method && detail.apply_method !== "direct") return detail.apply_method;
-  if (detail?.email || job.hr_email) return "email";
-  if (job.source === "linkedin") return "easy_apply";
-  if (job.source === "indeed") return "external";
+  // Trust the backend's page-level analysis first (most accurate)
+  if (detail?.apply_method) return detail.apply_method;
+  // Fall back to the search-time detection from the scraper
+  if (job.apply_method) return job.apply_method;
   return "direct";
 }
 

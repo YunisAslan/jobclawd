@@ -19,6 +19,8 @@ import { generateCoverLetter } from "@/lib/cover-letter";
 import ReadinessBar from "./ReadinessBar";
 import ApplicantDetails from "./ApplicantDetails";
 import EmailComposeModal from "./EmailComposeModal";
+import EasyApplyTierCard from "./EasyApplyTierCard";
+import ATSInfoCard from "./ATSInfoCard";
 import { useApplyDrawer } from "@/hooks/use-apply-drawer";
 import { ApplyDrawerProps } from "../types";
 import { METHOD_CONFIG } from "./utils";
@@ -136,6 +138,16 @@ export default function ApplyDrawer({ job, onClose, onApplied }: ApplyDrawerProp
                     </div>
                   </div>
                 </div>
+              )}
+
+              {/* Phase 4: Easy Apply tier classification */}
+              {detail?.easy_apply && detail.easy_apply.tier !== "unknown" && (
+                <EasyApplyTierCard analysis={detail.easy_apply} />
+              )}
+
+              {/* Phase 5: ATS platform detection */}
+              {detail?.ats_info && detail.ats_info.platform && (
+                <ATSInfoCard ats={detail.ats_info} />
               )}
 
               <ReadinessBar fields={readiness} />

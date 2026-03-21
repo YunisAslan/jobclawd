@@ -27,6 +27,44 @@ def tokenize(text: str) -> set[str]:
     return set(re.findall(r"[a-z0-9]+", text.lower()))
 
 
+def _job_search_text(job: JobListing) -> str:
+    parts = [
+        job.title or "",
+        job.company or "",
+        job.location_str or "",
+        job.description_snippet or "",
+        job.salary_str or "",
+        job.job_type_str or "",
+        job.experience_str or "",
+        job.work_mode_str or "",
+    ]
+    return " ".join(part for part in parts if part).strip()
+
+
+def _normalize_filter_value(value: str) -> str:
+    lowered = (value or "").strip().lower()
+    aliases = {
+        "onsite": "onsite",
+        "on-site": "onsite",
+        "on site": "onsite",
+        "remote": "remote",
+        "hybrid": "hybrid",
+        "full-time": "full-time",
+        "full time": "full-time",
+        "part-time": "part-time",
+        "part time": "part-time",
+        "internship": "internship",
+        "intern": "internship",
+        "temporary": "temporary",
+        "temp": "temporary",
+        "contract": "contract",
+        "freelance": "freelance",
+        "commission": "commission",
+        "seasonal": "seasonal",
+    }
+    return aliases.get(lowered, lowered)
+
+
 DOMAINS = {
     "frontend": {"frontend", "front", "react", "vue", "angular", "javascript", "ui", "typescript", "next", "nextjs"},
     "backend": {"backend", "back", "php", "python", "java", "node", "c#", "golang", "ruby", "laravel", "django", "spring"},
@@ -127,46 +165,76 @@ def _build_location_whitelist(
 
 
 def _passes_keyword_filter(
-    title_raw: str, title_tokens: set[str],
+    combined_raw: str, combined_tokens: set[str], title_tokens: set[str],
     q_raw: str, q_tokens: set[str], target_domains: set[str],
 ) -> bool:
     if target_domains:
         has_target_keyword = any(
-            any(k in title_tokens for k in DOMAINS[dom])
+            any(k in combined_tokens for k in DOMAINS[dom])
             for dom in target_domains
         )
-        if not has_target_keyword and not (q_tokens & title_tokens) and q_raw not in title_raw:
+        if not has_target_keyword and not (q_tokens & combined_tokens) and q_raw not in combined_raw:
             return False
-
-        for dom, keywords in DOMAINS.items():
-            if dom not in target_domains and any(k in title_tokens for k in keywords):
-                if not any(d in title_tokens for d in target_domains):
-                    return False
     else:
-        if not (q_tokens & title_tokens) and q_raw not in title_raw:
+        if not (q_tokens & combined_tokens) and q_raw not in combined_raw:
             return False
 
     return True
 
 
-def _passes_experience_filter(
-    title_tokens: set[str], snippet_tokens: set[str], experience: list[str],
-) -> bool:
-    combined = title_tokens | snippet_tokens
-    is_entry_search = any(e in ["intern", "junior", "freshmen"] for e in experience)
-    is_senior_search = any(e in ["senior", "lead"] for e in experience)
+def _passes_experience_filter(title_tokens: set[str], combined_tokens: set[str], experience: list[str]) -> bool:
+    allowed = {_normalize_filter_value(v) for v in experience if v}
+    detected: set[str] = set()
 
-    if is_entry_search and (title_tokens & SENIOR_WORDS):
+    if title_tokens & ENTRY_WORDS or combined_tokens & ENTRY_WORDS:
+        detected.update({"intern", "junior"})
+    if "junior" in combined_tokens or "jr" in combined_tokens:
+        detected.add("junior")
+    if "mid" in combined_tokens or "middle" in combined_tokens:
+        detected.add("mid")
+    if "senior" in combined_tokens or "sr" in combined_tokens or title_tokens & SENIOR_WORDS:
+        detected.add("senior")
+    if any(token in combined_tokens for token in {"lead", "principal", "staff", "manager", "head"}):
+        detected.update({"lead", "senior"})
+
+    if not detected:
         return False
 
-    if "intern" in experience and not any(e in ["junior", "mid", "senior", "lead"] for e in experience):
-        if not (combined & ENTRY_WORDS):
-            return False
+    return bool(detected & allowed)
 
-    if is_senior_search and (title_tokens & ENTRY_WORDS):
-        return False
 
-    return True
+def _experience_categories(value: str) -> set[str]:
+    lowered = (value or "").strip().lower()
+    if not lowered:
+        return set()
+
+    categories: set[str] = set()
+    if "no experience" in lowered or "intern" in lowered or "entry-level" in lowered or "entry level" in lowered:
+        categories.update({"intern", "junior"})
+    if "junior" in lowered:
+        categories.add("junior")
+    if "mid" in lowered:
+        categories.add("mid")
+    if "senior" in lowered:
+        categories.add("senior")
+    if any(word in lowered for word in ("lead", "principal", "staff", "manager", "head")):
+        categories.update({"lead", "senior"})
+
+    year_match = re.search(r"(\d+)(?:\s*[\+\-–]|(?:\s*to\s*\d+)?)?\s*years?", lowered)
+    if year_match:
+        years = int(year_match.group(1))
+        if years <= 1:
+            categories.update({"intern", "junior"})
+        elif years <= 2:
+            categories.add("junior")
+        elif years <= 4:
+            categories.add("mid")
+        elif years <= 6:
+            categories.add("senior")
+        else:
+            categories.update({"senior", "lead"})
+
+    return categories
 
 
 def _passes_location_filter(
@@ -191,6 +259,18 @@ def _passes_location_filter(
         return True
 
     return False
+
+
+def _detected_work_modes(combined_text: str) -> set[str]:
+    combined = combined_text.lower()
+    detected: set[str] = set()
+    if re.search(r"\b(remote|work\s+from\s+home|wfh)\b", combined):
+        detected.add("remote")
+    if re.search(r"\bhybrid\b", combined):
+        detected.add("hybrid")
+    if re.search(r"\b(on[\s\-]?site|in[\s\-]?office|office[\s\-]?based)\b", combined):
+        detected.add("onsite")
+    return detected
 
 
 def _parse_job_date(raw: str) -> Optional[datetime]:
@@ -249,8 +329,8 @@ _SALARY_PATTERNS = [
 ]
 
 
-def _passes_salary_filter(title: str, snippet: str, annual_min: int) -> bool:
-    combined = f"{title.lower()} {snippet.lower()}"
+def _passes_salary_filter(combined_text: str, annual_min: int) -> bool:
+    combined = combined_text.lower()
 
     for pattern, kind in _SALARY_PATTERNS:
         m = pattern.search(combined)
@@ -270,19 +350,76 @@ def _passes_salary_filter(title: str, snippet: str, annual_min: int) -> bool:
             return True
 
     # No salary info found — keep the job
-    return True
+    return False
 
 
-def _passes_job_type_filter(title: str, snippet: str, job_types: list[str]) -> bool:
-    combined = f"{title.lower()} {snippet.lower()}"
-    is_contract = bool(re.search(r'\b(contract|contractor|freelance|freelancer|temporary|temp)\b', combined))
-    is_parttime = bool(re.search(r'\bpart[\s\-]?time\b|\bp/t\b', combined))
+def _passes_job_type_filter(combined_text: str, job_types: list[str]) -> bool:
+    combined = combined_text.lower()
+    allowed = {_normalize_filter_value(v) for v in job_types if v}
+    detected: set[str] = set()
 
-    if is_contract and "contract" not in job_types:
+    if re.search(r'\bfull[\s\-]?time\b', combined):
+        detected.add("full-time")
+    if re.search(r'\bpart[\s\-]?time\b|\bp/t\b', combined):
+        detected.add("part-time")
+    if re.search(r'\b(?:contract|contractor)\b', combined):
+        detected.add("contract")
+    if re.search(r'\bfreelance|freelancer\b', combined):
+        detected.add("freelance")
+    if re.search(r'\btemporary|temp\b', combined):
+        detected.add("temporary")
+    if re.search(r'\bintern(ship)?\b', combined):
+        detected.add("internship")
+    if re.search(r'\bseasonal\b', combined):
+        detected.add("seasonal")
+    if re.search(r'\bcommission\b', combined):
+        detected.add("commission")
+
+    if not detected:
         return False
-    if is_parttime and "part-time" not in job_types:
+
+    return bool(detected & allowed)
+
+
+def _passes_work_mode_filter(job: JobListing, combined_text: str, work_modes: list[str]) -> bool:
+    allowed = {_normalize_filter_value(v) for v in work_modes if v}
+    if not allowed:
+        return True
+
+    if job.work_mode_str:
+        detected = {_normalize_filter_value(job.work_mode_str)}
+        return bool(detected & allowed)
+
+    detected = _detected_work_modes(combined_text)
+    if detected:
+        return bool(detected & allowed)
+
+    return False
+
+
+def _passes_experience_filter_strict(job: JobListing, title_tokens: set[str], combined_tokens: set[str], experience: list[str]) -> bool:
+    allowed = {_normalize_filter_value(v) for v in experience if v}
+    if not allowed:
+        return True
+
+    if job.experience_str:
+        detected = _experience_categories(job.experience_str)
+        if detected:
+            return bool(detected & allowed)
         return False
-    return True
+
+    return _passes_experience_filter(title_tokens, combined_tokens, experience)
+
+
+def _passes_job_type_filter_strict(job: JobListing, combined_text: str, job_types: list[str]) -> bool:
+    allowed = {_normalize_filter_value(v) for v in job_types if v}
+    if not allowed:
+        return True
+
+    if job.job_type_str:
+        return _normalize_filter_value(job.job_type_str) in allowed
+
+    return _passes_job_type_filter(combined_text, list(allowed))
 
 
 async def ai_filter_jobs(
@@ -317,15 +454,23 @@ async def ai_filter_jobs(
     for job in jobs:
         title_raw = (job.title or "").lower()
         title_tokens = tokenize(title_raw)
+        combined_raw = _job_search_text(job).lower()
+        combined_tokens = tokenize(combined_raw)
 
         # 1. Keyword / domain isolation
-        if query and not _passes_keyword_filter(title_raw, title_tokens, q_raw, q_tokens, target_domains):
+        if query and not _passes_keyword_filter(
+            combined_raw,
+            combined_tokens,
+            title_tokens,
+            q_raw,
+            q_tokens,
+            target_domains,
+        ):
             continue
 
         # 2. Experience matching
         if experience:
-            snippet_tokens = tokenize(job.description_snippet or "")
-            if not _passes_experience_filter(title_tokens, snippet_tokens, experience):
+            if not _passes_experience_filter_strict(job, title_tokens, combined_tokens, experience):
                 continue
 
         # 3. Location whitelisting
@@ -333,17 +478,22 @@ async def ai_filter_jobs(
             if not _passes_location_filter(job.location_str or "", worldwide, allowed_country_terms, allowed_cities):
                 continue
 
-        # 4. Date posted
+        # 4. Work mode
+        if work_modes and not _passes_work_mode_filter(job, combined_raw, work_modes):
+            continue
+
+        # 5. Date posted
         if date_posted and not _passes_date_filter(job.date_posted, date_posted):
             continue
 
-        # 5. Salary filter
+        # 6. Salary filter
         if parsed_salary_min > 0:
-            if not _passes_salary_filter(job.title or "", job.description_snippet or "", parsed_salary_min):
+            salary_text = job.salary_str or combined_raw
+            if not _passes_salary_filter(salary_text, parsed_salary_min):
                 continue
 
-        # 6. Job type filter
-        if job_types and not _passes_job_type_filter(job.title or "", job.description_snippet or "", job_types):
+        # 7. Job type filter
+        if job_types and not _passes_job_type_filter_strict(job, combined_raw, job_types):
             continue
 
         valid_jobs.append(job)

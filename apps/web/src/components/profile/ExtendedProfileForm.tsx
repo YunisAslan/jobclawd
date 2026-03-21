@@ -14,6 +14,10 @@ import IdentitySection from "@/components/profile/sections/IdentitySection";
 import TargetingSection from "@/components/profile/sections/TargetingSection";
 import PreferencesSection from "@/components/profile/sections/PreferencesSection";
 import AvailabilitySection from "@/components/profile/sections/AvailabilitySection";
+import SkillsSection from "@/components/profile/sections/SkillsSection";
+import EducationSection from "@/components/profile/sections/EducationSection";
+import LanguagesSection from "@/components/profile/sections/LanguagesSection";
+import CoverLetterTemplatesSection from "@/components/profile/sections/CoverLetterTemplatesSection";
 import DocumentsSection from "@/components/profile/sections/DocumentsSection";
 
 export default function ExtendedProfileForm() {
@@ -59,7 +63,7 @@ export default function ExtendedProfileForm() {
     <form onSubmit={handleSubmit(onSubmit)}>
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-8 items-start">
         {/* LEFT: sticky identity card */}
-        <ProfileIdentityCard control={control} saving={saving} saved={saved} isDirty={isDirty} />
+        <ProfileIdentityCard control={control} setValue={setValue} saving={saving} saved={saved} isDirty={isDirty} />
 
         {/* RIGHT: form sections */}
         <div className="space-y-3 bg-card border border-border/60 shadow-sm rounded-xl p-6">
@@ -67,6 +71,10 @@ export default function ExtendedProfileForm() {
           <TargetingSection control={control} setValue={setValue} />
           <PreferencesSection control={control} meta={meta} />
           <AvailabilitySection control={control} />
+          <SkillsSection control={control} setValue={setValue} />
+          <EducationSection control={control} setValue={setValue} />
+          <LanguagesSection control={control} setValue={setValue} />
+          <CoverLetterTemplatesSection control={control} setValue={setValue} />
           <DocumentsSection control={control} />
 
           {/* Mobile save */}

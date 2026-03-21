@@ -27,6 +27,9 @@ export const ENDPOINTS = {
   CV_UPLOAD: "/api/profile/cv/upload",
   AVATAR_UPLOAD: "/api/profile/avatar/upload",
 
+  // Screening Answers
+  SCREENING_ANSWERS: "/api/screening-answers",
+
   // Settings
   SMTP_SETTINGS: "/api/settings/smtp",
 

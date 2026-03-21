@@ -43,11 +43,11 @@ interface FeedResultsProps {
 }
 
 const STAGES = [
-  { id: 0, label: "Connecting to job sources", duration: 2500 },
-  { id: 1, label: "Scanning available roles", duration: 8000 },
-  { id: 2, label: "Filtering relevant positions", duration: 5000 },
-  { id: 3, label: "Smart analysis in progress", duration: 6000 },
-  { id: 4, label: "Ranking top opportunities", duration: 3000 },
+  { id: 0, label: "Connecting to job sources", duration: 2000 },
+  { id: 1, label: "Scanning available positions", duration: 6000 },
+  { id: 2, label: "Extracting job details with AI", duration: 5000 },
+  { id: 3, label: "Scoring against your profile", duration: 5000 },
+  { id: 4, label: "Preparing your feed", duration: 3000 },
 ];
 
 function LoadingStages() {

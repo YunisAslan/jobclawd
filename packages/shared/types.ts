@@ -20,6 +20,24 @@ export interface CVLink {
   url: string;
 }
 
+export interface EducationEntry {
+  institution: string;
+  degree: string;
+  field_of_study: string;
+  start_year?: number | null;
+  end_year?: number | null;
+}
+
+export interface LanguageEntry {
+  language: string;
+  level: string;
+}
+
+export interface CoverLetterTemplate {
+  name: string;
+  body: string;
+}
+
 export interface LocationValue {
   type?: LocationType;
   value?: string;
@@ -40,6 +58,7 @@ export interface UserProfile {
   phone?: string;
   linkedin_url?: string;
   portfolio_url?: string;
+  github_url?: string;
   headline?: string;
   avatar_url?: string;
   desired_titles?: string[];
@@ -49,6 +68,12 @@ export interface UserProfile {
   salary_period?: SalaryPeriod;
   years_of_experience?: number | null;
   availability?: string;
+  work_authorization?: string;
+  notice_period?: string;
+  education?: EducationEntry[];
+  skills?: string[];
+  language_levels?: LanguageEntry[];
+  cover_letter_templates?: CoverLetterTemplate[];
 }
 
 // ── Feed / Search ──
@@ -93,8 +118,17 @@ export interface JobListing {
   match_level: MatchLevel;
   match_flags: string[];
   location_str?: string;
+  work_mode_str?: string | null;
+  work_mode_src?: string | null;
+  experience_str?: string | null;
+  experience_src?: string | null;
+  job_type_str?: string | null;
+  job_type_src?: string | null;
+  salary_str?: string | null;
+  salary_src?: string | null;
   description_snippet?: string | null;
   hr_email?: string | null;
+  apply_method?: ApplyMethod | null;
 }
 
 export interface SearchResponse {
@@ -106,6 +140,26 @@ export interface SearchResponse {
 
 // ── Job Detail ──
 
+export interface EasyApplyAnalysis {
+  tier: string;
+  tier_label: string;
+  step_count: number;
+  has_resume_upload: boolean;
+  has_custom_questions: boolean;
+  has_cover_letter: boolean;
+  unknown_fields: string[];
+  safe_to_auto_submit: boolean;
+}
+
+export interface ATSInfo {
+  platform: string | null;
+  platform_label: string;
+  confidence: number;
+  prefillable_fields: string[];
+  missing_fields: string[];
+  apply_url: string | null;
+}
+
 export interface JobDetail {
   title: string;
   company: string;
@@ -115,6 +169,8 @@ export interface JobDetail {
   apply_url: string | null;
   apply_method: ApplyMethod;
   error_message: string | null;
+  easy_apply: EasyApplyAnalysis | null;
+  ats_info: ATSInfo | null;
 }
 
 // ── Apply ──
@@ -199,6 +255,14 @@ export interface StatsResponse {
   total_replies: number;
   weekly_chart: WeeklyChartEntry[];
   cv_performance: CVPerformanceEntry[];
+}
+
+// ── Screening Answers ──
+
+export interface ScreeningAnswer {
+  id?: number | null;
+  question: string;
+  answer: string;
 }
 
 // ── Settings ──
