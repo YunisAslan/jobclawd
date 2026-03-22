@@ -180,39 +180,53 @@ _SALARY_FROM_TO = re.compile(
 )
 
 
+def _is_false_salary(text: str, match: re.Match) -> bool:
+    """Reject matches that are percentages, years, headcounts, etc."""
+    end = match.end()
+    # Check if followed by % — not a salary
+    rest = text[end:end + 5].lstrip()
+    if rest.startswith("%"):
+        return True
+    # Check the matched text itself for %
+    matched = match.group(0)
+    if "%" in matched:
+        return True
+    return False
+
+
 def extract_salary(text: str) -> Optional[str]:
     """Extract salary information from text."""
     if not text:
         return None
 
     m = _SALARY_UP_TO.search(text)
-    if m:
+    if m and not _is_false_salary(text, m):
         return _clean_salary(m.group(0))
 
     # Labeled salary lines (highest confidence)
     m = _SALARY_LABELED.search(text)
-    if m:
+    if m and not _is_false_salary(text, m):
         return _clean_salary(m.group(1))
 
     # "from X to Y"
     m = _SALARY_FROM_TO.search(text)
-    if m:
+    if m and not _is_false_salary(text, m):
         lo, hi = m.group(1).strip(), m.group(2).strip()
         cur = (m.group(3) or "").strip()
         return _clean_salary(f"{lo}-{hi} {cur}")
 
     # Symbol-first: $1000, ₼800-1200
     m = _SALARY_SYMBOL_FIRST.search(text)
-    if m:
+    if m and not _is_false_salary(text, m):
         return _clean_salary(m.group(0))
 
     m = _SALARY_TEXTUAL_PERIOD.search(text)
-    if m:
+    if m and not _is_false_salary(text, m):
         return _clean_salary(m.group(0))
 
     # Code-after: 1000-2000 AZN
     m = _SALARY_CODE_AFTER.search(text)
-    if m:
+    if m and not _is_false_salary(text, m):
         return _clean_salary(m.group(0))
 
     return None

@@ -9,6 +9,19 @@ from db.database import get_db
 METADATA_TTL_HOURS = 24
 
 
+def _sanitize_metadata_row(row_dict: dict) -> dict:
+    cleaned = {k: v for k, v in row_dict.items() if v is not None}
+    for value_field, source_field in (
+        ("experience_str", "experience_src"),
+        ("job_type_str", "job_type_src"),
+        ("work_mode_str", "work_mode_src"),
+    ):
+        if cleaned.get(source_field) == "regex":
+            cleaned.pop(value_field, None)
+            cleaned.pop(source_field, None)
+    return cleaned
+
+
 def get_metadata(url: str) -> Optional[dict]:
     """Return cached metadata dict for a job URL, or None."""
     with get_db() as conn:
@@ -20,7 +33,8 @@ def get_metadata(url: str) -> Optional[dict]:
         ).fetchone()
     if row is None:
         return None
-    return {k: v for k, v in dict(row).items() if v is not None}
+    cleaned = _sanitize_metadata_row(dict(row))
+    return cleaned or None
 
 
 def get_metadata_batch(urls: list[str]) -> dict[str, dict]:
@@ -39,7 +53,7 @@ def get_metadata_batch(urls: list[str]) -> dict[str, dict]:
     for row in rows:
         d = dict(row)
         url = d.pop("url")
-        cleaned = {k: v for k, v in d.items() if v is not None}
+        cleaned = _sanitize_metadata_row(d)
         if cleaned:
             result[url] = cleaned
     return result
@@ -57,6 +71,16 @@ def upsert_metadata(
     work_mode_src: Optional[str] = None,
 ) -> None:
     """Insert or update metadata for a job URL."""
+    if experience_src == "regex":
+        experience_str = None
+        experience_src = None
+    if job_type_src == "regex":
+        job_type_str = None
+        job_type_src = None
+    if work_mode_src == "regex":
+        work_mode_str = None
+        work_mode_src = None
+
     with get_db() as conn:
         conn.execute(
             """

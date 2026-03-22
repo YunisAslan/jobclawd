@@ -15,7 +15,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu";
 import { cn, formatDate } from "@/lib/utils";
-import { Banknote, Bot, Briefcase, CircleCheck, ExternalLink, GraduationCap, Laptop, MapPin, MoreHorizontal, X } from "lucide-react";
+import {
+  Banknote,
+  Bot,
+  Briefcase,
+  CircleCheck,
+  ExternalLink,
+  GraduationCap,
+  Laptop,
+  MapPin,
+  MoreHorizontal,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 
 interface FeedJobCardProps {
@@ -137,11 +148,7 @@ export default function FeedJobCard({
         isHigh && "border-match-high/30",
       )}
     >
-      <CardContent className="px-4 pt-4 pb-4 space-y-3.5 relative">
-        <div className="absolute top-2 right-2">
-          <SourceBadge source={job.source} />
-        </div>
-
+      <CardContent className="px-4 pt-4 pb-4 space-y-3.5">
         <div className="flex items-start gap-3">
           <Checkbox checked={selected} onCheckedChange={onToggleSelect} className="mt-1 shrink-0" />
           <CompanyAvatar company={job.company} logoUrl={job.logo_url} />
@@ -159,6 +166,8 @@ export default function FeedJobCard({
                   </span>
                 </>
               )}
+              <span className="text-muted-foreground/30 text-xs select-none">•</span>
+              <SourceBadge source={job.source} />
             </div>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               {job.location_str && (
@@ -211,7 +220,7 @@ export default function FeedJobCard({
               </div>
             )}
           </div>
-          <div className="flex flex-col items-end gap-2 shrink-0 pt-6">
+          <div className="flex flex-col items-end gap-2 shrink-0">
             <MatchScore score={job.match_score} level={job.match_level} />
           </div>
         </div>

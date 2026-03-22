@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { jobsService } from "@/services/jobs.service";
+import { jobsService, SearchProgress } from "@/services/jobs.service";
 import { applyService } from "@/services/apply.service";
 import { JobListing, JobSource, LocationValue } from "@/types";
 import { useProfile } from "@/contexts/ProfileContext";
@@ -40,6 +40,7 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
   const [drawerJob, setDrawerJob] = useState<JobListing | null>(null);
   const [bulkApplying, setBulkApplying] = useState(false);
   const forceRefreshRef = useRef(false);
+  const [progress, setProgress] = useState<SearchProgress | null>(null);
 
   const normalizedSalaryMin = (() => {
     const raw = filters.salaryMin?.replace(/,/g, "");
@@ -70,25 +71,32 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
     queryFn: async () => {
       const shouldForce = forceRefreshRef.current;
       forceRefreshRef.current = false;
-      const result = await jobsService.search(
-        filters.query ?? "",
-        (filters.sources?.length
-          ? filters.sources
-          : ["jobsearch", "linkedin", "indeed"]) as JobSource[],
-        (filters.location as LocationValue) ?? undefined,
-        {
-          workModes: filters.workModes,
-          experience: filters.experience,
-          jobTypes: filters.jobTypes,
-          datePosted: filters.datePosted,
-          salaryMin: normalizedSalaryMin,
-          sortBy: filters.sortBy,
-        },
-        shouldForce,
-      );
-      // Refetch credits after search (backend deducts on cache miss)
-      queryClient.invalidateQueries({ queryKey: CREDITS_KEY });
-      return result;
+      setProgress(null);
+
+      try {
+        const result = await jobsService.searchStream(
+          filters.query ?? "",
+          (filters.sources?.length
+            ? filters.sources
+            : ["jobsearch", "linkedin", "indeed"]) as JobSource[],
+          (filters.location as LocationValue) ?? undefined,
+          {
+            workModes: filters.workModes,
+            experience: filters.experience,
+            jobTypes: filters.jobTypes,
+            datePosted: filters.datePosted,
+            salaryMin: normalizedSalaryMin,
+            sortBy: filters.sortBy,
+          },
+          shouldForce,
+          (p) => setProgress(p),
+        );
+        // Refetch credits after search (backend deducts on cache miss)
+        queryClient.invalidateQueries({ queryKey: CREDITS_KEY });
+        return result;
+      } finally {
+        setProgress(null);
+      }
     },
 
     enabled: hasQuery,
@@ -176,6 +184,7 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
     jobs,
     loading: isLoading || isFetching,
     error: errorMsg,
+    progress,
     selected,
     drawerJob,
     setDrawerJob,

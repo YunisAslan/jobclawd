@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { JobListing } from "@/types";
 import FeedJobCard from "@/components/feed/FeedJobCard";
 import FeedResultSectionHeader from "@/components/feed/FeedResultSectionHeader";
@@ -22,11 +21,14 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { FEED_STALE_TIME } from "@/hooks/use-feed";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/Tooltip";
+import { SearchProgress } from "@/services/jobs.service";
+import { useEffect, useState } from "react";
 
 interface FeedResultsProps {
   highMatch: JobListing[];
   needsReview: JobListing[];
   loading?: boolean;
+  progress?: SearchProgress | null;
   hasSearched?: boolean;
   flash?: boolean;
   activeFilterCount?: number;
@@ -42,27 +44,37 @@ interface FeedResultsProps {
   onHideCompany?: (company: string) => void;
 }
 
-const STAGES = [
-  { id: 0, label: "Connecting to job sources", duration: 2000 },
-  { id: 1, label: "Scanning available positions", duration: 6000 },
-  { id: 2, label: "Extracting job details with AI", duration: 5000 },
-  { id: 3, label: "Scoring against your profile", duration: 5000 },
-  { id: 4, label: "Preparing your feed", duration: 3000 },
-];
+const STAGE_CONFIG: Record<string, { label: string; order: number }> = {
+  scraping: { label: "Searching job sources", order: 0 },
+  found: { label: "Positions found", order: 1 },
+  analyzing: { label: "Analyzing with AI", order: 2 },
+  filtering: { label: "Filtering and scoring", order: 3 },
+};
 
-function LoadingStages() {
-  const [currentStage, setCurrentStage] = useState(0);
+function LoadingWithProgress({ progress }: { progress?: SearchProgress | null }) {
+  // Track completed stages
+  const [completedStages, setCompletedStages] = useState<Set<string>>(new Set());
+  const currentStage = progress?.stage ?? "scraping";
 
   useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    let total = 0;
-    STAGES.forEach((_, i) => {
-      if (i === 0) return;
-      total += STAGES[i - 1].duration;
-      timers.push(setTimeout(() => setCurrentStage(i), total));
+    if (!progress) return;
+    // Mark previous stages as completed
+    const currentOrder = STAGE_CONFIG[progress.stage]?.order ?? 0;
+    setCompletedStages((prev) => {
+      const next = new Set(prev);
+      for (const [key, config] of Object.entries(STAGE_CONFIG)) {
+        if (config.order < currentOrder) next.add(key);
+      }
+      return next;
     });
-    return () => timers.forEach(clearTimeout);
-  }, []);
+  }, [progress]);
+
+  // Reset when loading starts fresh
+  useEffect(() => {
+    if (!progress) setCompletedStages(new Set());
+  }, [progress]);
+
+  const stages = Object.entries(STAGE_CONFIG);
 
   return (
     <div className="relative animate-in fade-in duration-700">
@@ -106,13 +118,26 @@ function LoadingStages() {
           </div>
 
           <div className="space-y-3.5 px-1">
-            {STAGES.map((stage) => {
-              const done = stage.id < currentStage;
-              const active = stage.id === currentStage;
-              const upcoming = stage.id > currentStage;
+            {stages.map(([key, config]) => {
+              const done = completedStages.has(key);
+              const active = key === currentStage;
+              const upcoming = !done && !active;
+
+              // Build label with progress numbers
+              let label = config.label;
+              if (key === "found" && progress?.stage === "found" && progress.current > 0) {
+                label = `${progress.current} positions found`;
+              }
+              if (key === "analyzing" && active && progress?.total && progress.total > 0) {
+                label = `Analyzing with AI · ${progress.current}/${progress.total}`;
+              }
+              if (key === "found" && (currentStage === "analyzing" || currentStage === "filtering") && progress?.total) {
+                label = `${progress.total} positions found`;
+              }
+
               return (
                 <div
-                  key={stage.id}
+                  key={key}
                   className={cn(
                     "flex items-center gap-3.5 transition-all duration-500",
                     upcoming && "opacity-35",
@@ -132,18 +157,29 @@ function LoadingStages() {
                       <div className="size-1.5 rounded-full bg-muted-foreground/30" />
                     )}
                   </div>
-                  <span
-                    className={cn(
-                      "text-[13px] transition-all duration-500",
-                      done
-                        ? "text-muted-foreground/50"
-                        : active
-                          ? "font-semibold text-foreground"
-                          : "text-muted-foreground/70 font-medium",
+                  <div className="flex-1 min-w-0">
+                    <span
+                      className={cn(
+                        "text-[13px] transition-all duration-500",
+                        done
+                          ? "text-muted-foreground/50"
+                          : active
+                            ? "font-semibold text-foreground"
+                            : "text-muted-foreground/70 font-medium",
+                      )}
+                    >
+                      {label}
+                    </span>
+                    {/* Progress bar for AI analyzing stage */}
+                    {key === "analyzing" && active && progress?.total && progress.total > 0 && (
+                      <div className="mt-1.5 w-full h-1 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full transition-all duration-700 ease-out"
+                          style={{ width: `${Math.min(100, (progress.current / progress.total) * 100)}%` }}
+                        />
+                      </div>
                     )}
-                  >
-                    {stage.label}
-                  </span>
+                  </div>
                 </div>
               );
             })}
@@ -262,6 +298,7 @@ export default function FeedResults({
   highMatch,
   needsReview,
   loading,
+  progress,
   hasSearched,
   flash,
   activeFilterCount = 0,
@@ -320,7 +357,7 @@ export default function FeedResults({
   }
 
   if (loading) {
-    return <LoadingStages />;
+    return <LoadingWithProgress progress={progress} />;
   }
 
   if (highMatch.length === 0 && needsReview.length === 0) {

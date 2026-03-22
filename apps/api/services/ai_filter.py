@@ -182,8 +182,8 @@ def _passes_keyword_filter(
     return True
 
 
-def _passes_experience_filter(title_tokens: set[str], combined_tokens: set[str], experience: list[str]) -> bool:
-    allowed = {_normalize_filter_value(v) for v in experience if v}
+def _detect_experience_from_text(title_tokens: set[str], combined_tokens: set[str]) -> set[str]:
+    """Detect experience levels from title/description tokens."""
     detected: set[str] = set()
 
     if title_tokens & ENTRY_WORDS or combined_tokens & ENTRY_WORDS:
@@ -197,10 +197,7 @@ def _passes_experience_filter(title_tokens: set[str], combined_tokens: set[str],
     if any(token in combined_tokens for token in {"lead", "principal", "staff", "manager", "head"}):
         detected.update({"lead", "senior"})
 
-    if not detected:
-        return False
-
-    return bool(detected & allowed)
+    return detected
 
 
 def _experience_categories(value: str) -> set[str]:
@@ -353,9 +350,9 @@ def _passes_salary_filter(combined_text: str, annual_min: int) -> bool:
     return False
 
 
-def _passes_job_type_filter(combined_text: str, job_types: list[str]) -> bool:
+def _detect_job_types_from_text(combined_text: str) -> set[str]:
+    """Detect job types from text via regex."""
     combined = combined_text.lower()
-    allowed = {_normalize_filter_value(v) for v in job_types if v}
     detected: set[str] = set()
 
     if re.search(r'\bfull[\s\-]?time\b', combined):
@@ -375,10 +372,7 @@ def _passes_job_type_filter(combined_text: str, job_types: list[str]) -> bool:
     if re.search(r'\bcommission\b', combined):
         detected.add("commission")
 
-    if not detected:
-        return False
-
-    return bool(detected & allowed)
+    return detected
 
 
 def _passes_work_mode_filter(job: JobListing, combined_text: str, work_modes: list[str]) -> bool:
@@ -386,15 +380,13 @@ def _passes_work_mode_filter(job: JobListing, combined_text: str, work_modes: li
     if not allowed:
         return True
 
+    # Trust AI / structured metadata only — no regex fallback
     if job.work_mode_str:
         detected = {_normalize_filter_value(job.work_mode_str)}
         return bool(detected & allowed)
 
-    detected = _detected_work_modes(combined_text)
-    if detected:
-        return bool(detected & allowed)
-
-    return False
+    # No work mode set by AI/structured — most jobs are onsite by default
+    return "onsite" in allowed
 
 
 def _passes_experience_filter_strict(job: JobListing, title_tokens: set[str], combined_tokens: set[str], experience: list[str]) -> bool:
@@ -402,13 +394,15 @@ def _passes_experience_filter_strict(job: JobListing, title_tokens: set[str], co
     if not allowed:
         return True
 
+    # Trust AI / structured metadata only
     if job.experience_str:
         detected = _experience_categories(job.experience_str)
         if detected:
             return bool(detected & allowed)
         return False
 
-    return _passes_experience_filter(title_tokens, combined_tokens, experience)
+    # No experience set by AI/structured — keep the job (don't assume level)
+    return True
 
 
 def _passes_job_type_filter_strict(job: JobListing, combined_text: str, job_types: list[str]) -> bool:
@@ -416,10 +410,12 @@ def _passes_job_type_filter_strict(job: JobListing, combined_text: str, job_type
     if not allowed:
         return True
 
+    # Trust AI / structured metadata only — no regex fallback
     if job.job_type_str:
         return _normalize_filter_value(job.job_type_str) in allowed
 
-    return _passes_job_type_filter(combined_text, list(allowed))
+    # No job type set by AI/structured — most jobs are full-time by default
+    return "full-time" in allowed
 
 
 async def ai_filter_jobs(

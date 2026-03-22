@@ -223,6 +223,7 @@ function FeedPageInner() {
     handleApplied,
     toggleSelect,
     loading,
+    progress,
     hasSearched,
     creditsLeft,
     maxCredits,
@@ -320,6 +321,7 @@ function FeedPageInner() {
             highMatch={filteredHighMatch}
             needsReview={filteredNeedsReview}
             loading={loading}
+            progress={progress}
             hasSearched={hasSearched}
             flash={flash}
             activeFilterCount={activeFilterCount}

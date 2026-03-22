@@ -169,6 +169,11 @@ export default function FeedFilterForm({
         <form
           onSubmit={handleSubmit((values) => {
             pushHistory(values.query ?? "");
+            // Blur the search input to collapse keyboard / search bar
+            if (document.activeElement instanceof HTMLElement) {
+              document.activeElement.blur();
+            }
+            setShowHistory(false);
             onSubmit(values);
           })}
           className="space-y-4"

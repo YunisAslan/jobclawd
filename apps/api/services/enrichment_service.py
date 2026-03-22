@@ -33,6 +33,13 @@ _UA = (
     "Chrome/120.0.0.0 Safari/537.36"
 )
 
+
+def _should_skip_detail_enrichment(url: str) -> bool:
+    # jobsearch.az already has structured API fields + AI extraction in scraper.
+    # Fetching their detail pages is redundant and slow.
+    lowered = (url or "").lower()
+    return "jobsearch.az" in lowered
+
 # ── HTML helpers ────────────────────────────────────────────────────
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"\s+")
@@ -160,6 +167,26 @@ def _merge_missing_fields(base: Optional[dict], extra: Optional[dict]) -> dict:
         elif not merged.get(source_field) and extra and extra.get(source_field) and merged.get(value_field):
             merged[source_field] = extra[source_field]
     return merged
+
+
+def _regex_salary_only(meta: Optional[dict]) -> dict:
+    if not meta or not meta.get("salary_str"):
+        return {}
+    return {
+        "salary_str": meta["salary_str"],
+        "salary_src": "regex",
+    }
+
+
+def _drop_low_trust_regex_fields(job: dict) -> None:
+    for value_field, source_field in (
+        ("experience_str", "experience_src"),
+        ("job_type_str", "job_type_src"),
+        ("work_mode_str", "work_mode_src"),
+    ):
+        if job.get(source_field) == "regex":
+            job.pop(value_field, None)
+            job.pop(source_field, None)
 
 
 def _apply_metadata_to_job(job: dict, meta: dict, *, overwrite_non_structured: bool = False) -> None:
@@ -319,11 +346,13 @@ async def _fetch_browser_batch(urls: list[str]) -> dict[str, tuple[str, str]]:
 
 # ── Public API ──────────────────────────────────────────────────────
 
-async def fetch_metadata_for_urls(urls: list[str]) -> dict[str, Optional[dict]]:
+async def fetch_metadata_for_urls(
+    urls: list[str], *, progress_cb=None,
+) -> dict[str, Optional[dict]]:
     """
     Fetch metadata for URLs. Fast path: httpx → regex → AI batch → browser fallback.
     """
-    unique_urls = list(dict.fromkeys(urls))
+    unique_urls = [u for u in dict.fromkeys(urls) if not _should_skip_detail_enrichment(u)]
     if not unique_urls:
         return {}
 
@@ -356,12 +385,8 @@ async def fetch_metadata_for_urls(urls: list[str]) -> dict[str, Optional[dict]]:
         url, title, text = r
         if text and len(text) > 80:
             http_success += 1
-            # Try regex first (fast, free)
-            regex_meta = extract_all(text)
-            if regex_meta:
-                for field in ("experience_str", "job_type_str", "salary_str", "work_mode_str"):
-                    if regex_meta.get(field):
-                        regex_meta[f"{field.replace('_str', '_src')}"] = "regex"
+            # Regex over full HTML-extracted page text is only reliable for salary.
+            regex_meta = _regex_salary_only(extract_all(text))
             results[url] = regex_meta if regex_meta else None
 
             # Queue for AI if regex didn't fill everything
@@ -388,6 +413,7 @@ async def fetch_metadata_for_urls(urls: list[str]) -> dict[str, Optional[dict]]:
                 ai_inputs,
                 source="detail-page",
                 context="httpx-fetch",
+                progress_cb=progress_cb,
             )
             for url, meta in ai_results.items():
                 if not meta:
@@ -412,11 +438,7 @@ async def fetch_metadata_for_urls(urls: list[str]) -> dict[str, Optional[dict]]:
                 results[url] = None
                 continue
 
-            regex_meta = extract_all(text)
-            if regex_meta:
-                for field in ("experience_str", "job_type_str", "salary_str", "work_mode_str"):
-                    if regex_meta.get(field):
-                        regex_meta[f"{field.replace('_str', '_src')}"] = "regex"
+            regex_meta = _regex_salary_only(extract_all(text))
             results[url] = regex_meta if regex_meta else None
 
             if not _has_complete_meta(regex_meta):
@@ -464,7 +486,10 @@ async def enrich_jobs(jobs: list[dict]) -> None:
             job.get(f) for f in ("experience_str", "job_type_str", "salary_str", "work_mode_str")
         )
         if not has_all:
-            urls_to_enrich.append(job["url"])
+            url = job["url"]
+            if _should_skip_detail_enrichment(url):
+                continue
+            urls_to_enrich.append(url)
 
     if not urls_to_enrich:
         return
@@ -490,7 +515,7 @@ async def enrich_jobs(jobs: list[dict]) -> None:
     print(f"[Enrichment] Background done — enriched {enriched}/{len(urls_to_fetch)}")
 
 
-async def prepare_jobs_for_search(jobs: list[dict]) -> list[dict]:
+async def prepare_jobs_for_search(jobs: list[dict], *, progress_cb=None) -> list[dict]:
     """
     Synchronously hydrate search candidates with normalized metadata before filtering.
     Uses DB cache first, then fetches uncached detail pages so the first response
@@ -503,12 +528,19 @@ async def prepare_jobs_for_search(jobs: list[dict]) -> list[dict]:
     if not unique_urls:
         return jobs
 
+    for job in jobs:
+        _drop_low_trust_regex_fields(job)
+
     stored = get_metadata_batch(unique_urls)
     for job in jobs:
         if meta := stored.get(job["url"]):
             _apply_metadata_to_job(job, meta, overwrite_non_structured=True)
 
-    urls_to_fetch = [url for url in unique_urls if not _has_complete_meta(stored.get(url))]
+    urls_to_fetch = [
+        url
+        for url in unique_urls
+        if not _should_skip_detail_enrichment(url) and not _has_complete_meta(stored.get(url))
+    ]
     if not urls_to_fetch:
         return jobs
 
@@ -516,7 +548,7 @@ async def prepare_jobs_for_search(jobs: list[dict]) -> list[dict]:
         f"[SearchPrep] Sync enrichment for {len(urls_to_fetch)}/{len(unique_urls)} "
         "jobs before filtering"
     )
-    fetched = await fetch_metadata_for_urls(urls_to_fetch)
+    fetched = await fetch_metadata_for_urls(urls_to_fetch, progress_cb=progress_cb)
     for url, meta in fetched.items():
         if not meta:
             continue
@@ -535,6 +567,9 @@ async def prepare_jobs_for_search(jobs: list[dict]) -> list[dict]:
 
 def merge_metadata_into_jobs(jobs: list[dict]) -> list[dict]:
     """Merge persisted metadata from job_metadata table into job listing dicts."""
+    for job in jobs:
+        _drop_low_trust_regex_fields(job)
+
     urls_needing = []
     for job in jobs:
         has_all = all(

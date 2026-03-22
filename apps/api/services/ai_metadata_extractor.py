@@ -1,5 +1,7 @@
+import asyncio
 import json
 import os
+import re
 from typing import Optional
 
 import httpx
@@ -10,56 +12,56 @@ _OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rst
 
 _AI_METADATA_DEBUG = os.getenv("AI_METADATA_DEBUG", "").strip().lower() in {"1", "true", "yes", "on"}
 _TIMEOUT = 30.0
-_BATCH_SIZE = 25
-
-_ALLOWED_WORK_MODES = ["Remote", "Hybrid", "On-site"]
-_ALLOWED_JOB_TYPES = [
-    "Full-time", "Part-time", "Contract", "Freelance",
-    "Temporary", "Internship", "Seasonal", "Commission",
-]
+_BATCH_SIZE = 20
 
 _SYSTEM_PROMPT = """\
-Extract job metadata from each job's text. Return JSON only.
+You are a job listing analyzer. You read job postings in ANY language and extract 4 fields. Return JSON only.
 
-CRITICAL RULE: If a field is NOT explicitly mentioned, return null. Do NOT guess or infer.
+For each job, extract:
 
-LANGUAGE: Job texts can be in ANY language. Understand the meaning regardless of language. Always return values normalized to English.
+1. **salary**: The actual compensation amount offered to the employee. MUST be a monetary value with currency symbol or name.
+   - Valid: "$80k-$120k", "1500-2000 AZN", "от 50000 руб", "€3000/month"
+   - NOT salary: percentages ("up to 200%", "10% bonus"), headcounts ("200 employees"), years ("founded in 2005"), KPIs, discounts, or any non-compensation number
+   - null if no actual salary/wage amount is mentioned
 
-EXTRACTION RULES:
+2. **job_type**: One of: Full-time, Part-time, Contract, Freelance, Temporary, Internship. Read the actual text — translate from any language to the English equivalent. null if not stated.
 
-1. experience_str — extract ONLY if explicitly stated:
-   - Title keywords like Senior/Lead/Mid-level/Junior/Intern (in any language) → use the English equivalent
-   - Explicit years requirement like "3+ years experience", "Minimum 1 year", "2-3 years" (in any language) → normalize to English: "1+ years", "2-3 years", "5 years"
-   - Examples: "Minimum 1 il iş təcrübəsi" → "1+ years", "от 3 лет опыта" → "3+ years", "en az 2 yıl" → "2+ years"
-   - If NONE of the above appear → null
+3. **experience**: What experience level or years are required?
+   - If title says Senior/Lead/Junior/Intern/Mid etc → use that word
+   - If text says "3+ years", "minimum 2 years" (in any language) → write "3+ years", "2+ years"
+   - Company age ("founded 20 years ago") is NOT experience requirement
+   - null if nothing about candidate experience is mentioned
 
-2. work_mode_str — THIS IS THE STRICTEST FIELD. Extract ONLY if there is a clear, unambiguous statement about WHERE the person works:
-   - The text explicitly says the employee works remotely: "remote position", "work from home", "WFH", "fully remote", "remote work" → "Remote"
-   - The text explicitly says hybrid: "hybrid work", "hybrid model" → "Hybrid"
-   - The text explicitly says on-site: "on-site", "in-office", "office-based" → "On-site"
-   - DO NOT extract "Remote" from:
-     * The word "distant" used as a tag/category label
-     * Job board metadata or category badges
-     * Mentions of "remote access", "remote team", "remote support", "remote tools"
-     * A city name or office address
-   - When in doubt, return null. It is MUCH better to return null than to guess wrong.
-   - If no clear work arrangement is stated → null
+4. **work_mode**: One of: Remote, Hybrid, On-site. ONLY extract this if the posting explicitly describes WHERE the employee will work.
+   - "work from home", "remote position", "fully remote" → Remote
+   - "hybrid model", "hybrid work" → Hybrid
+   - "on-site", "office-based", "in-office" → On-site
+   - A job category label, a city name, or "remote" used in other contexts (remote support, remote access) is NOT a work mode
+   - null if the posting doesn't clearly state the work arrangement
 
-3. job_type_str — extract ONLY if the text explicitly states employment type:
-   - Full-time, Part-time, Contract, Freelance, Internship, Temporary (in any language) → use the English equivalent
-   - If the word appears inside a meaningful phrase (e.g. "full-time work experience", "full-time position") it still counts
-   - If no employment type is mentioned → null. Do NOT default to Full-time.
-
-4. salary_str — extract ONLY if explicit numbers with currency appear:
-   - "$80k-$120k", "1500-2000 AZN", "от 50000 руб" → use as-is, keep short
-   - If no salary numbers → null
-
-5. IGNORE company history ("founded in 1999", "50 years in business") — these are NOT candidate experience requirements.
-
-Return: {"results": [{"id": "...", "salary_str": "..."|null, "job_type_str": "..."|null, "experience_str": "..."|null, "work_mode_str": "..."|null}]}"""
+Return: {"results": [{"id": "...", "salary": ..., "job_type": ..., "experience": ..., "work_mode": ...}]}
+Use null for any field you cannot confidently extract."""
 
 
-def _normalize_optional_text(value: object) -> Optional[str]:
+_WORK_MODE_MAP = {
+    "remote": "Remote", "work from home": "Remote", "wfh": "Remote",
+    "hybrid": "Hybrid",
+    "on-site": "On-site", "onsite": "On-site", "on site": "On-site",
+    "in-person": "On-site", "in person": "On-site", "office-based": "On-site",
+}
+
+_JOB_TYPE_MAP = {
+    "full-time": "Full-time", "full time": "Full-time", "fulltime": "Full-time",
+    "part-time": "Part-time", "part time": "Part-time", "parttime": "Part-time",
+    "contract": "Contract", "contractor": "Contract",
+    "freelance": "Freelance",
+    "temporary": "Temporary", "temp": "Temporary",
+    "internship": "Internship", "intern": "Internship",
+    "seasonal": "Seasonal", "commission": "Commission",
+}
+
+
+def _clean(value: object) -> Optional[str]:
     if not isinstance(value, str):
         return None
     cleaned = " ".join(value.split()).strip()
@@ -67,45 +69,25 @@ def _normalize_optional_text(value: object) -> Optional[str]:
 
 
 def _normalize_work_mode(value: object) -> Optional[str]:
-    cleaned = _normalize_optional_text(value)
+    cleaned = _clean(value)
     if not cleaned:
         return None
-    lowered = cleaned.lower().replace("_", "-")
-    if lowered in {"remote", "work from home", "wfh"}:
-        return "Remote"
-    if lowered in {"hybrid"}:
-        return "Hybrid"
-    if lowered in {"on-site", "onsite", "on site", "in-person", "in person"}:
-        return "On-site"
-    return cleaned if cleaned in _ALLOWED_WORK_MODES else None
+    return _WORK_MODE_MAP.get(cleaned.lower(), cleaned if cleaned in ("Remote", "Hybrid", "On-site") else None)
 
 
 def _normalize_job_type(value: object) -> Optional[str]:
-    cleaned = _normalize_optional_text(value)
+    cleaned = _clean(value)
     if not cleaned:
         return None
-    lowered = cleaned.lower().replace("_", "-")
-    aliases = {
-        "full-time": "Full-time", "full time": "Full-time",
-        "part-time": "Part-time", "part time": "Part-time",
-        "contract": "Contract", "contractor": "Contract",
-        "freelance": "Freelance",
-        "temporary": "Temporary", "temp": "Temporary",
-        "internship": "Internship", "intern": "Internship",
-        "seasonal": "Seasonal", "commission": "Commission",
-    }
-    normalized = aliases.get(lowered)
-    if normalized:
-        return normalized
-    return cleaned if cleaned in _ALLOWED_JOB_TYPES else None
+    return _JOB_TYPE_MAP.get(cleaned.lower(), cleaned if cleaned in _JOB_TYPE_MAP.values() else None)
 
 
 def _normalize_result(item: dict) -> dict:
     return {
-        "salary_str": _normalize_optional_text(item.get("salary_str")),
-        "job_type_str": _normalize_job_type(item.get("job_type_str")),
-        "experience_str": _normalize_optional_text(item.get("experience_str")),
-        "work_mode_str": _normalize_work_mode(item.get("work_mode_str")),
+        "salary_str": _clean(item.get("salary")),
+        "job_type_str": _normalize_job_type(item.get("job_type")),
+        "experience_str": _clean(item.get("experience")),
+        "work_mode_str": _normalize_work_mode(item.get("work_mode")),
     }
 
 
@@ -118,29 +100,36 @@ def ai_metadata_enabled() -> bool:
 
 
 def _build_user_message(batch: list[dict]) -> str:
-    """Compact user message — send structured fields so AI can read title/location separately."""
+    """Build a clean, minimal message with only the data AI needs."""
     jobs = []
     for item in batch:
         entry: dict = {"id": item["id"]}
+
+        # Title is always important
         if item.get("title"):
             entry["title"] = item["title"]
-        if item.get("company"):
-            entry["company"] = item["company"]
-        if item.get("location_str"):
-            entry["location"] = item["location_str"]
-        # Combine snippet + detail_text into one text field, trimmed
-        text_parts = [item.get("snippet", ""), item.get("detail_text", "")]
-        text = " ".join(p for p in text_parts if p).strip()
+
+        # Combine all text content
+        text_parts = []
+        for key in ("snippet", "detail_text"):
+            if item.get(key):
+                text_parts.append(item[key])
+        text = " ".join(text_parts).strip()
+
         if text:
-            if len(text) > 2500:
-                text = text[:1500] + " ... " + text[-800:]
+            # Keep more text for better accuracy — 3500 chars
+            if len(text) > 3500:
+                text = text[:2500] + " ... " + text[-800:]
             entry["text"] = text
+
         jobs.append(entry)
+
     return json.dumps({"jobs": jobs}, ensure_ascii=False)
 
 
 async def extract_metadata_ai_batch(
-    items: list[dict], *, source: str, context: str
+    items: list[dict], *, source: str, context: str,
+    progress_cb: Optional[object] = None,
 ) -> dict[str, dict]:
     """
     Extract metadata via OpenAI for a batch of jobs.
@@ -189,16 +178,28 @@ async def extract_metadata_ai_batch(
 
             try:
                 print(f"[AIMetadata] Batch {batch_num} sending {len(batch)} jobs...")
-                resp = await client.post(
-                    f"{_OPENAI_BASE_URL}/chat/completions",
-                    headers=headers,
-                    json=payload,
-                )
 
-                if resp.status_code >= 400:
+                # Retry loop for rate limits (429)
+                resp = None
+                for attempt in range(4):
+                    resp = await client.post(
+                        f"{_OPENAI_BASE_URL}/chat/completions",
+                        headers=headers,
+                        json=payload,
+                    )
+                    if resp.status_code != 429:
+                        break
+                    # Parse retry delay from response or use exponential backoff
+                    retry_match = re.search(r"try again in (\d+(?:\.\d+)?)s", resp.text)
+                    wait = float(retry_match.group(1)) + 0.5 if retry_match else (2 ** attempt) * 2
+                    print(f"[AIMetadata] Batch {batch_num} rate limited, retrying in {wait:.1f}s...")
+                    await asyncio.sleep(wait)
+
+                if resp is None or resp.status_code >= 400:
                     print(
                         f"[AIMetadata] Batch {batch_num} ERROR "
-                        f"{resp.status_code}: {resp.text[:500]}"
+                        f"{resp.status_code if resp else 'no response'}: "
+                        f"{resp.text[:500] if resp else ''}"
                     )
                     continue
 
@@ -218,12 +219,7 @@ async def extract_metadata_ai_batch(
                 results.update(batch_results)
 
                 # Summary
-                filled = {
-                    "salary_str": 0,
-                    "job_type_str": 0,
-                    "experience_str": 0,
-                    "work_mode_str": 0,
-                }
+                filled = {"salary_str": 0, "job_type_str": 0, "experience_str": 0, "work_mode_str": 0}
                 for meta in batch_results.values():
                     for f in filled:
                         if meta.get(f):
@@ -243,20 +239,27 @@ async def extract_metadata_ai_batch(
                     f"exp={filled['experience_str']} mode={filled['work_mode_str']}"
                     f"{tokens}"
                 )
+
+                # Report progress
+                if progress_cb:
+                    processed = min(batch_num * _BATCH_SIZE, len(items))
+                    await progress_cb(processed, len(items))
+
             except Exception as exc:
                 print(
                     f"[AIMetadata] Batch {batch_num} FAILED — "
                     f"{type(exc).__name__}: {exc}"
                 )
                 continue
+            finally:
+                # Pause between batches to stay under TPM rate limits
+                if batch_num < len(items) // _BATCH_SIZE + 1:
+                    await asyncio.sleep(1)
 
     total_with_data = sum(
         1
         for m in results.values()
-        if any(
-            m.get(f)
-            for f in ("salary_str", "job_type_str", "experience_str", "work_mode_str")
-        )
+        if any(m.get(f) for f in ("salary_str", "job_type_str", "experience_str", "work_mode_str"))
     )
     print(
         f"[AIMetadata] Done — source={source} context={context} "
