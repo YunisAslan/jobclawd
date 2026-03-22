@@ -4,6 +4,7 @@ Wraps the scraping pipeline with a PostgreSQL-backed cache (TTL = 1 hour).
 """
 import asyncio
 import json
+import re
 from typing import Optional
 
 from models.schemas import JobListing, JobSource, SearchResponse, LocationFilter, UserProfile
@@ -14,7 +15,66 @@ from db.database import get_db
 from services.cache_service import make_cache_key
 from repositories.cache_repo import get_cached_result, set_cached_result
 from engine.scoring import score_job
-from services.enrichment_service import enrich_jobs, merge_metadata_into_jobs, prepare_jobs_for_search
+from services.enrichment_service import enrich_jobs, merge_metadata_into_jobs
+
+# Currency symbols and codes that indicate a salary already has currency info
+_HAS_CURRENCY = re.compile(
+    r'[\$€£₼₺₽]|USD|EUR|GBP|AZN|TRY|RUB|TL|manat|руб',
+    re.IGNORECASE,
+)
+
+_INFLIGHT_SEARCHES: dict[str, asyncio.Task] = {}
+
+
+def _append_currency(jobs: list, currency: str) -> None:
+    """Append the resolved currency code to salary strings that don't already have one."""
+    for job in jobs:
+        sal = job.salary_str if hasattr(job, 'salary_str') else None
+        if sal and not _HAS_CURRENCY.search(sal):
+            job.salary_str = f"{sal} {currency}"
+
+
+def _clone_jobs(jobs: list[JobListing]) -> list[JobListing]:
+    return [JobListing(**json.loads(job.model_dump_json())) for job in jobs]
+
+
+def _sort_jobs(jobs: list[JobListing], sort_by: Optional[str]) -> None:
+    if sort_by == "job-title-ascending":
+        jobs.sort(key=lambda j: j.title.lower())
+    elif sort_by == "job-title-descending":
+        jobs.sort(key=lambda j: j.title.lower(), reverse=True)
+
+
+def _reset_scores(jobs: list[JobListing]) -> None:
+    for job in jobs:
+        job.match_score = 0
+        job.match_level = "review"
+        job.match_flags = []
+
+
+def _finalize_response(
+    base_response: SearchResponse,
+    *,
+    profile: Optional[UserProfile],
+    sort_by: Optional[str],
+    cached: bool,
+) -> SearchResponse:
+    jobs = _clone_jobs(base_response.jobs)
+    _reset_scores(jobs)
+
+    if profile:
+        jobs = [score_job(job, profile) for job in jobs]
+
+    _sort_jobs(jobs, sort_by)
+
+    response = SearchResponse(
+        jobs=jobs,
+        total=len(jobs),
+        query=base_response.query,
+        currency=base_response.currency,
+    )
+    response.cached = cached
+    return response
 
 
 async def run_search(
@@ -29,6 +89,7 @@ async def run_search(
     sort_by: Optional[str] = None,
     profile: Optional[UserProfile] = None,
     force_refresh: bool = False,
+    progress_cb=None,
 ) -> SearchResponse:
     """
     1. Build a deterministic cache key from all filters.
@@ -57,9 +118,97 @@ async def run_search(
         # Merge any metadata that was enriched in the background since last cache write
         if "jobs" in cached:
             cached["jobs"] = merge_metadata_into_jobs(cached["jobs"])
-        resp = SearchResponse(**cached)
-        resp.cached = True
-        return resp
+        base_response = SearchResponse(**cached)
+        return _finalize_response(
+            base_response,
+            profile=profile,
+            sort_by=sort_by,
+            cached=True,
+        )
+
+    # ── In-flight dedupe for identical cold searches ────────────────────────
+    if not force_refresh:
+        inflight = _INFLIGHT_SEARCHES.get(cache_key)
+        if inflight is not None:
+            base_response = await asyncio.shield(inflight)
+            return _finalize_response(
+                base_response,
+                profile=profile,
+                sort_by=sort_by,
+                cached=True,
+            )
+
+        task = asyncio.create_task(
+            _run_uncached_search(
+                cache_key=cache_key,
+                filters_dict=filters_dict,
+                query=query,
+                sources=sources,
+                location=location,
+                work_modes=work_modes,
+                experience=experience,
+                job_types=job_types,
+                date_posted=date_posted,
+                salary_min=salary_min,
+                sort_by=sort_by,
+                progress_cb=progress_cb,
+            )
+        )
+        _INFLIGHT_SEARCHES[cache_key] = task
+
+        def _cleanup_inflight(done_task: asyncio.Task) -> None:
+            if _INFLIGHT_SEARCHES.get(cache_key) is done_task:
+                _INFLIGHT_SEARCHES.pop(cache_key, None)
+
+        task.add_done_callback(_cleanup_inflight)
+        base_response = await asyncio.shield(task)
+
+        return _finalize_response(
+            base_response,
+            profile=profile,
+            sort_by=sort_by,
+            cached=False,
+        )
+
+    base_response = await _run_uncached_search(
+        cache_key=cache_key,
+        filters_dict=filters_dict,
+        query=query,
+        sources=sources,
+        location=location,
+        work_modes=work_modes,
+        experience=experience,
+        job_types=job_types,
+        date_posted=date_posted,
+        salary_min=salary_min,
+        sort_by=sort_by,
+        progress_cb=progress_cb,
+    )
+
+    return _finalize_response(
+        base_response,
+        profile=profile,
+        sort_by=sort_by,
+        cached=False,
+    )
+
+
+async def _run_uncached_search(
+    *,
+    cache_key: str,
+    filters_dict: dict,
+    query: str,
+    sources: list[JobSource],
+    location: Optional[LocationFilter],
+    work_modes: Optional[list[str]],
+    experience: Optional[list[str]],
+    job_types: Optional[list[str]],
+    date_posted: Optional[str],
+    salary_min: Optional[str],
+    sort_by: Optional[str],
+    progress_cb=None,
+) -> SearchResponse:
+    """Run the shared search pipeline and return an unpersonalized base response."""
 
     # ── Cache MISS — run full scraping pipeline ──────────────────────────────
     # Expand multi-value location into per-country shards so each scraper
@@ -96,32 +245,23 @@ async def run_search(
     # Build scraper tasks — one set per location shard
     tasks = []
     for shard in location_shards:
-        shard_country = None
-        if shard and shard.type == "country":
-            shard_country = shard.value or (shard.values[0] if shard.values else None)
-        elif shard and shard.type == "city" and shard.values:
-            with get_db() as conn:
-                row = conn.execute(
-                    "SELECT country_code FROM cities WHERE value = %s", (shard.values[0],)
-                ).fetchone()
-                if row:
-                    shard_country = row["country_code"]
-
         if JobSource.jobsearch in sources:
-            if not shard_country or shard_country.lower() == "az":
-                tasks.append(scrape_search(
-                    query, shard,
-                    work_modes=work_modes,
-                    experience=experience,
-                    job_types=job_types,
-                    date_posted=date_posted,
-                    sort_by=sort_by,
-                ))
+            tasks.append(scrape_search(
+                query, shard,
+                work_modes=work_modes,
+                experience=experience,
+                job_types=job_types,
+                date_posted=date_posted,
+                sort_by=sort_by,
+            ))
 
         if JobSource.linkedin in sources:
             tasks.append(scrape_linkedin(query, shard, work_modes=work_modes, experience=experience, job_types=job_types, date_posted=date_posted, sort_by=sort_by))
         if JobSource.indeed in sources:
             tasks.append(scrape_indeed(query, shard, work_modes=work_modes, experience=experience, job_types=job_types, date_posted=date_posted, sort_by=sort_by))
+
+    if progress_cb:
+        await progress_cb("scraping", "Searching job sources...", 0, 0)
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -140,15 +280,21 @@ async def run_search(
 
     print(f"[Search] Total unique jobs after merge: {len(all_jobs)} from {len(tasks)} scraper tasks")
 
-    # Merge cached enrichment and synchronously hydrate uncached jobs from
-    # detail pages so filtering runs on richer metadata, not card guesses.
+    if progress_cb:
+        await progress_cb("found", f"Found {len(all_jobs)} positions", len(all_jobs), 0)
+
+    # Merge any background-enriched metadata already in the DB.
+    # Scrapers already do source-specific AI/detail enrichment, so avoid
+    # a second synchronous enrichment pass across the merged result set.
     try:
         all_job_dicts = [json.loads(j.model_dump_json()) for j in all_jobs]
         all_job_dicts = merge_metadata_into_jobs(all_job_dicts)
-        all_job_dicts = await prepare_jobs_for_search(all_job_dicts)
         all_jobs = [JobListing(**d) for d in all_job_dicts]
     except Exception as e:
-        print(f"[Search] Pre-filter metadata prep error (non-fatal): {e}")
+        print(f"[Search] Metadata merge error before filtering (non-fatal): {e}")
+
+    if progress_cb:
+        await progress_cb("filtering", "Filtering results", 0, 0)
 
     # Semantic AI filter
     from services.ai_filter import ai_filter_jobs
@@ -163,16 +309,6 @@ async def run_search(
         date_posted=date_posted,
     )
 
-    # Score jobs against user profile
-    if profile:
-        visible = [score_job(job, profile) for job in visible]
-
-    # Sort
-    if sort_by == "job-title-ascending":
-        visible.sort(key=lambda j: j.title.lower())
-    elif sort_by == "job-title-descending":
-        visible.sort(key=lambda j: j.title.lower(), reverse=True)
-
     # ── Merge any previously-enriched metadata into listings ────────────────
     try:
         job_dicts = [json.loads(j.model_dump_json()) for j in visible]
@@ -182,11 +318,20 @@ async def run_search(
         print(f"[Search] Metadata merge error (non-fatal): {e}")
         merged_jobs = visible
 
-    response = SearchResponse(jobs=merged_jobs, total=len(merged_jobs), query=query, currency=currency)
+    # Append currency to salary values that don't already include one
+    if currency and currency != "USD":
+        _append_currency(merged_jobs, currency)
+
+    base_response = SearchResponse(
+        jobs=merged_jobs,
+        total=len(merged_jobs),
+        query=query,
+        currency=currency,
+    )
 
     # ── Write to cache (fire-and-forget — don't delay the response) ──────────
     asyncio.create_task(
-        _store_cache(cache_key, filters_dict, response, len(merged_jobs))
+        _store_cache(cache_key, filters_dict, base_response, len(merged_jobs))
     )
 
     # ── Background enrichment: fetch full descriptions for jobs missing metadata
@@ -196,7 +341,7 @@ async def run_search(
     except Exception as e:
         print(f"[Search] Enrichment launch error (non-fatal): {e}")
 
-    return response
+    return base_response
 
 
 async def _store_cache(cache_key: str, filters_dict: dict, response: SearchResponse, job_count: int) -> None:
@@ -207,6 +352,10 @@ async def _store_cache(cache_key: str, filters_dict: dict, response: SearchRespo
             if isinstance(job, dict):
                 # Keep DB cache minimal: do not persist scraped free-text snippets.
                 job["description_snippet"] = None
+                # Cache shared raw results, not user-personalized scores.
+                job["match_score"] = 0
+                job["match_level"] = "review"
+                job["match_flags"] = []
         set_cached_result(
             filters_hash=cache_key,
             filters_dict=filters_dict,
