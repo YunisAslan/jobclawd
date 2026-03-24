@@ -26,7 +26,7 @@ _CONCURRENCY_HTTP = 12
 _CONCURRENCY_BROWSER = 5
 _TIMEOUT_HTTP = 12.0
 _TIMEOUT_BROWSER = 12000  # ms for Playwright
-_BROWSER_FALLBACK_LIMIT = 8  # max URLs to fall back to browser
+_BROWSER_FALLBACK_LIMIT = 20  # max URLs to fall back to browser
 _UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -158,6 +158,7 @@ def _merge_missing_fields(base: Optional[dict], extra: Optional[dict]) -> dict:
         ("job_type_str", "job_type_src"),
         ("salary_str", "salary_src"),
         ("work_mode_str", "work_mode_src"),
+        ("apply_method_str", "apply_method_src"),
     ]
     for value_field, source_field in pairs:
         if not merged.get(value_field) and extra and extra.get(value_field):
@@ -166,6 +167,11 @@ def _merge_missing_fields(base: Optional[dict], extra: Optional[dict]) -> dict:
                 merged[source_field] = extra[source_field]
         elif not merged.get(source_field) and extra and extra.get(source_field) and merged.get(value_field):
             merged[source_field] = extra[source_field]
+    # Merge extra metadata fields
+    for extra_field in ("skills_str", "languages_str", "work_auth_str",
+                        "parse_confidence", "apply_complexity", "auto_apply_support"):
+        if not merged.get(extra_field) and extra and extra.get(extra_field):
+            merged[extra_field] = extra[extra_field]
     return merged
 
 
@@ -195,6 +201,7 @@ def _apply_metadata_to_job(job: dict, meta: dict, *, overwrite_non_structured: b
         ("job_type_str", "job_type_src"),
         ("salary_str", "salary_src"),
         ("work_mode_str", "work_mode_src"),
+        ("apply_method_str", "apply_method_src"),
     ]
     for value_field, source_field in pairs:
         incoming_value = meta.get(value_field)
@@ -213,6 +220,18 @@ def _apply_metadata_to_job(job: dict, meta: dict, *, overwrite_non_structured: b
         elif incoming_source and not job.get(source_field) and job.get(value_field):
             job[source_field] = incoming_source
 
+    # Map apply_method_str → apply_method (JobListing uses "apply_method" not "apply_method_str")
+    if meta.get("apply_method_str") and not job.get("apply_method"):
+        job["apply_method"] = meta["apply_method_str"]
+    if meta.get("apply_method_src") and not job.get("apply_method_src"):
+        job["apply_method_src"] = meta["apply_method_src"]
+
+    # Copy extra metadata fields (non-overwrite)
+    for extra_field in ("skills_str", "languages_str", "work_auth_str",
+                        "parse_confidence", "apply_complexity", "auto_apply_support"):
+        if not job.get(extra_field) and meta.get(extra_field):
+            job[extra_field] = meta[extra_field]
+
 
 # ── httpx fetcher ───────────────────────────────────────────────────
 
@@ -224,6 +243,10 @@ async def _fetch_page_text(client: httpx.AsyncClient, url: str) -> tuple[str, st
     try:
         resp = await client.get(url, follow_redirects=True, timeout=_TIMEOUT_HTTP)
         if resp.status_code != 200:
+            return url, "", ""
+        # Detect login/auth redirects (LinkedIn gates bots to login page)
+        final_url = str(resp.url)
+        if any(kw in final_url for kw in ("/login", "/authwall", "/checkpoint", "/signup", "/uas/")):
             return url, "", ""
         html = resp.text
         if len(html) < 500:
@@ -419,7 +442,7 @@ async def fetch_metadata_for_urls(
                 if not meta:
                     continue
                 # Add source tags
-                for field in ("experience_str", "job_type_str", "salary_str", "work_mode_str"):
+                for field in ("experience_str", "job_type_str", "salary_str", "work_mode_str", "apply_method_str"):
                     if meta.get(field):
                         meta[f"{field.replace('_str', '_src')}"] = "openai"
                 results[url] = _merge_missing_fields(results.get(url), meta) or None

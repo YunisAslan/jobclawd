@@ -102,6 +102,21 @@ UPDATE job_metadata SET expires_at = NOW() + INTERVAL '24 hours' WHERE expires_a
 CREATE INDEX IF NOT EXISTS idx_job_metadata_expires
   ON job_metadata (expires_at);
 
+-- Vacancy Intelligence Engine: new columns for job_metadata
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS fingerprint       TEXT;
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS apply_method_str  TEXT;
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS apply_method_src  TEXT;
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS skills_str        TEXT;
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS languages_str     TEXT;
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS work_auth_str     TEXT;
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS parse_confidence  INTEGER;
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS parser_version    TEXT;
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS apply_complexity  TEXT;
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS auto_apply_support TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_job_metadata_fingerprint
+  ON job_metadata (fingerprint) WHERE fingerprint IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS screening_answers (
   id         SERIAL PRIMARY KEY,
   email      TEXT NOT NULL,

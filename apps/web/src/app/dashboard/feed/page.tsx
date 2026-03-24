@@ -216,6 +216,7 @@ function FeedPageInner() {
   const {
     highMatch,
     needsReview,
+    error,
     selected,
     drawerJob,
     setDrawerJob,
@@ -316,6 +317,11 @@ function FeedPageInner() {
           profileDefaults={profileDefaults}
           initialValues={urlFilters}
         />
+        {error && (
+          <div className="rounded-xl border border-destructive/20 bg-destructive/8 px-4 py-3 text-sm text-destructive">
+            {error}
+          </div>
+        )}
         <div ref={resultsRef}>
           <FeedResults
             highMatch={filteredHighMatch}

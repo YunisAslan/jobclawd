@@ -20,4 +20,6 @@ export type {
   ScreeningAnswer,
   EasyApplyAnalysis,
   ATSInfo,
+  ApplyReadinessResponse,
+  MissingFieldInfo,
 } from "@jobclawd/shared";

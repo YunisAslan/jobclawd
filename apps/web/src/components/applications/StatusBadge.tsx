@@ -29,6 +29,22 @@ const STATUS_CONFIG: Record<ApplicationStatus, { label: string; className: strin
     label: "Withdrawn",
     className: "bg-muted text-muted-foreground border-border hover:bg-muted",
   },
+  drafted: {
+    label: "Drafted",
+    className: "bg-muted text-muted-foreground border-border hover:bg-muted",
+  },
+  waiting_input: {
+    label: "Waiting for input",
+    className: "bg-warning/15 text-warning border-warning/30 hover:bg-warning/15",
+  },
+  open_manually: {
+    label: "Open manually",
+    className: "bg-muted text-muted-foreground border-border hover:bg-muted",
+  },
+  failed: {
+    label: "Failed",
+    className: "bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/10",
+  },
 };
 
 const ALL_STATUSES = Object.keys(STATUS_CONFIG) as ApplicationStatus[];

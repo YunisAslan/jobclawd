@@ -1,6 +1,6 @@
 """LinkedIn job scraper — non-fatal, returns [] on any error."""
 
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlsplit, urlunsplit
 from typing import Optional
 
 from playwright_stealth import Stealth
@@ -9,33 +9,36 @@ from models.schemas import JobListing, JobSource, LocationFilter
 from db.database import get_db
 from services.ai_metadata_extractor import extract_metadata_ai_batch
 from services.apply_method_detector import detect_from_linkedin_card
-from services.enrichment_service import fetch_metadata_for_urls
 from utils.job_meta_extractor import extract_all as extract_meta
 
-_SYNC_DETAIL_ENRICH_LIMIT = 50
+_INITIAL_RESULTS_WAIT_MS = 1200
+_SCROLL_PAUSE_MS = 350
+_MAX_SCROLL_ROUNDS = 12
+_STALL_ROUNDS_BEFORE_STOP = 3
+
+
+def _normalize_linkedin_job_url(url: str) -> str:
+    raw = (url or "").strip()
+    if not raw:
+        return ""
+
+    parts = urlsplit(raw)
+    host = (parts.netloc or "").lower()
+    if host.endswith(".linkedin.com") or host == "linkedin.com":
+        host = "www.linkedin.com"
+
+    normalized = urlunsplit((
+        parts.scheme or "https",
+        host,
+        parts.path.rstrip("/"),
+        "",
+        "",
+    ))
+    return normalized
 
 
 def _has_missing_metadata(job: JobListing) -> bool:
     return not all([job.salary_str, job.job_type_str, job.experience_str, job.work_mode_str])
-
-
-def _merge_missing_fields(job: JobListing, meta: dict) -> None:
-    if not job.salary_str and meta.get("salary_str"):
-        job.salary_str = meta["salary_str"]
-        if meta.get("salary_src"):
-            job.salary_src = meta["salary_src"]
-    if not job.job_type_str and meta.get("job_type_str"):
-        job.job_type_str = meta["job_type_str"]
-        if meta.get("job_type_src"):
-            job.job_type_src = meta["job_type_src"]
-    if not job.experience_str and meta.get("experience_str"):
-        job.experience_str = meta["experience_str"]
-        if meta.get("experience_src"):
-            job.experience_src = meta["experience_src"]
-    if not job.work_mode_str and meta.get("work_mode_str"):
-        job.work_mode_str = meta["work_mode_str"]
-        if meta.get("work_mode_src"):
-            job.work_mode_src = meta["work_mode_src"]
 
 
 def _merge_missing_fields_with_source(
@@ -198,7 +201,8 @@ async def scrape_linkedin(
 
         try:
             await page.goto(base_url, wait_until="domcontentloaded", timeout=25000)
-            await page.wait_for_timeout(3000)
+            await page.wait_for_selector(".job-search-card", timeout=5000)
+            await page.wait_for_timeout(_INITIAL_RESULTS_WAIT_MS)
         except Exception:
             return []
 
@@ -206,9 +210,20 @@ async def scrape_linkedin(
         job_field_sources: list[dict[str, str]] = []
         seen_urls: set[str] = set()
 
-        for _ in range(25):
-            await page.evaluate("window.scrollBy(0, 800)")
-            await page.wait_for_timeout(400)
+        card_count = 0
+        stalled_rounds = 0
+        for _ in range(_MAX_SCROLL_ROUNDS):
+            current_count = await page.locator(".job-search-card").count()
+            if current_count > card_count:
+                card_count = current_count
+                stalled_rounds = 0
+            else:
+                stalled_rounds += 1
+                if stalled_rounds >= _STALL_ROUNDS_BEFORE_STOP:
+                    break
+
+            await page.evaluate("window.scrollBy(0, Math.max(window.innerHeight, 900))")
+            await page.wait_for_timeout(_SCROLL_PAUSE_MS)
 
         cards = await page.query_selector_all(".job-search-card")
         print(
@@ -241,7 +256,7 @@ async def scrape_linkedin(
                 if not title or not href:
                     continue
 
-                clean_url = href.split("?")[0]
+                clean_url = _normalize_linkedin_job_url(href)
                 if clean_url in seen_urls:
                     continue
                 seen_urls.add(clean_url)
@@ -303,7 +318,7 @@ async def scrape_linkedin(
                         source=JobSource.linkedin,
                         logo_url=logo_url,
                         location_str=location_str,
-                        description_snippet=snippet or None,
+                        description_snippet=(full_card_text[:2000] or snippet or None),
                         apply_method=apply_method,
                         salary_str=text_meta.get("salary_str"),
                         salary_src=field_sources.get("salary_str"),
@@ -352,40 +367,12 @@ async def scrape_linkedin(
             except Exception as e:
                 print(f"[LinkedIn] AI card extraction error: {e}")
 
-        # ── Step 2: Detail page enrichment for remaining gaps ──
-        # Salary is almost never in card text — detail pages have it.
-        # Also fills experience/type when title wasn't enough.
-        detail_candidates = [
-            (idx, job.url)
-            for idx, job in enumerate(jobs)
-            if _has_missing_metadata(job)
-        ][:_SYNC_DETAIL_ENRICH_LIMIT]
-
-        if detail_candidates:
+        missing_after_cards = sum(1 for job in jobs if _has_missing_metadata(job))
+        if missing_after_cards:
             print(
-                f"[LinkedIn] Enriching {len(detail_candidates)} jobs "
-                f"via detail pages..."
+                f"[LinkedIn] Deferring detail enrichment for {missing_after_cards} jobs "
+                "to background metadata fetch"
             )
-            try:
-                detail_results = await fetch_metadata_for_urls(
-                    [url for _, url in detail_candidates]
-                )
-                for idx, url in detail_candidates:
-                    meta = detail_results.get(url)
-                    if not meta:
-                        continue
-                    _merge_missing_fields(jobs[idx], meta)
-                    src = job_field_sources[idx]
-                    for field, src_field in [
-                        ("salary_str", "salary_src"),
-                        ("job_type_str", "job_type_src"),
-                        ("experience_str", "experience_src"),
-                        ("work_mode_str", "work_mode_src"),
-                    ]:
-                        if meta.get(field) and not src.get(field):
-                            src[field] = meta.get(src_field, "detail-page")
-            except Exception as e:
-                print(f"[LinkedIn] Detail enrichment error: {e}")
 
         for idx, job in enumerate(jobs):
             _log_meta_trace(

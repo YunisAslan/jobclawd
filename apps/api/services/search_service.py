@@ -14,8 +14,10 @@ from scraper.indeed import scrape_indeed
 from db.database import get_db
 from services.cache_service import make_cache_key
 from repositories.cache_repo import get_cached_result, set_cached_result
+from repositories.metadata_repo import upsert_metadata
 from engine.scoring import score_job
-from services.enrichment_service import enrich_jobs, merge_metadata_into_jobs
+from services.enrichment_service import enrich_jobs, merge_metadata_into_jobs, fetch_metadata_for_urls
+from services.extraction.pipeline import process_jobs
 
 # Currency symbols and codes that indicate a salary already has currency info
 _HAS_CURRENCY = re.compile(
@@ -24,6 +26,7 @@ _HAS_CURRENCY = re.compile(
 )
 
 _INFLIGHT_SEARCHES: dict[str, asyncio.Task] = {}
+_SYNC_LINKEDIN_ENRICH_LIMIT = 12
 
 
 def _append_currency(jobs: list, currency: str) -> None:
@@ -77,6 +80,91 @@ def _finalize_response(
     return response
 
 
+def _job_has_core_metadata(job: JobListing) -> bool:
+    return all([
+        job.salary_str,
+        job.job_type_str,
+        job.experience_str,
+        job.work_mode_str,
+    ])
+
+
+async def _sync_enrich_top_linkedin_jobs(jobs: list[JobListing]) -> None:
+    candidates = [
+        job.url
+        for job in jobs
+        if job.source == JobSource.linkedin and not _job_has_core_metadata(job)
+    ][:_SYNC_LINKEDIN_ENRICH_LIMIT]
+
+    if not candidates:
+        return
+
+    print(f"[Search] Sync enriching top {len(candidates)} LinkedIn jobs before response")
+    fetched = await fetch_metadata_for_urls(candidates)
+    for url, meta in fetched.items():
+        if not meta:
+            continue
+        try:
+            upsert_metadata(url, **meta)
+        except Exception as e:
+            print(f"[Search] Sync enrichment DB error for {url}: {e}")
+
+
+async def _build_preview_response(
+    jobs: list[JobListing],
+    *,
+    query: str,
+    location: Optional[LocationFilter],
+    work_modes: Optional[list[str]],
+    experience: Optional[list[str]],
+    job_types: Optional[list[str]],
+    salary_min: Optional[str],
+    date_posted: Optional[str],
+    currency: str,
+    profile: Optional[UserProfile],
+    sort_by: Optional[str],
+) -> SearchResponse:
+    preview_jobs = _clone_jobs(jobs)
+    if not preview_jobs:
+        return SearchResponse(jobs=[], total=0, query=query, currency=currency)
+
+    try:
+        job_dicts = [json.loads(job.model_dump_json()) for job in preview_jobs]
+        job_dicts = merge_metadata_into_jobs(job_dicts)
+        preview_jobs = [JobListing(**d) for d in job_dicts]
+    except Exception as e:
+        print(f"[Search] Preview metadata merge error (non-fatal): {e}")
+
+    from services.ai_filter import ai_filter_jobs
+
+    visible = await ai_filter_jobs(
+        jobs=preview_jobs,
+        query=query,
+        location=location,
+        work_modes=work_modes,
+        experience=experience,
+        job_types=job_types,
+        salary_min=salary_min,
+        date_posted=date_posted,
+    )
+
+    if currency and currency != "USD":
+        _append_currency(visible, currency)
+
+    base_response = SearchResponse(
+        jobs=visible,
+        total=len(visible),
+        query=query,
+        currency=currency,
+    )
+    return _finalize_response(
+        base_response,
+        profile=profile,
+        sort_by=sort_by,
+        cached=False,
+    )
+
+
 async def run_search(
     query: str,
     sources: list[JobSource],
@@ -90,6 +178,7 @@ async def run_search(
     profile: Optional[UserProfile] = None,
     force_refresh: bool = False,
     progress_cb=None,
+    event_cb=None,
 ) -> SearchResponse:
     """
     1. Build a deterministic cache key from all filters.
@@ -152,6 +241,8 @@ async def run_search(
                 salary_min=salary_min,
                 sort_by=sort_by,
                 progress_cb=progress_cb,
+                profile=profile,
+                event_cb=event_cb,
             )
         )
         _INFLIGHT_SEARCHES[cache_key] = task
@@ -183,6 +274,8 @@ async def run_search(
         salary_min=salary_min,
         sort_by=sort_by,
         progress_cb=progress_cb,
+        profile=profile,
+        event_cb=event_cb,
     )
 
     return _finalize_response(
@@ -207,12 +300,15 @@ async def _run_uncached_search(
     salary_min: Optional[str],
     sort_by: Optional[str],
     progress_cb=None,
+    profile: Optional[UserProfile],
+    event_cb=None,
 ) -> SearchResponse:
     """Run the shared search pipeline and return an unpersonalized base response."""
+    import time
+    t_total = time.perf_counter()
+    timings: dict[str, float] = {}
 
     # ── Cache MISS — run full scraping pipeline ──────────────────────────────
-    # Expand multi-value location into per-country shards so each scraper
-    # receives a proper single-location URL, then merge all results.
     location_shards: list[Optional[LocationFilter]] = []
     if location and location.values and len(location.values) > 1:
         for val in location.values:
@@ -243,60 +339,152 @@ async def _run_uncached_search(
                     currency = row["currency"]
 
     # Build scraper tasks — one set per location shard
-    tasks = []
+    tasks: list[asyncio.Task] = []
+
+    async def _run_scraper(source_name: str, coro):
+        return source_name, await coro
+
     for shard in location_shards:
         if JobSource.jobsearch in sources:
-            tasks.append(scrape_search(
-                query, shard,
-                work_modes=work_modes,
-                experience=experience,
-                job_types=job_types,
-                date_posted=date_posted,
-                sort_by=sort_by,
-            ))
+            tasks.append(asyncio.create_task(_run_scraper(
+                "jobsearch",
+                scrape_search(
+                    query, shard,
+                    work_modes=work_modes,
+                    experience=experience,
+                    job_types=job_types,
+                    date_posted=date_posted,
+                    sort_by=sort_by,
+                ),
+            )))
 
         if JobSource.linkedin in sources:
-            tasks.append(scrape_linkedin(query, shard, work_modes=work_modes, experience=experience, job_types=job_types, date_posted=date_posted, sort_by=sort_by))
+            tasks.append(asyncio.create_task(_run_scraper(
+                "linkedin",
+                scrape_linkedin(
+                    query,
+                    shard,
+                    work_modes=work_modes,
+                    experience=experience,
+                    job_types=job_types,
+                    date_posted=date_posted,
+                    sort_by=sort_by,
+                ),
+            )))
         if JobSource.indeed in sources:
-            tasks.append(scrape_indeed(query, shard, work_modes=work_modes, experience=experience, job_types=job_types, date_posted=date_posted, sort_by=sort_by))
+            tasks.append(asyncio.create_task(_run_scraper(
+                "indeed",
+                scrape_indeed(
+                    query,
+                    shard,
+                    work_modes=work_modes,
+                    experience=experience,
+                    job_types=job_types,
+                    date_posted=date_posted,
+                    sort_by=sort_by,
+                ),
+            )))
 
     if progress_cb:
         await progress_cb("scraping", "Searching job sources...", 0, 0)
 
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    # Merge and deduplicate by URL
     seen_urls: set[str] = set()
     all_jobs: list[JobListing] = []
-    for result in results:
-        if isinstance(result, Exception):
-            print(f"[Search] Scraper error: {result}")
+
+    t0 = time.perf_counter()
+    for task in asyncio.as_completed(tasks):
+        try:
+            source_name, result = await task
+        except Exception as e:
+            print(f"[Search] Scraper error: {e}")
             continue
+
+        new_jobs = 0
         if isinstance(result, list):
             for job in result:
                 if job.url not in seen_urls:
                     seen_urls.add(job.url)
                     all_jobs.append(job)
+                    new_jobs += 1
+
+        if progress_cb:
+            await progress_cb(
+                "found",
+                f"Found {len(all_jobs)} positions",
+                len(all_jobs),
+                0,
+            )
+
+        if event_cb and new_jobs > 0:
+            try:
+                preview_response = await _build_preview_response(
+                    all_jobs,
+                    query=query,
+                    location=location,
+                    work_modes=work_modes,
+                    experience=experience,
+                    job_types=job_types,
+                    salary_min=salary_min,
+                    date_posted=date_posted,
+                    currency=currency,
+                    profile=profile,
+                    sort_by=sort_by,
+                )
+                await event_cb({
+                    "stage": "partial",
+                    "message": f"{source_name} results ready",
+                    "current": preview_response.total,
+                    "total": preview_response.total,
+                    "source": source_name,
+                    "data": json.loads(preview_response.model_dump_json()),
+                })
+            except Exception as e:
+                print(f"[Search] Partial emit error (non-fatal): {e}")
+
+    timings["scraping"] = time.perf_counter() - t0
 
     print(f"[Search] Total unique jobs after merge: {len(all_jobs)} from {len(tasks)} scraper tasks")
 
-    if progress_cb:
-        await progress_cb("found", f"Found {len(all_jobs)} positions", len(all_jobs), 0)
-
-    # Merge any background-enriched metadata already in the DB.
-    # Scrapers already do source-specific AI/detail enrichment, so avoid
-    # a second synchronous enrichment pass across the merged result set.
+    # ── Vacancy Intelligence Pipeline: extract, deduplicate, enrich ─────────
     try:
+        t0 = time.perf_counter()
         all_job_dicts = [json.loads(j.model_dump_json()) for j in all_jobs]
+
+        if progress_cb:
+            await progress_cb("analyzing", "Extracting metadata...", 0, 0)
+
+        # Run the extraction pipeline (deterministic + selective AI)
+        all_job_dicts = await process_jobs(all_job_dicts, progress_cb=progress_cb)
+        timings["pipeline"] = time.perf_counter() - t0
+
+        t0 = time.perf_counter()
+        # Also merge any background-enriched metadata from DB
         all_job_dicts = merge_metadata_into_jobs(all_job_dicts)
         all_jobs = [JobListing(**d) for d in all_job_dicts]
+        timings["metadata_merge"] = time.perf_counter() - t0
     except Exception as e:
-        print(f"[Search] Metadata merge error before filtering (non-fatal): {e}")
+        print(f"[Search] Pipeline error (non-fatal, falling back): {e}")
+
+    # Sync-enrich top LinkedIn jobs BEFORE filtering so the filter has rich metadata
+    try:
+        t0 = time.perf_counter()
+        await _sync_enrich_top_linkedin_jobs(all_jobs)
+        # Re-merge DB metadata so all_jobs gets the enriched values
+        try:
+            enriched_dicts = [json.loads(j.model_dump_json()) for j in all_jobs]
+            enriched_dicts = merge_metadata_into_jobs(enriched_dicts)
+            all_jobs = [JobListing(**d) for d in enriched_dicts]
+        except Exception as e:
+            print(f"[Search] Pre-filter merge error (non-fatal): {e}")
+        timings["sync_visible_enrich"] = time.perf_counter() - t0
+    except Exception as e:
+        print(f"[Search] Sync enrichment error (non-fatal): {e}")
 
     if progress_cb:
         await progress_cb("filtering", "Filtering results", 0, 0)
 
     # Semantic AI filter
+    t0 = time.perf_counter()
     from services.ai_filter import ai_filter_jobs
     visible = await ai_filter_jobs(
         jobs=all_jobs,
@@ -308,8 +496,10 @@ async def _run_uncached_search(
         salary_min=salary_min,
         date_posted=date_posted,
     )
+    timings["ai_filter"] = time.perf_counter() - t0
 
-    # ── Merge any previously-enriched metadata into listings ────────────────
+    # ── Final metadata merge for filtered results ────────────────
+    t0 = time.perf_counter()
     try:
         job_dicts = [json.loads(j.model_dump_json()) for j in visible]
         job_dicts = merge_metadata_into_jobs(job_dicts)
@@ -317,10 +507,22 @@ async def _run_uncached_search(
     except Exception as e:
         print(f"[Search] Metadata merge error (non-fatal): {e}")
         merged_jobs = visible
+    timings["final_merge"] = time.perf_counter() - t0
 
     # Append currency to salary values that don't already include one
     if currency and currency != "USD":
         _append_currency(merged_jobs, currency)
+
+    timings["total"] = time.perf_counter() - t_total
+
+    # ── Print timing report ──────────────────────────────────────────────────
+    print(f"\n{'='*60}")
+    print(f"[Timing] Search pipeline for q=\"{query}\" ({len(merged_jobs)} results)")
+    print(f"{'─'*60}")
+    for stage, secs in timings.items():
+        bar = "█" * int(min(secs / timings["total"], 1.0) * 30) if timings["total"] > 0 else ""
+        print(f"  {stage:<20} {secs:>6.2f}s  {bar}")
+    print(f"{'='*60}\n")
 
     base_response = SearchResponse(
         jobs=merged_jobs,

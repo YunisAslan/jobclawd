@@ -13,6 +13,7 @@ export const ENDPOINTS = {
 
   // Apply
   APPLY: "/api/apply",
+  APPLY_READINESS: "/api/apply/readiness",
 
   // Stats
   STATS: "/api/stats",

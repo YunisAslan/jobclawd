@@ -15,7 +15,7 @@ _TIMEOUT = 30.0
 _BATCH_SIZE = 20
 
 _SYSTEM_PROMPT = """\
-You are a job listing analyzer. You read job postings in ANY language and extract 4 fields. Return JSON only.
+You are a job listing analyzer. You read job postings in ANY language and extract 5 fields. Return JSON only.
 
 For each job, extract:
 
@@ -39,7 +39,14 @@ For each job, extract:
    - A job category label, a city name, or "remote" used in other contexts (remote support, remote access) is NOT a work mode
    - null if the posting doesn't clearly state the work arrangement
 
-Return: {"results": [{"id": "...", "salary": ..., "job_type": ..., "experience": ..., "work_mode": ...}]}
+5. **apply_method**: How should a candidate apply? One of: email, easy_apply, external, direct.
+   - "email" = posting says to send CV/resume via email, or provides an email address for applications
+   - "easy_apply" = platform's built-in one-click apply (LinkedIn Easy Apply, Indeed Apply)
+   - "external" = redirects to company website, ATS portal, or external form (Greenhouse, Lever, Workday, etc.)
+   - "direct" = apply directly on the job board page itself
+   - null if unclear
+
+Return: {"results": [{"id": "...", "salary": ..., "job_type": ..., "experience": ..., "work_mode": ..., "apply_method": ...}]}
 Use null for any field you cannot confidently extract."""
 
 
@@ -82,12 +89,28 @@ def _normalize_job_type(value: object) -> Optional[str]:
     return _JOB_TYPE_MAP.get(cleaned.lower(), cleaned if cleaned in _JOB_TYPE_MAP.values() else None)
 
 
+_APPLY_METHOD_MAP = {
+    "email": "email",
+    "easy_apply": "easy_apply", "easy apply": "easy_apply", "easyapply": "easy_apply",
+    "external": "external", "ats": "external", "company website": "external", "company site": "external",
+    "direct": "direct", "on-site": "direct", "on site": "direct",
+}
+
+
+def _normalize_apply_method(value: object) -> Optional[str]:
+    cleaned = _clean(value)
+    if not cleaned:
+        return None
+    return _APPLY_METHOD_MAP.get(cleaned.lower(), cleaned if cleaned in _APPLY_METHOD_MAP.values() else None)
+
+
 def _normalize_result(item: dict) -> dict:
     return {
         "salary_str": _clean(item.get("salary")),
         "job_type_str": _normalize_job_type(item.get("job_type")),
         "experience_str": _clean(item.get("experience")),
         "work_mode_str": _normalize_work_mode(item.get("work_mode")),
+        "apply_method_str": _normalize_apply_method(item.get("apply_method")),
     }
 
 

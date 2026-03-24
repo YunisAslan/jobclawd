@@ -129,6 +129,16 @@ export interface JobListing {
   description_snippet?: string | null;
   hr_email?: string | null;
   apply_method?: ApplyMethod | null;
+  apply_method_src?: string | null;
+  apply_method_conf?: number | null;
+  // Vacancy Intelligence Engine fields
+  skills_str?: string | null;
+  languages_str?: string | null;
+  work_auth_str?: string | null;
+  apply_complexity?: "easy" | "moderate" | "hard" | null;
+  auto_apply_support?: "full" | "assisted" | "manual" | null;
+  parse_confidence?: number | null;
+  badges?: string[];
 }
 
 export interface SearchResponse {
@@ -196,6 +206,24 @@ export interface ApplyResponse {
   application_id?: number | null;
   message: string;
   sent_via_smtp: boolean;
+  failure_reason?: string | null;
+  status: string;
+}
+
+export interface MissingFieldInfo {
+  field: string;
+  label: string;
+}
+
+export interface ApplyReadinessResponse {
+  score: number;
+  support_level: "auto" | "assisted" | "manual" | "unsupported";
+  support_label: string;
+  missing_required: MissingFieldInfo[];
+  missing_optional: MissingFieldInfo[];
+  can_auto_apply: boolean;
+  method: string;
+  method_label: string;
 }
 
 export interface ApplyDrawerProps {

@@ -21,6 +21,8 @@ import ApplicantDetails from "./ApplicantDetails";
 import EmailComposeModal from "./EmailComposeModal";
 import EasyApplyTierCard from "./EasyApplyTierCard";
 import ATSInfoCard from "./ATSInfoCard";
+import ApplySupportBadge from "./ApplySupportBadge";
+import MissingInfoPanel from "./MissingInfoPanel";
 import { useApplyDrawer } from "@/hooks/use-apply-drawer";
 import { ApplyDrawerProps } from "../types";
 import { METHOD_CONFIG } from "./utils";
@@ -49,6 +51,7 @@ export default function ApplyDrawer({ job, onClose, onApplied }: ApplyDrawerProp
     effectiveEmail,
     method,
     readiness,
+    applyReadiness,
     isEdited,
     applyMutation,
     updateField,
@@ -116,6 +119,12 @@ export default function ApplyDrawer({ job, onClose, onApplied }: ApplyDrawerProp
                     </span>
                   </div>
                 </div>
+              ) : applyReadiness ? (
+                <ApplySupportBadge
+                  supportLevel={applyReadiness.support_level}
+                  supportLabel={applyReadiness.support_label}
+                  score={applyReadiness.score}
+                />
               ) : (
                 <div className="p-3.5 rounded-xl border border-border/50 bg-card">
                   <div className="flex items-center gap-2.5">
@@ -151,6 +160,13 @@ export default function ApplyDrawer({ job, onClose, onApplied }: ApplyDrawerProp
               )}
 
               <ReadinessBar fields={readiness} />
+
+              {applyReadiness && (
+                <MissingInfoPanel
+                  missingRequired={applyReadiness.missing_required}
+                  missingOptional={applyReadiness.missing_optional}
+                />
+              )}
 
               <Separator />
 

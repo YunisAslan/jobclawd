@@ -177,7 +177,6 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
     forceRefreshRef.current = true;
     queryClient.invalidateQueries({ queryKey: buildQueryKey(filters) });
   }, [queryClient, filters]);
-
   const errorMsg = error ? extractApiError(error, "Search error") : null;
 
   return {

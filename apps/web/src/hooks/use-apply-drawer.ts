@@ -8,6 +8,7 @@ import { jobsService } from "@/services/jobs.service";
 import { applyService } from "@/services/apply.service";
 import { settingsService } from "@/services/settings.service";
 import { profileService } from "@/services/profile.service";
+import type { ApplyReadinessResponse } from "@/types";
 import { useProfile } from "@/contexts/ProfileContext";
 import { extractApiError } from "@/lib/utils";
 import { generateCoverLetter, generateEmailSubject } from "@/lib/cover-letter";
@@ -38,6 +39,14 @@ export function useApplyDrawer(job: JobListing | null, onApplied: () => void) {
     queryFn: () => jobsService.getDetail(job!.url),
     enabled: !!job?.url,
     staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: applyReadiness } = useQuery({
+    queryKey: ["apply-readiness", job?.url, profile?.email],
+    queryFn: () => applyService.getReadiness(job!, profile),
+    enabled: !!job?.url,
+    staleTime: 2 * 60 * 1000,
+    retry: false,
   });
 
   const effectiveEmail = detail?.email ?? job?.hr_email ?? null;
@@ -162,6 +171,7 @@ export function useApplyDrawer(job: JobListing | null, onApplied: () => void) {
     effectiveEmail,
     method,
     readiness,
+    applyReadiness,
     isEdited,
     applyMutation,
     updateField,

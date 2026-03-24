@@ -12,7 +12,7 @@ export type ExperienceLevel = (typeof EXPERIENCE_LEVELS)[number];
 export const MATCH_LEVELS = ["high", "review", "trash"] as const;
 export type MatchLevel = (typeof MATCH_LEVELS)[number];
 
-export const APPLICATION_STATUSES = ["sent", "replied", "rejected", "withdrawn"] as const;
+export const APPLICATION_STATUSES = ["sent", "replied", "rejected", "withdrawn", "drafted", "waiting_input", "open_manually", "failed"] as const;
 export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
 
 export const JOB_SOURCES = ["jobsearch", "linkedin", "indeed"] as const;

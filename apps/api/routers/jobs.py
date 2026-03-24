@@ -101,6 +101,9 @@ async def search_jobs_stream(request: SearchRequest, email: Optional[str] = Depe
             "total": total,
         })
 
+    async def event_cb(event: dict):
+        await progress_queue.put(event)
+
     async def run_and_signal():
         try:
             result = await run_search(
@@ -116,6 +119,7 @@ async def search_jobs_stream(request: SearchRequest, email: Optional[str] = Depe
                 profile=profile,
                 force_refresh=request.forceRefresh,
                 progress_cb=progress_cb,
+                event_cb=event_cb,
             )
             # Deduct credit on cache miss
             if email and not result.cached:

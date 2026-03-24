@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/Button";
 import { FEED_STALE_TIME } from "@/hooks/use-feed";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/Tooltip";
 import { SearchProgress } from "@/services/jobs.service";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface FeedResultsProps {
   highMatch: JobListing[];
@@ -44,37 +44,67 @@ interface FeedResultsProps {
   onHideCompany?: (company: string) => void;
 }
 
-const STAGE_CONFIG: Record<string, { label: string; order: number }> = {
-  scraping: { label: "Searching job sources", order: 0 },
-  found: { label: "Positions found", order: 1 },
-  analyzing: { label: "Analyzing with AI", order: 2 },
-  filtering: { label: "Filtering and scoring", order: 3 },
+const STAGE_CONFIG: Record<string, { label: string; detail: string; order: number }> = {
+  scraping: {
+    label: "Searching job sources",
+    detail: "Scanning LinkedIn, Indeed, jobsearch.az...",
+    order: 0,
+  },
+  found: {
+    label: "Positions found",
+    detail: "Collecting results from all sources",
+    order: 1,
+  },
+  analyzing: {
+    label: "Extracting metadata",
+    detail: "Parsing salary, work mode, apply method...",
+    order: 2,
+  },
+  filtering: {
+    label: "Scoring and ranking",
+    detail: "Matching against your profile",
+    order: 3,
+  },
 };
 
+const SLOW_THRESHOLD_MS = 15_000;
+const TIMEOUT_THRESHOLD_MS = 60_000;
+
+function useElapsedTime(running: boolean) {
+  const [startTime] = useState(() => Date.now());
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(() => setElapsed(Date.now() - startTime), 1000);
+    return () => clearInterval(id);
+  }, [running, startTime]);
+
+  return elapsed;
+}
+
 function LoadingWithProgress({ progress }: { progress?: SearchProgress | null }) {
-  // Track completed stages
-  const [completedStages, setCompletedStages] = useState<Set<string>>(new Set());
   const currentStage = progress?.stage ?? "scraping";
+  const elapsed = useElapsedTime(true);
 
-  useEffect(() => {
-    if (!progress) return;
-    // Mark previous stages as completed
+  const isSlow = elapsed >= SLOW_THRESHOLD_MS;
+  const isTimeout = elapsed >= TIMEOUT_THRESHOLD_MS;
+
+  const completedStages = useMemo(() => {
+    if (!progress) return new Set<string>();
     const currentOrder = STAGE_CONFIG[progress.stage]?.order ?? 0;
-    setCompletedStages((prev) => {
-      const next = new Set(prev);
-      for (const [key, config] of Object.entries(STAGE_CONFIG)) {
-        if (config.order < currentOrder) next.add(key);
-      }
-      return next;
-    });
-  }, [progress]);
-
-  // Reset when loading starts fresh
-  useEffect(() => {
-    if (!progress) setCompletedStages(new Set());
+    const done = new Set<string>();
+    for (const [key, config] of Object.entries(STAGE_CONFIG)) {
+      if (config.order < currentOrder) done.add(key);
+    }
+    return done;
   }, [progress]);
 
   const stages = Object.entries(STAGE_CONFIG);
+  const elapsedSec = Math.floor(elapsed / 1000);
+  const elapsedLabel = elapsedSec < 60
+    ? `${elapsedSec}s`
+    : `${Math.floor(elapsedSec / 60)}m ${(elapsedSec % 60).toString().padStart(2, "0")}s`;
 
   return (
     <div className="relative animate-in fade-in duration-700">
@@ -104,35 +134,67 @@ function LoadingWithProgress({ progress }: { progress?: SearchProgress | null })
 
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="w-full max-w-sm p-5 sm:p-6 rounded-2xl bg-card/95 border border-border/60 shadow-xl backdrop-blur-sm space-y-5">
+          {/* Header with spinner + title + elapsed */}
           <div className="flex items-center gap-3">
             <div className="relative flex items-center justify-center size-8 shrink-0">
               <div className="absolute inset-0 border border-border/60 rounded-full" />
               <div
-                className="absolute inset-0 border-2 border-transparent border-t-primary rounded-full animate-spin"
+                className={cn(
+                  "absolute inset-0 border-2 border-transparent rounded-full animate-spin",
+                  isTimeout ? "border-t-warning" : "border-t-primary",
+                )}
                 style={{ animationDuration: "1.5s" }}
               />
             </div>
-            <h3 className="text-sm font-semibold tracking-tight text-foreground/90">
-              Curating your feed
-            </h3>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold tracking-tight text-foreground/90">
+                Curating your feed
+              </h3>
+              <span className={cn(
+                "text-[11px] tabular-nums",
+                isTimeout ? "text-warning" : isSlow ? "text-muted-foreground/60" : "text-muted-foreground/40",
+              )}>
+                {elapsedLabel} elapsed
+              </span>
+            </div>
           </div>
 
-          <div className="space-y-3.5 px-1">
+          {/* Pipeline stages */}
+          <div className="space-y-3 px-1">
             {stages.map(([key, config]) => {
               const done = completedStages.has(key);
               const active = key === currentStage;
               const upcoming = !done && !active;
 
-              // Build label with progress numbers
               let label = config.label;
+              let detail: string | null = null;
+
+              // Dynamic labels based on progress
               if (key === "found" && progress?.stage === "found" && progress.current > 0) {
                 label = `${progress.current} positions found`;
-              }
-              if (key === "analyzing" && active && progress?.total && progress.total > 0) {
-                label = `Analyzing with AI · ${progress.current}/${progress.total}`;
-              }
-              if (key === "found" && (currentStage === "analyzing" || currentStage === "filtering") && progress?.total) {
+                detail = "Deduplicating across sources";
+              } else if (key === "found" && (currentStage === "analyzing" || currentStage === "filtering") && progress?.total) {
                 label = `${progress.total} positions found`;
+              }
+
+              if (key === "analyzing" && active) {
+                if (progress?.message?.includes("AI enriching")) {
+                  label = "AI enrichment";
+                  detail = progress.message;
+                } else {
+                  detail = config.detail;
+                }
+                if (progress?.total && progress.total > 0) {
+                  label = `Enriching metadata · ${progress.current}/${progress.total}`;
+                }
+              }
+
+              if (key === "filtering" && active) {
+                detail = config.detail;
+              }
+
+              if (key === "scraping" && active) {
+                detail = config.detail;
               }
 
               return (
@@ -140,7 +202,7 @@ function LoadingWithProgress({ progress }: { progress?: SearchProgress | null })
                   key={key}
                   className={cn(
                     "flex items-center gap-3.5 transition-all duration-500",
-                    upcoming && "opacity-35",
+                    upcoming && "opacity-30",
                   )}
                 >
                   <div className="relative flex items-center justify-center shrink-0 w-5 h-5">
@@ -160,7 +222,7 @@ function LoadingWithProgress({ progress }: { progress?: SearchProgress | null })
                   <div className="flex-1 min-w-0">
                     <span
                       className={cn(
-                        "text-[13px] transition-all duration-500",
+                        "text-[13px] transition-all duration-500 block",
                         done
                           ? "text-muted-foreground/50"
                           : active
@@ -170,7 +232,12 @@ function LoadingWithProgress({ progress }: { progress?: SearchProgress | null })
                     >
                       {label}
                     </span>
-                    {/* Progress bar for AI analyzing stage */}
+                    {active && detail && (
+                      <span className="text-[11px] text-muted-foreground/50 block mt-0.5 animate-in fade-in duration-500">
+                        {detail}
+                      </span>
+                    )}
+                    {/* Progress bar for analyzing stage */}
                     {key === "analyzing" && active && progress?.total && progress.total > 0 && (
                       <div className="mt-1.5 w-full h-1 bg-muted rounded-full overflow-hidden">
                         <div
@@ -184,8 +251,42 @@ function LoadingWithProgress({ progress }: { progress?: SearchProgress | null })
               );
             })}
           </div>
+
+          {/* Slow / timeout warnings */}
+          {isTimeout && (
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-warning/10 border border-warning/20 animate-in fade-in slide-in-from-bottom-1 duration-300">
+              <AlertTriangle className="size-3.5 text-warning shrink-0" />
+              <p className="text-[11px] text-warning leading-tight">
+                This is taking longer than expected. Some sources may be slow to respond.
+              </p>
+            </div>
+          )}
+          {isSlow && !isTimeout && (
+            <p className="text-[11px] text-muted-foreground/40 text-center px-4 animate-in fade-in duration-700">
+              Scraping multiple sources takes a moment — we&apos;re parsing and scoring each vacancy for you.
+            </p>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function StreamingNotice({
+  progress,
+  totalVisible,
+}: {
+  progress?: SearchProgress | null;
+  totalVisible: number;
+}) {
+  const detail = progress?.message || "Collecting more results from the remaining sources...";
+
+  return (
+    <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg bg-primary/8 border border-primary/15 text-xs text-primary/90 animate-in fade-in slide-in-from-top-1 duration-300">
+      <RefreshCw className="size-3.5 shrink-0 animate-spin" />
+      <span>
+        Showing {totalVisible} result{totalVisible !== 1 ? "s" : ""} so far. {detail}
+      </span>
     </div>
   );
 }
@@ -314,6 +415,8 @@ export default function FeedResults({
   onHideCompany,
 }: FeedResultsProps) {
   const cacheCountdown = useCacheCountdown(dataUpdatedAt);
+  const totalVisible = highMatch.length + needsReview.length;
+
   if (!hasSearched && !loading) {
     return (
       <div className="py-20 flex flex-col items-center justify-center text-center text-muted-foreground animate-in fade-in zoom-in duration-300">
@@ -356,7 +459,7 @@ export default function FeedResults({
     );
   }
 
-  if (loading) {
+  if (loading && totalVisible === 0) {
     return <LoadingWithProgress progress={progress} />;
   }
 
@@ -391,13 +494,14 @@ export default function FeedResults({
     );
   }
 
-  const totalVisible = highMatch.length + needsReview.length;
-
   return (
     <div
       className={cn("space-y-6 rounded-xl transition-colors duration-500", flash && "bg-muted/40")}
     >
       {outOfCredits && <CreditsExhaustedBanner maxCredits={maxCredits} />}
+      {loading && totalVisible > 0 && (
+        <StreamingNotice progress={progress} totalVisible={totalVisible} />
+      )}
       <div className="flex flex-wrap items-center justify-between gap-y-1.5 border-b border-border/40 pb-2.5">
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span>

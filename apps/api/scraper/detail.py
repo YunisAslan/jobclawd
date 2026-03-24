@@ -1,12 +1,32 @@
 from typing import Optional
 import asyncio
 import json as _json
+from urllib.parse import urlsplit, urlunsplit
 from scraper import get_browser
 from models.schemas import JobDetailResponse, ApplyMethod
 from utils.email_extractor import extract_emails
 from services.easy_apply_analyzer import analyze_easy_apply
 from services.ats_detector import detect_ats
 from services.apply_method_detector import detect_from_page
+
+
+def _normalize_detail_url(url: str) -> str:
+    raw = (url or "").strip()
+    if not raw:
+        return raw
+
+    parts = urlsplit(raw)
+    host = (parts.netloc or "").lower()
+    if host.endswith(".linkedin.com") or host == "linkedin.com":
+        host = "www.linkedin.com"
+
+    return urlunsplit((
+        parts.scheme or "https",
+        host,
+        parts.path,
+        parts.query,
+        parts.fragment,
+    ))
 
 
 def _email_from_api_item(item: dict) -> Optional[str]:
@@ -117,6 +137,7 @@ async def _extract_email_from_page(page) -> Optional[str]:
 
 
 async def scrape_job_detail(url: str) -> JobDetailResponse:
+    url = _normalize_detail_url(url)
     browser = await get_browser()
     context = await browser.new_context(
         user_agent=(

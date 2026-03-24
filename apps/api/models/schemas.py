@@ -30,6 +30,10 @@ class ApplicationStatus(str, Enum):
     replied = "replied"
     rejected = "rejected"
     withdrawn = "withdrawn"
+    drafted = "drafted"
+    waiting_input = "waiting_input"
+    open_manually = "open_manually"
+    failed = "failed"
 
 
 class JobSource(str, Enum):
@@ -149,6 +153,17 @@ class JobListing(BaseModel):
     hr_email: Optional[str] = None
     # How the user can apply — set at scrape time based on source & email availability
     apply_method: Optional[str] = None
+    apply_method_src: Optional[str] = None
+    apply_method_conf: Optional[float] = None
+    # Vacancy Intelligence Engine fields
+    skills_str: Optional[str] = None
+    languages_str: Optional[str] = None
+    work_auth_str: Optional[str] = None
+    apply_complexity: Optional[str] = None          # "easy" | "moderate" | "hard"
+    auto_apply_support: Optional[str] = None        # "full" | "assisted" | "manual"
+    parse_confidence: Optional[int] = None          # 0-100
+    # Summary badges for frontend display
+    badges: list[str] = []
 
 
 class SearchResponse(BaseModel):
@@ -232,6 +247,29 @@ class ApplyResponse(BaseModel):
     application_id: Optional[int] = None
     message: str
     sent_via_smtp: bool = False
+    failure_reason: Optional[str] = None       # specific failure: "external_login_required", "captcha_detected", etc.
+    status: str = "sent"                        # "sent" | "drafted" | "waiting_input" | "open_manually" | "failed"
+
+
+class MissingFieldInfo(BaseModel):
+    field: str
+    label: str
+
+
+class ApplyReadinessRequest(BaseModel):
+    job: JobListing
+    profile: Optional[UserProfile] = None
+
+
+class ApplyReadinessResponse(BaseModel):
+    score: int                                  # 0-100
+    support_level: str                          # "auto" | "assisted" | "manual" | "unsupported"
+    support_label: str                          # "Auto Apply — Supported", etc.
+    missing_required: list[MissingFieldInfo]
+    missing_optional: list[MissingFieldInfo]
+    can_auto_apply: bool
+    method: str
+    method_label: str
 
 
 # ---------- Applications ----------

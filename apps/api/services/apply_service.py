@@ -97,14 +97,46 @@ async def process_apply(request: ApplyRequest) -> ApplyResponse:
             except Exception as e:
                 send_error = str(e)
 
+    # Determine status and failure reason
+    status = "sent"
+    failure_reason = None
+
     if request.hr_email and not sent_via_smtp:
-        msg = f"Application saved, but email failed: {send_error or 'No email method available'}."
+        if send_error and "authentication" in send_error.lower():
+            failure_reason = "smtp_auth_failed"
+            status = "failed"
+            msg = "Application saved, but email failed: SMTP authentication error."
+        elif send_error and "connection" in send_error.lower():
+            failure_reason = "smtp_connection_failed"
+            status = "failed"
+            msg = "Application saved, but email failed: Could not connect to mail server."
+        elif send_error:
+            failure_reason = "email_send_failed"
+            status = "failed"
+            msg = f"Application saved, but email failed: {send_error}"
+        else:
+            failure_reason = "no_smtp_configured"
+            status = "open_manually"
+            msg = "Application saved. No email method available — apply manually."
+    elif sent_via_smtp:
+        msg = "Application saved. Email sent successfully."
+    elif not request.hr_email:
+        # Non-email apply methods
+        apply_method = request.source.value if request.source else "direct"
+        if apply_method in ("linkedin", "indeed"):
+            status = "open_manually"
+            msg = "Application tracked. Open the job page to complete your application."
+        else:
+            status = "open_manually"
+            msg = "Application tracked. Complete your application on the external site."
     else:
-        msg = "Application saved." + (" Email sent." if sent_via_smtp else "")
+        msg = "Application saved."
 
     return ApplyResponse(
         success=True,
         application_id=app_id,
         message=msg,
         sent_via_smtp=sent_via_smtp,
+        failure_reason=failure_reason,
+        status=status,
     )
