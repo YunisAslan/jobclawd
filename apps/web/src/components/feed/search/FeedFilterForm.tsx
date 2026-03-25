@@ -42,6 +42,23 @@ const EMPTY_FILTERS: FeedFilterValues = {
   sortBy: "",
 };
 
+const SEARCH_RECOMMENDATIONS = [
+  "Software Engineer",
+  "Frontend Developer",
+  "Backend Developer",
+  "Full Stack Developer",
+  "Product Designer",
+  "UI UX Designer",
+  "Data Analyst",
+  "Data Scientist",
+  "DevOps Engineer",
+  "Project Manager",
+  "Product Manager",
+  "Marketing Manager",
+  "Customer Success Manager",
+  "Sales Manager",
+];
+
 interface FeedFilterFormProps {
   onSubmit: (values: FeedFilterValues) => void;
   onChange?: (values: FeedFilterValues) => void;
@@ -77,6 +94,10 @@ export default function FeedFilterForm({
   const [showHistory, setShowHistory] = useState(false);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const searchRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const suppressNextOutsideCloseRef = useRef(false);
+
+  const watchedQuery = watch("query");
 
   useEffect(() => {
     setHistoryIndex(-1);
@@ -102,6 +123,10 @@ export default function FeedFilterForm({
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
+      if (suppressNextOutsideCloseRef.current) {
+        suppressNextOutsideCloseRef.current = false;
+        return;
+      }
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setShowHistory(false);
       }
@@ -133,6 +158,57 @@ export default function FeedFilterForm({
 
   const watchedLocation = watch("location");
   const watchedSalaryMin = watch("salaryMin");
+  const normalizedQuery = (watchedQuery ?? "").trim().toLowerCase();
+
+  const visibleHistory = useMemo(() => {
+    if (!normalizedQuery) return history;
+    return history.filter((item) => item.toLowerCase().includes(normalizedQuery));
+  }, [history, normalizedQuery]);
+
+  const recommendations = useMemo(() => {
+    const personalized = [profileDefaults?.query, initialValues?.query]
+      .map((item) => item?.trim())
+      .filter((item): item is string => Boolean(item));
+
+    const seen = new Set<string>();
+    const pool = [...personalized, ...SEARCH_RECOMMENDATIONS].filter((item) => {
+      const key = item.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    const available = pool
+      .filter((item) => item.toLowerCase() !== normalizedQuery)
+      .filter((item) => !history.some((historyItem) => historyItem.toLowerCase() === item.toLowerCase()));
+
+    const matched = available.filter(
+      (item) => !normalizedQuery || item.toLowerCase().includes(normalizedQuery),
+    );
+
+    return (matched.length > 0 ? matched : available).slice(0, normalizedQuery ? 6 : 5);
+  }, [history, initialValues?.query, normalizedQuery, profileDefaults?.query]);
+
+  const dropdownItems = useMemo(
+    () => [
+      ...visibleHistory.map((item) => ({ type: "history" as const, value: item })),
+      ...recommendations.map((item) => ({ type: "recommendation" as const, value: item })),
+    ],
+    [recommendations, visibleHistory],
+  );
+
+  useEffect(() => {
+    setHistoryIndex((current) => {
+      if (dropdownItems.length === 0) return -1;
+      return Math.min(current, dropdownItems.length - 1);
+    });
+  }, [dropdownItems]);
+
+  const submitQuery = (query: string) => {
+    setValue("query", query, { shouldDirty: true, shouldTouch: true });
+    setShowHistory(false);
+    formRef.current?.requestSubmit();
+  };
 
   const currency = useMemo(() => {
     if (!meta || !watchedLocation) return "USD";
@@ -167,6 +243,7 @@ export default function FeedFilterForm({
     <Card className="py-0 shadow-sm border-border/60">
       <CardContent className="pt-5 pb-4 space-y-4">
         <form
+          ref={formRef}
           onSubmit={handleSubmit((values) => {
             pushHistory(values.query ?? "");
             // Blur the search input to collapse keyboard / search bar
@@ -193,78 +270,126 @@ export default function FeedFilterForm({
                     autoComplete="off"
                     onFocus={() => setShowHistory(true)}
                     onKeyDown={(e) => {
-                      if (!showHistory || history.length === 0) return;
-                      if (e.key === "ArrowDown") {
+                      if (e.key === "ArrowDown" && showHistory && dropdownItems.length > 0) {
                         e.preventDefault();
-                        setHistoryIndex((i) => Math.min(i + 1, history.length - 1));
-                      } else if (e.key === "ArrowUp") {
+                        setHistoryIndex((i) => Math.min(i + 1, dropdownItems.length - 1));
+                      } else if (e.key === "ArrowUp" && showHistory && dropdownItems.length > 0) {
                         e.preventDefault();
                         setHistoryIndex((i) => Math.max(i - 1, -1));
-                      } else if (e.key === "Enter" && historyIndex >= 0) {
-                        e.preventDefault();
-                        setValue("query", history[historyIndex]);
-                        setShowHistory(false);
                       } else if (e.key === "Escape") {
                         setShowHistory(false);
+                      } else if (e.key === "Enter") {
+                        if (showHistory) {
+                          setShowHistory(false);
+                        }
+                        if (historyIndex >= 0) {
+                          e.preventDefault();
+                          submitQuery(dropdownItems[historyIndex].value);
+                        }
                       }
                     }}
                   />
                 )}
               />
-              {showHistory && history.length > 0 && (
+              {showHistory && dropdownItems.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl border border-border/60 bg-popover shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
-                  <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 flex items-center gap-1.5">
-                      <History className="size-3" />
-                      Recent searches
-                    </span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-auto p-0 text-[10px] text-muted-foreground/50 hover:text-destructive hover:bg-transparent"
-                      onClick={() => {
-                        setHistory([]);
-                        localStorage.removeItem(HISTORY_KEY);
-                      }}
-                    >
-                      Clear all
-                    </Button>
-                  </div>
-                  <ul className="py-1">
-                    {history.map((item, i) => (
-                      <li
-                        key={item}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-2 cursor-pointer group transition-colors",
-                          i === historyIndex ? "bg-muted/80" : "hover:bg-muted/60",
-                        )}
-                        onMouseEnter={() => setHistoryIndex(i)}
-                        onMouseLeave={() => setHistoryIndex(-1)}
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          setValue("query", item);
-                          setShowHistory(false);
-                        }}
-                      >
-                        <History className="size-3.5 text-muted-foreground/40 shrink-0" />
-                        <span className="flex-1 text-sm text-foreground/80 truncate">{item}</span>
+                  {visibleHistory.length > 0 && (
+                    <>
+                      <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 flex items-center gap-1.5">
+                          <History className="size-3" />
+                          Recent searches
+                        </span>
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon"
-                          className="size-5 opacity-0 group-hover:opacity-100 text-muted-foreground/40 hover:text-destructive hover:bg-transparent transition-all shrink-0"
+                          size="sm"
+                          className="h-auto p-0 text-[10px] text-muted-foreground/50 hover:text-destructive hover:bg-transparent"
                           onMouseDown={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            removeHistory(item);
+                            suppressNextOutsideCloseRef.current = true;
+                            setHistory([]);
+                            localStorage.removeItem(HISTORY_KEY);
                           }}
                         >
-                          <X className="size-3" />
+                          Clear all
                         </Button>
-                      </li>
-                    ))}
-                  </ul>
+                      </div>
+                      <ul className="py-1">
+                        {visibleHistory.map((item, i) => (
+                          <li
+                            key={item}
+                            className={cn(
+                              "flex items-center gap-2 px-3 py-2 cursor-pointer group transition-colors",
+                              i === historyIndex ? "bg-muted/80" : "hover:bg-muted/60",
+                            )}
+                            onMouseEnter={() => setHistoryIndex(i)}
+                            onMouseLeave={() => setHistoryIndex(-1)}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              submitQuery(item);
+                            }}
+                          >
+                            <History className="size-3.5 text-muted-foreground/40 shrink-0" />
+                            <span className="flex-1 text-sm text-foreground/80 truncate">
+                              {item}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="size-5 opacity-0 group-hover:opacity-100 text-muted-foreground/40 hover:text-destructive hover:bg-transparent transition-all shrink-0"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                suppressNextOutsideCloseRef.current = true;
+                                removeHistory(item);
+                              }}
+                            >
+                              <X className="size-3" />
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {recommendations.length > 0 && (
+                    <>
+                      <div className="px-3 pt-2.5 pb-1">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 flex items-center gap-1.5">
+                          <Search className="size-3" />
+                          Recommendations
+                        </span>
+                      </div>
+                      <ul className="py-1">
+                        {recommendations.map((item, i) => {
+                          const itemIndex = visibleHistory.length + i;
+
+                          return (
+                            <li
+                              key={item}
+                              className={cn(
+                                "flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors",
+                                itemIndex === historyIndex ? "bg-muted/80" : "hover:bg-muted/60",
+                              )}
+                              onMouseEnter={() => setHistoryIndex(itemIndex)}
+                              onMouseLeave={() => setHistoryIndex(-1)}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                submitQuery(item);
+                              }}
+                            >
+                              <Search className="size-3.5 text-muted-foreground/40 shrink-0" />
+                              <span className="flex-1 text-sm text-foreground/80 truncate">
+                                {item}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </>
+                  )}
                 </div>
               )}
             </div>
