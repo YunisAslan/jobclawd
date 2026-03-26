@@ -18,6 +18,8 @@ from repositories.metadata_repo import upsert_metadata
 from engine.scoring import score_job
 from services.enrichment_service import enrich_jobs, merge_metadata_into_jobs, fetch_metadata_for_urls
 from services.extraction.pipeline import process_jobs
+from services.ai_metadata_extractor import reset_token_usage, get_token_usage
+from utils.job_meta_extractor import primary_experience_value
 
 # Currency symbols and codes that indicate a salary already has currency info
 _HAS_CURRENCY = re.compile(
@@ -39,6 +41,18 @@ def _append_currency(jobs: list, currency: str) -> None:
 
 def _clone_jobs(jobs: list[JobListing]) -> list[JobListing]:
     return [JobListing(**json.loads(job.model_dump_json())) for job in jobs]
+
+
+def _job_to_dict(job: JobListing) -> dict:
+    data = json.loads(job.model_dump_json())
+    for internal_key in ("_card_data", "_apply_url", "_detail_text"):
+        if internal_key in job.__dict__:
+            data[internal_key] = job.__dict__[internal_key]
+    return data
+
+
+def _jobs_to_dicts(jobs: list[JobListing]) -> list[dict]:
+    return [_job_to_dict(job) for job in jobs]
 
 
 def _sort_jobs(jobs: list[JobListing], sort_by: Optional[str]) -> None:
@@ -84,7 +98,7 @@ def _job_has_core_metadata(job: JobListing) -> bool:
     return all([
         job.salary_str,
         job.job_type_str,
-        job.experience_str,
+        primary_experience_value(job.seniority_str, job.experience_years_str) or job.experience_str,
         job.work_mode_str,
     ])
 
@@ -129,7 +143,7 @@ async def _build_preview_response(
         return SearchResponse(jobs=[], total=0, query=query, currency=currency)
 
     try:
-        job_dicts = [json.loads(job.model_dump_json()) for job in preview_jobs]
+        job_dicts = _jobs_to_dicts(preview_jobs)
         job_dicts = merge_metadata_into_jobs(job_dicts)
         preview_jobs = [JobListing(**d) for d in job_dicts]
     except Exception as e:
@@ -307,6 +321,7 @@ async def _run_uncached_search(
     import time
     t_total = time.perf_counter()
     timings: dict[str, float] = {}
+    reset_token_usage()
 
     # ── Cache MISS — run full scraping pipeline ──────────────────────────────
     location_shards: list[Optional[LocationFilter]] = []
@@ -448,7 +463,7 @@ async def _run_uncached_search(
     # ── Vacancy Intelligence Pipeline: extract, deduplicate, enrich ─────────
     try:
         t0 = time.perf_counter()
-        all_job_dicts = [json.loads(j.model_dump_json()) for j in all_jobs]
+        all_job_dicts = _jobs_to_dicts(all_jobs)
 
         if progress_cb:
             await progress_cb("analyzing", "Extracting metadata...", 0, 0)
@@ -471,7 +486,7 @@ async def _run_uncached_search(
         await _sync_enrich_top_linkedin_jobs(all_jobs)
         # Re-merge DB metadata so all_jobs gets the enriched values
         try:
-            enriched_dicts = [json.loads(j.model_dump_json()) for j in all_jobs]
+            enriched_dicts = _jobs_to_dicts(all_jobs)
             enriched_dicts = merge_metadata_into_jobs(enriched_dicts)
             all_jobs = [JobListing(**d) for d in enriched_dicts]
         except Exception as e:
@@ -501,7 +516,7 @@ async def _run_uncached_search(
     # ── Final metadata merge for filtered results ────────────────
     t0 = time.perf_counter()
     try:
-        job_dicts = [json.loads(j.model_dump_json()) for j in visible]
+        job_dicts = _jobs_to_dicts(visible)
         job_dicts = merge_metadata_into_jobs(job_dicts)
         merged_jobs = [JobListing(**d) for d in job_dicts]
     except Exception as e:
@@ -516,12 +531,25 @@ async def _run_uncached_search(
     timings["total"] = time.perf_counter() - t_total
 
     # ── Print timing report ──────────────────────────────────────────────────
+    usage = get_token_usage()
     print(f"\n{'='*60}")
     print(f"[Timing] Search pipeline for q=\"{query}\" ({len(merged_jobs)} results)")
     print(f"{'─'*60}")
     for stage, secs in timings.items():
         bar = "█" * int(min(secs / timings["total"], 1.0) * 30) if timings["total"] > 0 else ""
         print(f"  {stage:<20} {secs:>6.2f}s  {bar}")
+    print(f"{'─'*60}")
+    if usage["requests"] > 0:
+        cost_str = f"${usage['cost_usd']:.4f}" if usage["cost_usd"] is not None else "unknown"
+        print(
+            f"  [Cost] model={usage['model']}  "
+            f"tokens={usage['prompt_tokens']}+{usage['completion_tokens']}"
+            f"={usage['total_tokens']}  "
+            f"reqs={usage['requests']}  "
+            f"cost={cost_str}"
+        )
+    else:
+        print("  [Cost] no AI calls made")
     print(f"{'='*60}\n")
 
     base_response = SearchResponse(
@@ -538,7 +566,7 @@ async def _run_uncached_search(
 
     # ── Background enrichment: fetch full descriptions for jobs missing metadata
     try:
-        job_dicts_for_enrich = [json.loads(j.model_dump_json()) for j in merged_jobs]
+        job_dicts_for_enrich = _jobs_to_dicts(merged_jobs)
         asyncio.create_task(enrich_jobs(job_dicts_for_enrich))
     except Exception as e:
         print(f"[Search] Enrichment launch error (non-fatal): {e}")

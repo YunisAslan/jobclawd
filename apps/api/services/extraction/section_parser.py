@@ -33,10 +33,16 @@ _SECTION_PATTERNS: list[tuple[re.Pattern, str, float]] = [
     (re.compile(
         r'(?:^|\n)\s*(?:#+\s*)?(?:'
         r'requirements?|qualifications?|what we (?:need|require|expect|look for)|'
-        r'who you are|must.have|minimum qualifications?|what you.?ll need|'
+        r'who you are|must[\s\-]?have|minimum qualifications?|what you.?ll need|'
+        r'required qualifications?|basic qualifications?|preferred qualifications?|'
+        r'required skills|skills (?:required|needed)|experience(?:\s+required)?|'
+        r'ideal candidate|who we.?re looking for|you should have|you will have|'
+        r'what we.?re looking for|we.?re looking for|you bring|you have|'
+        r'your background|knowledge.{0,15}skills|nice to have|bonus points?|'
+        r'technologies used|tech stack|our stack|tools we use|'
         r'tələblər|namizədə tələblər|tələb olunanlar|'
-        r'gereksinimler|nitelikler|aranan özellikler|'
-        r'требования|квалификация|что мы ожидаем|что нужно'
+        r'gereksinimler|nitelikler|aranan özellikler|istenen nitelikler|'
+        r'требования|квалификация|что мы ожидаем|что нужно|навыки|ожидания'
         r')\s*[:：\-]?\s*',
         re.IGNORECASE | re.MULTILINE,
     ), "requirements", 1.0),
@@ -45,9 +51,13 @@ _SECTION_PATTERNS: list[tuple[re.Pattern, str, float]] = [
     (re.compile(
         r'(?:^|\n)\s*(?:#+\s*)?(?:'
         r'responsibilities|duties|what you.?ll do|your role|key tasks|'
+        r'role description|job description|position description|the role|'
+        r'in this role|day to day|what you.?ll work on|you will|'
+        r'core responsibilities|key responsibilities|primary responsibilities|'
+        r'about the (?:role|position|job)|about this (?:role|position|job)|'
         r'vəzifələr|iş öhdəlikləri|'
         r'sorumluluklar|görevler|yapacaklarınız|'
-        r'обязанности|задачи|что предстоит делать'
+        r'обязанности|задачи|что предстоит делать|ваши задачи'
         r')\s*[:：\-]?\s*',
         re.IGNORECASE | re.MULTILINE,
     ), "responsibilities", 0.8),
@@ -56,9 +66,13 @@ _SECTION_PATTERNS: list[tuple[re.Pattern, str, float]] = [
     (re.compile(
         r'(?:^|\n)\s*(?:#+\s*)?(?:'
         r'benefits|perks|what we offer|we offer|why (?:join|work)|our offer|'
-        r'üstünlüklər|biz təklif edirik|imkanlar|'
-        r'avantajlar|sunduklarımız|neden biz|'
-        r'преимущества|мы предлагаем|что мы предлагаем|бонусы'
+        r'compensation|salary|pay|total rewards|reward|package|'
+        r'paid (?:time|vacation|leave|holiday)|vacation|insurance|'
+        r'health (?:care|benefits|insurance)|retirement|401k|RRSP|pension|'
+        r'equity|stock|RSU|options|bonus plan|'
+        r'üstünlüklər|biz təklif edirik|imkanlar|maaş|'
+        r'avantajlar|sunduklarımız|neden biz|ücret|'
+        r'преимущества|мы предлагаем|что мы предлагаем|бонусы|зарплата'
         r')\s*[:：\-]?\s*',
         re.IGNORECASE | re.MULTILINE,
     ), "benefits", 0.5),
@@ -67,6 +81,7 @@ _SECTION_PATTERNS: list[tuple[re.Pattern, str, float]] = [
     (re.compile(
         r'(?:^|\n)\s*(?:#+\s*)?(?:'
         r'how to apply|application|apply now|to apply|application process|'
+        r'submit your|send your (?:cv|resume|application)|'
         r'müraciət|necə müraciət|müraciət qaydası|'
         r'başvuru|nasıl başvurulur|başvuru süreci|'
         r'как подать заявку|подать заявку|как откликнуться'
@@ -74,16 +89,30 @@ _SECTION_PATTERNS: list[tuple[re.Pattern, str, float]] = [
         re.IGNORECASE | re.MULTILINE,
     ), "apply_section", 1.2),
 
-    # About the company
+    # About the company / team
     (re.compile(
         r'(?:^|\n)\s*(?:#+\s*)?(?:'
-        r'about (?:us|the company|our company)|company (?:description|overview)|who we are|'
-        r'şirkət haqqında|haqqımızda|'
-        r'hakkımızda|şirket hakkında|'
-        r'о компании|о нас|кто мы'
+        r'about (?:us|the company|our company|the job|the team)|'
+        r'company (?:description|overview|profile)|who we are|our mission|'
+        r'team description|about .{1,30} team|our team|'
+        r'şirkət haqqında|haqqımızda|komanda haqqında|'
+        r'hakkımızda|şirket hakkında|ekip hakkında|'
+        r'о компании|о нас|кто мы|о команде'
         r')\s*[:：\-]?\s*',
         re.IGNORECASE | re.MULTILINE,
     ), "about_company", 0.3),
+
+    # EEO / Legal / Disclaimers (very low weight)
+    (re.compile(
+        r'(?:^|\n)\s*(?:#+\s*)?(?:'
+        r'equal (?:opportunity|employment)|EEO|diversity|inclusion|'
+        r'(?:we|the company) (?:is|are) (?:committed|proud) to|'
+        r'accommodations?|disability|EEOC|'
+        r'privacy|personal information|data (?:protection|privacy)|GDPR|'
+        r'artificial intelligence.{0,20}(?:screen|used)|AI.{0,20}(?:screen|used)'
+        r')\s*[:：\-]?\s*',
+        re.IGNORECASE | re.MULTILINE,
+    ), "general", 0.2),
 ]
 
 

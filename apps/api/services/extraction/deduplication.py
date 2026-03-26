@@ -17,6 +17,7 @@ import re
 from typing import Optional
 
 from db.database import get_db
+from utils.job_meta_extractor import primary_experience_value
 
 
 # ── Normalization ──────────────────────────────────────────────────
@@ -136,13 +137,21 @@ def _metadata_richness(job: dict) -> int:
     """Count how many metadata fields are populated."""
     score = 0
     for field in (
-        "work_mode_str", "job_type_str", "salary_str", "experience_str",
+        "work_mode_str", "job_type_str", "salary_str",
+        "seniority_str", "experience_years_str", "experience_str",
         "hr_email", "apply_method", "description_snippet", "logo_url",
     ):
         if job.get(field):
             score += 1
     # Prefer structured source data
-    for src_field in ("work_mode_src", "job_type_src", "salary_src", "experience_src"):
+    for src_field in (
+        "work_mode_src",
+        "job_type_src",
+        "salary_src",
+        "seniority_src",
+        "experience_years_src",
+        "experience_src",
+    ):
         if job.get(src_field) == "structured":
             score += 2
     return score
@@ -154,6 +163,8 @@ def _merge_metadata(target: dict, donor: dict) -> None:
         ("work_mode_str", "work_mode_src"),
         ("job_type_str", "job_type_src"),
         ("salary_str", "salary_src"),
+        ("seniority_str", "seniority_src"),
+        ("experience_years_str", "experience_years_src"),
         ("experience_str", "experience_src"),
     ]
     for value_field, source_field in field_pairs:
@@ -161,6 +172,18 @@ def _merge_metadata(target: dict, donor: dict) -> None:
             target[value_field] = donor[value_field]
             if donor.get(source_field):
                 target[source_field] = donor[source_field]
+
+    primary_experience = primary_experience_value(
+        target.get("seniority_str"),
+        target.get("experience_years_str"),
+    )
+    if primary_experience and not target.get("experience_str"):
+        target["experience_str"] = primary_experience
+        target["experience_src"] = (
+            target.get("seniority_src")
+            if target.get("seniority_str")
+            else target.get("experience_years_src")
+        ) or target.get("experience_src")
 
     # Also merge HR email and apply_method
     if not target.get("hr_email") and donor.get("hr_email"):
@@ -181,7 +204,8 @@ def get_cached_fingerprints(fingerprints: list[str]) -> dict[str, dict]:
     try:
         with get_db() as conn:
             rows = conn.execute(
-                "SELECT fingerprint, url, experience_str, experience_src, "
+                "SELECT fingerprint, url, seniority_str, seniority_src, "
+                "experience_years_str, experience_years_src, experience_str, experience_src, "
                 "job_type_str, job_type_src, salary_str, salary_src, "
                 "work_mode_str, work_mode_src, apply_method_str, apply_method_src, "
                 "skills_str, languages_str, work_auth_str, parse_confidence "

@@ -1,0 +1,127 @@
+[
+  {
+    "name": "linkedin_remote_midlevel_years",
+    "source_family": "linkedin_card_badge_plus_narrative",
+    "title": "Software Engineer",
+    "location_str": "Ontario, Canada",
+    "card_data": {
+      "labels": ["Remote", "Full-time"],
+      "card_badges": ["Remote", "Full-time"],
+      "employment_type": "Full-time",
+      "workplace_type": "Remote"
+    },
+    "structured_fields": {
+      "job_type": "Full-time",
+      "work_mode": "Remote"
+    },
+    "description": "Reddit has a flexible workforce. If you happen to live close to one of our physical office locations our doors are open for you to come into the office as often as you'd like. Don't live near one of our offices? No worries: You can apply to work remotely in any country in which we have a physical presence. Role Description This is a generalist mid-level backend position within the Ads Organization. Required Qualifications 3+ years of software development experience in one or more general purpose programming languages. Benefits Flexible Vacation and Paid Volunteer Time Off.",
+    "expected": {
+      "work_mode_str": "Remote",
+      "job_type_str": "Full-time",
+      "seniority_str": "Mid-level",
+      "experience_years_str": "3+ years",
+      "experience_str": "Mid-level"
+    }
+  },
+  {
+    "name": "lead_verb_not_seniority",
+    "source_family": "responsibility_section_false_positive",
+    "title": "Software Engineer",
+    "description": "Responsibilities Lead the processes needed to improve operational stability, including improving code quality and delivering dashboards.",
+    "expected": {
+      "seniority_str": null,
+      "experience_years_str": null
+    }
+  },
+  {
+    "name": "remote_any_country_not_hybrid",
+    "source_family": "narrative_remote_policy",
+    "title": "Backend Engineer",
+    "description": "We have a flexible workforce. Our offices are open if you want to drop in, but you can apply to work remotely in any country where we have a physical presence.",
+    "expected": {
+      "work_mode_str": "Remote"
+    }
+  },
+  {
+    "name": "hybrid_schedule",
+    "source_family": "explicit_schedule",
+    "title": "Platform Engineer",
+    "description": "This hybrid role requires 3 days in office and 2 days remote each week.",
+    "expected": {
+      "work_mode_str": "Hybrid"
+    }
+  },
+  {
+    "name": "company_age_not_experience",
+    "source_family": "company_marketing_only",
+    "title": "Software Engineer",
+    "description": "Our company was founded 20 years ago and now serves millions of users worldwide.",
+    "expected": {
+      "experience_years_str": null
+    }
+  },
+  {
+    "name": "greenhouse_structured_remote",
+    "source_family": "greenhouse_structured",
+    "title": "Backend Engineer",
+    "structured_fields": {
+      "job_type": "Full-time",
+      "work_mode": "Remote",
+      "seniority": "Senior"
+    },
+    "description": "About the role",
+    "expected": {
+      "job_type_str": "Full-time",
+      "work_mode_str": "Remote",
+      "seniority_str": "Senior",
+      "experience_str": "Senior"
+    }
+  },
+  {
+    "name": "ashby_remote_with_location_requirement",
+    "source_family": "ashby_structured",
+    "title": "Data Engineer",
+    "card_data": {
+      "workplace_type": "Remote",
+      "applicant_location_requirements": "Remote in any country where we have a physical presence"
+    },
+    "structured_fields": {
+      "job_type": "Full-time"
+    },
+    "description": "You can work remotely from any approved country.",
+    "expected": {
+      "work_mode_str": "Remote",
+      "job_type_str": "Full-time"
+    }
+  },
+  {
+    "name": "lever_fixed_term",
+    "source_family": "lever_structured",
+    "title": "Customer Support Engineer",
+    "structured_fields": {
+      "job_type": "Fixed-term",
+      "work_mode": "On-site"
+    },
+    "description": "Fixed term support role.",
+    "expected": {
+      "job_type_str": "Fixed-term",
+      "work_mode_str": "On-site"
+    }
+  },
+  {
+    "name": "smartrecruiters_contract_hybrid",
+    "source_family": "smartrecruiters_structured",
+    "title": "QA Engineer",
+    "structured_fields": {
+      "job_type": "Contract",
+      "work_mode": "Hybrid",
+      "seniority": "Junior"
+    },
+    "description": "Contract QA role with a hybrid setup.",
+    "expected": {
+      "job_type_str": "Contract",
+      "work_mode_str": "Hybrid",
+      "seniority_str": "Junior"
+    }
+  }
+]

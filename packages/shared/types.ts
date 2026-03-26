@@ -120,6 +120,10 @@ export interface JobListing {
   location_str?: string;
   work_mode_str?: string | null;
   work_mode_src?: string | null;
+  seniority_str?: string | null;
+  seniority_src?: string | null;
+  experience_years_str?: string | null;
+  experience_years_src?: string | null;
   experience_str?: string | null;
   experience_src?: string | null;
   job_type_str?: string | null;

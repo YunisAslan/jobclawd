@@ -142,6 +142,10 @@ class JobListing(BaseModel):
     location_str: Optional[str] = None
     work_mode_str: Optional[str] = None
     work_mode_src: Optional[str] = None
+    seniority_str: Optional[str] = None
+    seniority_src: Optional[str] = None
+    experience_years_str: Optional[str] = None
+    experience_years_src: Optional[str] = None
     experience_str: Optional[str] = None
     experience_src: Optional[str] = None
     job_type_str: Optional[str] = None

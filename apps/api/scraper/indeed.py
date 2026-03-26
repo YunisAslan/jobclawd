@@ -13,6 +13,7 @@ from services.ai_metadata_extractor import extract_metadata_ai_batch
 from services.apply_method_detector import detect_from_indeed_card
 from services.enrichment_service import fetch_metadata_for_urls
 from utils.job_meta_extractor import extract_all as extract_meta
+from utils.job_meta_extractor import primary_experience_value, split_experience_value
 
 INDEED_BASE = "https://www.indeed.com"
 _SYNC_DETAIL_ENRICH_LIMIT = 50
@@ -62,10 +63,23 @@ def _taxonomy_attr_text(attr: dict) -> str:
 
 
 def _has_missing_metadata(job: JobListing) -> bool:
-    return not all([job.salary_str, job.job_type_str, job.experience_str, job.work_mode_str])
+    return not all([
+        job.salary_str,
+        job.job_type_str,
+        primary_experience_value(job.seniority_str, job.experience_years_str) or job.experience_str,
+        job.work_mode_str,
+    ])
 
 
 def _merge_missing_fields(job: JobListing, meta: dict) -> None:
+    if not job.seniority_str and meta.get("seniority_str"):
+        job.seniority_str = meta["seniority_str"]
+        if meta.get("seniority_src"):
+            job.seniority_src = meta["seniority_src"]
+    if not job.experience_years_str and meta.get("experience_years_str"):
+        job.experience_years_str = meta["experience_years_str"]
+        if meta.get("experience_years_src"):
+            job.experience_years_src = meta["experience_years_src"]
     if not job.salary_str and meta.get("salary_str"):
         job.salary_str = meta["salary_str"]
         if meta.get("salary_src"):
@@ -82,9 +96,21 @@ def _merge_missing_fields(job: JobListing, meta: dict) -> None:
         job.work_mode_str = meta["work_mode_str"]
         if meta.get("work_mode_src"):
             job.work_mode_src = meta["work_mode_src"]
+    primary_experience = primary_experience_value(job.seniority_str, job.experience_years_str)
+    if primary_experience and not job.experience_str:
+        job.experience_str = primary_experience
+        job.experience_src = job.seniority_src if job.seniority_str else job.experience_years_src
 
 
 def _merge_missing_fields_with_source(job: JobListing, meta: dict, field_sources: dict, source: str) -> None:
+    if not job.seniority_str and meta.get("seniority_str"):
+        job.seniority_str = meta["seniority_str"]
+        job.seniority_src = source
+        field_sources["seniority_str"] = source
+    if not job.experience_years_str and meta.get("experience_years_str"):
+        job.experience_years_str = meta["experience_years_str"]
+        job.experience_years_src = source
+        field_sources["experience_years_str"] = source
     if not job.salary_str and meta.get("salary_str"):
         job.salary_str = meta["salary_str"]
         job.salary_src = source
@@ -101,13 +127,18 @@ def _merge_missing_fields_with_source(job: JobListing, meta: dict, field_sources
         job.work_mode_str = meta["work_mode_str"]
         job.work_mode_src = source
         field_sources["work_mode_str"] = source
+    primary_experience = primary_experience_value(job.seniority_str, job.experience_years_str)
+    if primary_experience and not job.experience_str:
+        job.experience_str = primary_experience
+        job.experience_src = job.seniority_src if job.seniority_str else job.experience_years_src
+        field_sources["experience_str"] = source
 
 
 def _log_meta_trace(job: JobListing, field_sources: dict, *, context: str) -> None:
     resolved = {
         "salary": field_sources.get("salary_str", "-"),
         "job_type": field_sources.get("job_type_str", "-"),
-        "experience": field_sources.get("experience_str", "-"),
+        "experience": field_sources.get("seniority_str", field_sources.get("experience_years_str", field_sources.get("experience_str", "-"))),
         "work_mode": field_sources.get("work_mode_str", "-"),
     }
     print(
@@ -483,12 +514,17 @@ async def scrape_indeed(
                     salary_str = jk_meta.get("salary")
                     job_type_str = jk_meta.get("job_type")
                     experience_str = jk_meta.get("experience")
+                    seniority_str, experience_years_str = split_experience_value(experience_str)
                     work_mode_str = jk_meta.get("work_mode")
                     field_sources: dict[str, str] = {}
                     if salary_str:
                         field_sources["salary_str"] = "structured"
                     if job_type_str:
                         field_sources["job_type_str"] = "structured"
+                    if seniority_str:
+                        field_sources["seniority_str"] = "structured"
+                    if experience_years_str:
+                        field_sources["experience_years_str"] = "structured"
                     if experience_str:
                         field_sources["experience_str"] = "structured"
                     if work_mode_str:
@@ -599,6 +635,10 @@ async def scrape_indeed(
                             logo_url=logo_url,
                             description_snippet=snippet or None,
                             apply_method=apply_method,
+                            seniority_str=seniority_str,
+                            seniority_src=field_sources.get("seniority_str"),
+                            experience_years_str=experience_years_str,
+                            experience_years_src=field_sources.get("experience_years_str"),
                             experience_str=experience_str,
                             experience_src=field_sources.get("experience_str"),
                             job_type_str=job_type_str,
@@ -609,6 +649,23 @@ async def scrape_indeed(
                             work_mode_src=field_sources.get("work_mode_str"),
                         )
                     )
+                    jobs[-1].__dict__["_card_data"] = {
+                        "labels": [
+                            value
+                            for value in (job_type_str, seniority_str, experience_years_str, work_mode_str)
+                            if value
+                        ],
+                        "card_badges": [
+                            value
+                            for value in (job_type_str, seniority_str, experience_years_str, work_mode_str)
+                            if value
+                        ],
+                        "employment_type": job_type_str,
+                        "seniority_level": seniority_str,
+                        "experience_years": experience_years_str,
+                        "workplace_type": work_mode_str,
+                        "has_indeed_apply": has_indeed_apply,
+                    }
                     job_field_sources.append(field_sources)
                 except Exception:
                     continue
@@ -677,6 +734,12 @@ async def scrape_indeed(
                         continue
                     _merge_missing_fields(jobs[idx], meta)
                     src = job_field_sources[idx]
+                    for field, src_field in [
+                        ("seniority_str", "seniority_src"),
+                        ("experience_years_str", "experience_years_src"),
+                    ]:
+                        if meta.get(field) and not src.get(field):
+                            src[field] = meta.get(src_field, "detail-page")
                     for field, src_field in [
                         ("salary_str", "salary_src"),
                         ("job_type_str", "job_type_src"),

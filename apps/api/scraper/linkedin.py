@@ -9,12 +9,15 @@ from models.schemas import JobListing, JobSource, LocationFilter
 from db.database import get_db
 from services.ai_metadata_extractor import extract_metadata_ai_batch
 from services.apply_method_detector import detect_from_linkedin_card
+from services.enrichment_service import fetch_metadata_for_urls
 from utils.job_meta_extractor import extract_all as extract_meta
+from utils.job_meta_extractor import primary_experience_value
 
 _INITIAL_RESULTS_WAIT_MS = 1200
 _SCROLL_PAUSE_MS = 350
 _MAX_SCROLL_ROUNDS = 12
 _STALL_ROUNDS_BEFORE_STOP = 3
+_SYNC_DETAIL_ENRICH_LIMIT = 40
 
 
 def _normalize_linkedin_job_url(url: str) -> str:
@@ -38,12 +41,25 @@ def _normalize_linkedin_job_url(url: str) -> str:
 
 
 def _has_missing_metadata(job: JobListing) -> bool:
-    return not all([job.salary_str, job.job_type_str, job.experience_str, job.work_mode_str])
+    return not all([
+        job.salary_str,
+        job.job_type_str,
+        primary_experience_value(job.seniority_str, job.experience_years_str) or job.experience_str,
+        job.work_mode_str,
+    ])
 
 
 def _merge_missing_fields_with_source(
     job: JobListing, meta: dict, field_sources: dict, source: str
 ) -> None:
+    if not job.seniority_str and meta.get("seniority_str"):
+        job.seniority_str = meta["seniority_str"]
+        job.seniority_src = source
+        field_sources["seniority_str"] = source
+    if not job.experience_years_str and meta.get("experience_years_str"):
+        job.experience_years_str = meta["experience_years_str"]
+        job.experience_years_src = source
+        field_sources["experience_years_str"] = source
     if not job.salary_str and meta.get("salary_str"):
         job.salary_str = meta["salary_str"]
         job.salary_src = source
@@ -60,13 +76,18 @@ def _merge_missing_fields_with_source(
         job.work_mode_str = meta["work_mode_str"]
         job.work_mode_src = source
         field_sources["work_mode_str"] = source
+    primary_experience = primary_experience_value(job.seniority_str, job.experience_years_str)
+    if primary_experience and not job.experience_str:
+        job.experience_str = primary_experience
+        job.experience_src = job.seniority_src if job.seniority_str else job.experience_years_src
+        field_sources["experience_str"] = source
 
 
 def _log_meta_trace(job: JobListing, field_sources: dict, *, context: str) -> None:
     resolved = {
         "salary": field_sources.get("salary_str", "-"),
         "job_type": field_sources.get("job_type_str", "-"),
-        "experience": field_sources.get("experience_str", "-"),
+        "experience": field_sources.get("seniority_str", field_sources.get("experience_years_str", field_sources.get("experience_str", "-"))),
         "work_mode": field_sources.get("work_mode_str", "-"),
     }
     print(
@@ -283,6 +304,9 @@ async def scrape_linkedin(
                 # Regex keyword matching causes false positives.
                 field_sources: dict[str, str] = {}
                 text_meta = extract_meta(full_card_text)
+                seniority_str = text_meta.get("seniority_str")
+                experience_years_str = text_meta.get("experience_years_str")
+                experience_str = primary_experience_value(seniority_str, experience_years_str)
                 if text_meta.get("salary_str"):
                     field_sources["salary_str"] = "fallback"
 
@@ -309,6 +333,33 @@ async def scrape_linkedin(
                     {"has_easy_apply_badge": has_easy_apply}
                 )
 
+                badge_lines: list[str] = []
+                for raw_line in full_card_text.splitlines():
+                    line = " ".join(raw_line.split()).strip()
+                    if not line or len(line) > 40:
+                        continue
+                    lowered = line.lower()
+                    if any(
+                        token in lowered
+                        for token in (
+                            "remote",
+                            "hybrid",
+                            "on-site",
+                            "onsite",
+                            "full-time",
+                            "part-time",
+                            "contract",
+                            "intern",
+                            "junior",
+                            "mid",
+                            "senior",
+                            "lead",
+                            "manager",
+                            "easy apply",
+                        )
+                    ):
+                        badge_lines.append(line)
+
                 jobs.append(
                     JobListing(
                         title=title,
@@ -320,10 +371,27 @@ async def scrape_linkedin(
                         location_str=location_str,
                         description_snippet=(full_card_text[:2000] or snippet or None),
                         apply_method=apply_method,
+                        seniority_str=seniority_str,
+                        seniority_src="rule" if seniority_str else None,
+                        experience_years_str=experience_years_str,
+                        experience_years_src="rule" if experience_years_str else None,
+                        experience_str=experience_str,
+                        experience_src="rule" if experience_str else None,
                         salary_str=text_meta.get("salary_str"),
                         salary_src=field_sources.get("salary_str"),
                     )
                 )
+                jobs[-1].__dict__["_card_data"] = {
+                    "labels": [value for value in badge_lines if value],
+                    "card_badges": [value for value in badge_lines if value],
+                    "topline_labels": [value for value in badge_lines if value],
+                    "employment_type": text_meta.get("job_type_str"),
+                    "seniority_level": seniority_str,
+                    "experience_years": experience_years_str,
+                    "workplace_type": text_meta.get("work_mode_str"),
+                    "salary": text_meta.get("salary_str"),
+                    "has_easy_apply_badge": has_easy_apply,
+                }
                 job_field_sources.append(field_sources)
             except Exception:
                 continue
@@ -367,12 +435,28 @@ async def scrape_linkedin(
             except Exception as e:
                 print(f"[LinkedIn] AI card extraction error: {e}")
 
-        missing_after_cards = sum(1 for job in jobs if _has_missing_metadata(job))
-        if missing_after_cards:
-            print(
-                f"[LinkedIn] Deferring detail enrichment for {missing_after_cards} jobs "
-                "to background metadata fetch"
-            )
+        # ── Step 2: Detail-page enrichment for remaining gaps ──
+        detail_candidates = [
+            (idx, job.url)
+            for idx, job in enumerate(jobs)
+            if _has_missing_metadata(job)
+        ][:_SYNC_DETAIL_ENRICH_LIMIT]
+
+        if detail_candidates:
+            print(f"[LinkedIn] Enriching {len(detail_candidates)} jobs via detail pages...")
+            try:
+                detail_results = await fetch_metadata_for_urls(
+                    [url for _, url in detail_candidates]
+                )
+                for idx, url in detail_candidates:
+                    meta = detail_results.get(url)
+                    if not meta:
+                        continue
+                    _merge_missing_fields_with_source(
+                        jobs[idx], meta, job_field_sources[idx], "detail-page"
+                    )
+            except Exception as e:
+                print(f"[LinkedIn] Detail enrichment error: {e}")
 
         for idx, job in enumerate(jobs):
             _log_meta_trace(

@@ -19,7 +19,7 @@ import httpx
 
 from repositories.metadata_repo import get_metadata_batch, upsert_metadata
 from services.ai_metadata_extractor import extract_metadata_ai_batch
-from utils.job_meta_extractor import extract_all
+from utils.job_meta_extractor import extract_all, primary_experience_value
 
 # ── Config ──────────────────────────────────────────────────────────
 _CONCURRENCY_HTTP = 12
@@ -145,15 +145,22 @@ def _compact_for_ai(text: str, *, max_len: int = 3000) -> str:
 def _has_complete_meta(meta: Optional[dict]) -> bool:
     if not meta:
         return False
-    return all(
-        meta.get(field)
-        for field in ("experience_str", "job_type_str", "salary_str", "work_mode_str")
+    return (
+        all(meta.get(field) for field in ("job_type_str", "salary_str", "work_mode_str"))
+        and bool(
+            primary_experience_value(
+                meta.get("seniority_str"),
+                meta.get("experience_years_str"),
+            ) or meta.get("experience_str")
+        )
     )
 
 
 def _merge_missing_fields(base: Optional[dict], extra: Optional[dict]) -> dict:
     merged = dict(base or {})
     pairs = [
+        ("seniority_str", "seniority_src"),
+        ("experience_years_str", "experience_years_src"),
         ("experience_str", "experience_src"),
         ("job_type_str", "job_type_src"),
         ("salary_str", "salary_src"),
@@ -167,6 +174,18 @@ def _merge_missing_fields(base: Optional[dict], extra: Optional[dict]) -> dict:
                 merged[source_field] = extra[source_field]
         elif not merged.get(source_field) and extra and extra.get(source_field) and merged.get(value_field):
             merged[source_field] = extra[source_field]
+
+    primary_experience = primary_experience_value(
+        merged.get("seniority_str"),
+        merged.get("experience_years_str"),
+    )
+    if primary_experience:
+        merged["experience_str"] = primary_experience
+        merged["experience_src"] = (
+            merged.get("seniority_src")
+            if merged.get("seniority_str")
+            else merged.get("experience_years_src")
+        ) or merged.get("experience_src")
     # Merge extra metadata fields
     for extra_field in ("skills_str", "languages_str", "work_auth_str",
                         "parse_confidence", "apply_complexity", "auto_apply_support"):
@@ -186,6 +205,8 @@ def _regex_salary_only(meta: Optional[dict]) -> dict:
 
 def _drop_low_trust_regex_fields(job: dict) -> None:
     for value_field, source_field in (
+        ("seniority_str", "seniority_src"),
+        ("experience_years_str", "experience_years_src"),
         ("experience_str", "experience_src"),
         ("job_type_str", "job_type_src"),
         ("work_mode_str", "work_mode_src"),
@@ -197,6 +218,8 @@ def _drop_low_trust_regex_fields(job: dict) -> None:
 
 def _apply_metadata_to_job(job: dict, meta: dict, *, overwrite_non_structured: bool = False) -> None:
     pairs = [
+        ("seniority_str", "seniority_src"),
+        ("experience_years_str", "experience_years_src"),
         ("experience_str", "experience_src"),
         ("job_type_str", "job_type_src"),
         ("salary_str", "salary_src"),
@@ -219,6 +242,18 @@ def _apply_metadata_to_job(job: dict, meta: dict, *, overwrite_non_structured: b
                 job[source_field] = incoming_source
         elif incoming_source and not job.get(source_field) and job.get(value_field):
             job[source_field] = incoming_source
+
+    primary_experience = primary_experience_value(
+        job.get("seniority_str"),
+        job.get("experience_years_str"),
+    )
+    if primary_experience:
+        job["experience_str"] = primary_experience
+        job["experience_src"] = (
+            job.get("seniority_src")
+            if job.get("seniority_str")
+            else job.get("experience_years_src")
+        ) or job.get("experience_src")
 
     # Map apply_method_str → apply_method (JobListing uses "apply_method" not "apply_method_str")
     if meta.get("apply_method_str") and not job.get("apply_method"):
@@ -442,6 +477,10 @@ async def fetch_metadata_for_urls(
                 if not meta:
                     continue
                 # Add source tags
+                if meta.get("seniority_str"):
+                    meta["seniority_src"] = "openai"
+                if meta.get("experience_years_str"):
+                    meta["experience_years_src"] = "openai"
                 for field in ("experience_str", "job_type_str", "salary_str", "work_mode_str", "apply_method_str"):
                     if meta.get(field):
                         meta[f"{field.replace('_str', '_src')}"] = "openai"
@@ -484,6 +523,10 @@ async def fetch_metadata_for_urls(
                 for url, meta in ai_results.items():
                     if not meta:
                         continue
+                    if meta.get("seniority_str"):
+                        meta["seniority_src"] = "openai"
+                    if meta.get("experience_years_str"):
+                        meta["experience_years_src"] = "openai"
                     for field in ("experience_str", "job_type_str", "salary_str", "work_mode_str"):
                         if meta.get(field):
                             meta[f"{field.replace('_str', '_src')}"] = "openai"
@@ -493,7 +536,14 @@ async def fetch_metadata_for_urls(
 
     # Log summary
     filled = sum(1 for m in results.values() if m and any(
-        m.get(f) for f in ("experience_str", "job_type_str", "salary_str", "work_mode_str")
+        m.get(f) for f in (
+            "seniority_str",
+            "experience_years_str",
+            "experience_str",
+            "job_type_str",
+            "salary_str",
+            "work_mode_str",
+        )
     ))
     complete = sum(1 for m in results.values() if _has_complete_meta(m))
     print(f"[Enrichment] Done — {filled}/{len(unique_urls)} with data, {complete} complete")
@@ -505,8 +555,12 @@ async def enrich_jobs(jobs: list[dict]) -> None:
     """Background task: enrich jobs missing metadata and persist to DB."""
     urls_to_enrich = []
     for job in jobs:
-        has_all = all(
-            job.get(f) for f in ("experience_str", "job_type_str", "salary_str", "work_mode_str")
+        has_all = (
+            all(job.get(f) for f in ("job_type_str", "salary_str", "work_mode_str"))
+            and bool(
+                primary_experience_value(job.get("seniority_str"), job.get("experience_years_str"))
+                or job.get("experience_str")
+            )
         )
         if not has_all:
             url = job["url"]
@@ -595,8 +649,12 @@ def merge_metadata_into_jobs(jobs: list[dict]) -> list[dict]:
 
     urls_needing = []
     for job in jobs:
-        has_all = all(
-            job.get(f) for f in ("experience_str", "job_type_str", "salary_str", "work_mode_str")
+        has_all = (
+            all(job.get(f) for f in ("job_type_str", "salary_str", "work_mode_str"))
+            and bool(
+                primary_experience_value(job.get("seniority_str"), job.get("experience_years_str"))
+                or job.get("experience_str")
+            )
         )
         if not has_all:
             urls_needing.append(job["url"])

@@ -19,6 +19,7 @@ from services.extraction.confidence import (
     ExtractionReport,
     CONFIDENCE_THRESHOLD_AI,
 )
+from utils.job_meta_extractor import primary_experience_value
 
 
 # Max jobs to send to AI per search batch
@@ -94,6 +95,20 @@ def build_ai_input(
         "snippet": text,
         "detail_text": "",
         "extract_fields": fields_to_extract,
+        "structured_hints": {
+            "work_mode": job.get("work_mode_str"),
+            "job_type": job.get("job_type_str"),
+            "seniority": job.get("seniority_str"),
+            "experience_years": job.get("experience_years_str"),
+            "experience": primary_experience_value(
+                job.get("seniority_str"),
+                job.get("experience_years_str"),
+            ) or job.get("experience_str"),
+            "salary": job.get("salary_str"),
+            "apply_method": job.get("apply_method"),
+        },
+        "card_badges": ((job.get("_card_data") or {}).get("card_badges") or []),
+        "topline_labels": ((job.get("_card_data") or {}).get("topline_labels") or []),
     }
 
 
@@ -110,7 +125,8 @@ def merge_ai_results(
     field_map = {
         "work_mode": ("work_mode_str", "work_mode"),
         "job_type": ("job_type_str", "job_type"),
-        "experience": ("experience_str", "experience"),
+        "seniority": ("seniority_str", "seniority"),
+        "experience_years": ("experience_years_str", "experience_years"),
         "salary": ("salary_str", "salary"),
         "apply_method": ("apply_method_str", "apply_method"),
     }

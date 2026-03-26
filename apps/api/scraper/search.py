@@ -297,6 +297,8 @@ async def scrape_search(
             # --- Extract structured metadata from API item fields ---
             experience_str = None
             experience_src = None
+            seniority_str = None
+            seniority_src = None
             job_type_str = None
             job_type_src = None
             work_mode_str = None
@@ -366,18 +368,28 @@ async def scrape_search(
                             pass
             for vac_id in vac_ids:
                 if vac_id == 0 and not experience_str:
+                    seniority_str = "Intern"
+                    seniority_src = "structured"
                     experience_str = "Internship"
                     experience_src = "structured"
                 elif vac_id == 1 and not experience_str:
+                    seniority_str = "Junior"
+                    seniority_src = "structured"
                     experience_str = "Junior"
                     experience_src = "structured"
                 elif vac_id == 2 and not experience_str:
+                    seniority_str = "Mid-level"
+                    seniority_src = "structured"
                     experience_str = "Mid-level"
                     experience_src = "structured"
                 elif vac_id == 3 and not experience_str:
+                    seniority_str = "Senior"
+                    seniority_src = "structured"
                     experience_str = "Senior"
                     experience_src = "structured"
                 elif vac_id in {4, 5} and not experience_str:
+                    seniority_str = "Lead"
+                    seniority_src = "structured"
                     experience_str = "Lead"
                     experience_src = "structured"
 
@@ -431,6 +443,8 @@ async def scrape_search(
                     salary_src=salary_src,
                     job_type_str=job_type_str,
                     job_type_src=job_type_src,
+                    seniority_str=seniority_str,
+                    seniority_src=seniority_src,
                     experience_str=experience_str,
                     experience_src=experience_src,
                     work_mode_str=work_mode_str,

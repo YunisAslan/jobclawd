@@ -80,6 +80,10 @@ CREATE INDEX IF NOT EXISTS idx_search_cache_expires
 
 CREATE TABLE IF NOT EXISTS job_metadata (
   url            TEXT PRIMARY KEY,
+  seniority_str  TEXT,
+  seniority_src  TEXT,
+  experience_years_str TEXT,
+  experience_years_src TEXT,
   experience_str TEXT,
   experience_src TEXT,
   job_type_str   TEXT,
@@ -93,6 +97,10 @@ CREATE TABLE IF NOT EXISTS job_metadata (
 );
 
 ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS experience_src TEXT;
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS seniority_str TEXT;
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS seniority_src TEXT;
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS experience_years_str TEXT;
+ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS experience_years_src TEXT;
 ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS job_type_src TEXT;
 ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS salary_src TEXT;
 ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS work_mode_src TEXT;

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 import pycountry
 from models.schemas import JobListing, LocationFilter
+from utils.job_meta_extractor import primary_experience_value
 
 
 def _pycountry_terms(iso2: str) -> set[str]:
@@ -35,6 +36,8 @@ def _job_search_text(job: JobListing) -> str:
         job.description_snippet or "",
         job.salary_str or "",
         job.job_type_str or "",
+        job.seniority_str or "",
+        job.experience_years_str or "",
         job.experience_str or "",
         job.work_mode_str or "",
     ]
@@ -58,6 +61,8 @@ def _normalize_filter_value(value: str) -> str:
         "temporary": "temporary",
         "temp": "temporary",
         "contract": "contract",
+        "fixed-term": "fixed-term",
+        "fixed term": "fixed-term",
         "freelance": "freelance",
         "commission": "commission",
         "seasonal": "seasonal",
@@ -206,7 +211,7 @@ def _experience_categories(value: str) -> set[str]:
         return set()
 
     categories: set[str] = set()
-    if "no experience" in lowered or "intern" in lowered or "entry-level" in lowered or "entry level" in lowered:
+    if any(token in lowered for token in ("no experience", "intern", "entry-level", "entry level", "new grad", "early career")):
         categories.update({"intern", "junior"})
     if "junior" in lowered:
         categories.add("junior")
@@ -214,7 +219,7 @@ def _experience_categories(value: str) -> set[str]:
         categories.add("mid")
     if "senior" in lowered:
         categories.add("senior")
-    if any(word in lowered for word in ("lead", "principal", "staff", "manager", "head")):
+    if any(word in lowered for word in ("lead", "principal", "staff", "manager", "head", "director")):
         categories.update({"lead", "senior"})
 
     year_match = re.search(r"(\d+)(?:\s*[\+\-–]|(?:\s*to\s*\d+)?)?\s*years?", lowered)
@@ -361,6 +366,8 @@ def _detect_job_types_from_text(combined_text: str) -> set[str]:
         detected.add("part-time")
     if re.search(r'\b(?:contract|contractor)\b', combined):
         detected.add("contract")
+    if re.search(r'\bfixed[\s\-]?term\b', combined):
+        detected.add("fixed-term")
     if re.search(r'\bfreelance|freelancer\b', combined):
         detected.add("freelance")
     if re.search(r'\btemporary|temp\b', combined):
@@ -395,8 +402,12 @@ def _passes_experience_filter_strict(job: JobListing, title_tokens: set[str], co
         return True
 
     # Trust AI / structured metadata only
-    if job.experience_str:
-        detected = _experience_categories(job.experience_str)
+    experience_value = (
+        primary_experience_value(job.seniority_str, job.experience_years_str)
+        or job.experience_str
+    )
+    if experience_value:
+        detected = _experience_categories(experience_value)
         if detected:
             return bool(detected & allowed)
         return False

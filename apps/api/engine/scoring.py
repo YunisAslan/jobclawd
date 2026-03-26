@@ -9,6 +9,7 @@ Produces three scores:
 
 import difflib
 from models.schemas import JobListing, UserProfile, MatchLevel, WorkMode, ExperienceLevel
+from utils.job_meta_extractor import primary_experience_value
 
 
 def fuzzy_ratio(a: str, b: str) -> float:
@@ -99,7 +100,11 @@ def score_job(job: JobListing, profile: UserProfile) -> JobListing:
     exp_keywords_present: list[ExperienceLevel] = []
 
     # Use extracted experience_str first
-    exp_text = (job.experience_str or "").lower()
+    exp_text = (
+        primary_experience_value(job.seniority_str, job.experience_years_str)
+        or job.experience_str
+        or ""
+    ).lower()
     if exp_text:
         for lvl, keywords in _EXPERIENCE_KEYWORDS.items():
             if any(kw in exp_text for kw in keywords):

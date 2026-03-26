@@ -14,6 +14,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
+from utils.job_meta_extractor import primary_experience_value, split_experience_value
+
 
 # Confidence thresholds — below these, the field is a candidate for AI enrichment
 CONFIDENCE_THRESHOLD_HIGH = 0.80   # field is trustworthy
@@ -64,7 +66,8 @@ class FieldResult:
 _FIELD_WEIGHTS = {
     "work_mode": 1.0,
     "job_type": 1.0,
-    "experience": 0.8,
+    "seniority": 0.8,
+    "experience_years": 0.8,
     "salary": 0.7,
     "apply_method": 1.2,       # user cares most about this
     "skills": 0.5,
@@ -79,7 +82,8 @@ class ExtractionReport:
     """Aggregates all extracted fields for a single job."""
     work_mode: FieldResult = field(default_factory=FieldResult)
     job_type: FieldResult = field(default_factory=FieldResult)
-    experience: FieldResult = field(default_factory=FieldResult)
+    seniority: FieldResult = field(default_factory=FieldResult)
+    experience_years: FieldResult = field(default_factory=FieldResult)
     salary: FieldResult = field(default_factory=FieldResult)
     apply_method: FieldResult = field(default_factory=FieldResult)
     skills: FieldResult = field(default_factory=FieldResult)         # comma-separated skill list
@@ -98,7 +102,8 @@ class ExtractionReport:
         return {
             "work_mode": self.work_mode,
             "job_type": self.job_type,
-            "experience": self.experience,
+            "seniority": self.seniority,
+            "experience_years": self.experience_years,
             "salary": self.salary,
             "apply_method": self.apply_method,
         }
@@ -156,7 +161,8 @@ class ExtractionReport:
         field_map = {
             "work_mode": "work_mode",
             "job_type": "job_type",
-            "experience": "experience",
+            "seniority": "seniority",
+            "experience_years": "experience_years",
             "salary": "salary",
             "apply_method": "apply_method",
         }
@@ -166,6 +172,19 @@ class ExtractionReport:
                 out[f"{prefix}_str"] = fr.value
                 out[f"{prefix}_src"] = fr.method
                 out[f"{prefix}_conf"] = round(fr.confidence, 2)
+
+        experience_value = primary_experience_value(
+            self.seniority.value,
+            self.experience_years.value,
+        )
+        if experience_value:
+            if self.seniority.value:
+                experience_field = self.seniority
+            else:
+                experience_field = self.experience_years
+            out["experience_str"] = experience_value
+            out["experience_src"] = experience_field.method
+            out["experience_conf"] = round(experience_field.confidence, 2)
 
         # Extra fields packed as simple strings
         if not self.skills.is_empty:
@@ -194,7 +213,8 @@ class ExtractionReport:
         field_map = {
             "work_mode": "work_mode",
             "job_type": "job_type",
-            "experience": "experience",
+            "seniority": "seniority",
+            "experience_years": "experience_years",
             "salary": "salary",
             "apply_method": "apply_method",
         }
@@ -208,6 +228,24 @@ class ExtractionReport:
                     confidence=float(conf) if conf else _default_confidence_for_method(src),
                     method=src or "none",
                 ))
+
+        if report.seniority.is_empty and report.experience_years.is_empty and d.get("experience_str"):
+            seniority, years = split_experience_value(d.get("experience_str"))
+            src = d.get("experience_src", "none")
+            conf = d.get("experience_conf", 0.0)
+            confidence = float(conf) if conf else _default_confidence_for_method(src)
+            if seniority:
+                report.seniority = FieldResult(
+                    value=seniority,
+                    confidence=confidence,
+                    method=src or "none",
+                )
+            if years:
+                report.experience_years = FieldResult(
+                    value=years,
+                    confidence=confidence,
+                    method=src or "none",
+                )
 
         if d.get("skills_str"):
             report.skills = FieldResult(value=d["skills_str"], confidence=0.6, method="regex")

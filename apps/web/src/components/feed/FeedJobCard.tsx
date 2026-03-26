@@ -192,6 +192,7 @@ export default function FeedJobCard({
   onHideCompany,
 }: FeedJobCardProps) {
   const isHigh = job.match_level === "high";
+  const experienceChip = !job.seniority_str && !job.experience_years_str ? job.experience_str : null;
 
   return (
     <Card
@@ -232,15 +233,33 @@ export default function FeedJobCard({
                 </span>
               )}
             </div>
-            {(job.experience_str || job.job_type_str || job.salary_str || job.work_mode_str) && (
+            {(job.seniority_str || job.experience_years_str || experienceChip || job.job_type_str || job.salary_str || job.work_mode_str) && (
               <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                {job.experience_str && (
+                {job.seniority_str && (
+                  <MetaChip
+                    className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 border border-border/60 rounded-md px-1.5 py-0.5"
+                    icon={<GraduationCap className="size-2.5" />}
+                    source={job.seniority_src}
+                  >
+                    {job.seniority_str}
+                  </MetaChip>
+                )}
+                {job.experience_years_str && (
+                  <MetaChip
+                    className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 border border-border/60 rounded-md px-1.5 py-0.5"
+                    icon={<GraduationCap className="size-2.5" />}
+                    source={job.experience_years_src}
+                  >
+                    {job.experience_years_str}
+                  </MetaChip>
+                )}
+                {experienceChip && (
                   <MetaChip
                     className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 border border-border/60 rounded-md px-1.5 py-0.5"
                     icon={<GraduationCap className="size-2.5" />}
                     source={job.experience_src}
                   >
-                    {job.experience_str}
+                    {experienceChip}
                   </MetaChip>
                 )}
                 {job.job_type_str && (

@@ -44,19 +44,19 @@ const EMPTY_FILTERS: FeedFilterValues = {
 
 const SEARCH_RECOMMENDATIONS = [
   "Software Engineer",
-  "Frontend Developer",
-  "Backend Developer",
-  "Full Stack Developer",
-  "Product Designer",
-  "UI UX Designer",
-  "Data Analyst",
-  "Data Scientist",
-  "DevOps Engineer",
-  "Project Manager",
   "Product Manager",
   "Marketing Manager",
-  "Customer Success Manager",
-  "Sales Manager",
+  "UX Designer",
+  "Data Analyst",
+  "Financial Analyst",
+  "HR Recruiter",
+  "Sales Executive",
+  "Business Analyst",
+  "Operations Manager",
+  "Content Specialist",
+  "Customer Support",
+  "Accountant",
+  "Project Manager",
 ];
 
 interface FeedFilterFormProps {
@@ -204,10 +204,9 @@ export default function FeedFilterForm({
     });
   }, [dropdownItems]);
 
-  const submitQuery = (query: string) => {
+  const fillQuery = (query: string) => {
     setValue("query", query, { shouldDirty: true, shouldTouch: true });
     setShowHistory(false);
-    formRef.current?.requestSubmit();
   };
 
   const currency = useMemo(() => {
@@ -279,12 +278,12 @@ export default function FeedFilterForm({
                       } else if (e.key === "Escape") {
                         setShowHistory(false);
                       } else if (e.key === "Enter") {
+                        e.preventDefault();
                         if (showHistory) {
                           setShowHistory(false);
                         }
                         if (historyIndex >= 0) {
-                          e.preventDefault();
-                          submitQuery(dropdownItems[historyIndex].value);
+                          fillQuery(dropdownItems[historyIndex].value);
                         }
                       }
                     }}
@@ -328,7 +327,7 @@ export default function FeedFilterForm({
                             onMouseLeave={() => setHistoryIndex(-1)}
                             onMouseDown={(e) => {
                               e.preventDefault();
-                              submitQuery(item);
+                              fillQuery(item);
                             }}
                           >
                             <History className="size-3.5 text-muted-foreground/40 shrink-0" />
@@ -377,7 +376,7 @@ export default function FeedFilterForm({
                               onMouseLeave={() => setHistoryIndex(-1)}
                               onMouseDown={(e) => {
                                 e.preventDefault();
-                                submitQuery(item);
+                                fillQuery(item);
                               }}
                             >
                               <Search className="size-3.5 text-muted-foreground/40 shrink-0" />

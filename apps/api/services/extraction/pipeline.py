@@ -34,9 +34,10 @@ from services.extraction.ai_decision import (
 )
 from repositories.metadata_repo import get_metadata_batch, upsert_metadata
 from services.ai_metadata_extractor import extract_metadata_ai_batch, ai_metadata_enabled
+from utils.job_meta_extractor import primary_experience_value, split_experience_value
 
 # Parser version — bump when extraction logic changes significantly
-PARSER_VERSION = "1.0.0"
+PARSER_VERSION = "2.0.0"
 
 
 async def process_jobs(
@@ -90,17 +91,7 @@ async def process_jobs(
         url = job.get("url", "")
 
         # Build structured fields from what the scraper already provided
-        structured = {}
-        if job.get("work_mode_str") and job.get("work_mode_src") == "structured":
-            structured["work_mode"] = job["work_mode_str"]
-        if job.get("job_type_str") and job.get("job_type_src") == "structured":
-            structured["job_type"] = job["job_type_str"]
-        if job.get("salary_str") and job.get("salary_src") == "structured":
-            structured["salary"] = job["salary_str"]
-        if job.get("experience_str") and job.get("experience_src") == "structured":
-            structured["experience"] = job["experience_str"]
-        if job.get("location_str"):
-            structured["location"] = job["location_str"]
+        structured = _build_structured_fields(job)
 
         # Run deterministic extraction
         report = extract_deterministic(
@@ -188,6 +179,9 @@ async def process_jobs(
         try:
             persist_kwargs = _build_persist_kwargs(flat)
             if persist_kwargs:
+                persist_kwargs["parser_version"] = PARSER_VERSION
+                if job.get("_fingerprint"):
+                    persist_kwargs["fingerprint"] = job["_fingerprint"]
                 upsert_metadata(url, **persist_kwargs)
         except Exception as e:
             print(f"[Pipeline] Persist error for {url}: {e}")
@@ -216,6 +210,8 @@ def _apply_report_to_job(job: dict, flat: dict) -> None:
     field_pairs = [
         ("work_mode_str", "work_mode_src", "work_mode_conf"),
         ("job_type_str", "job_type_src", "job_type_conf"),
+        ("seniority_str", "seniority_src", "seniority_conf"),
+        ("experience_years_str", "experience_years_src", "experience_years_conf"),
         ("experience_str", "experience_src", "experience_conf"),
         ("salary_str", "salary_src", "salary_conf"),
         ("apply_method", "apply_method_src", "apply_method_conf"),
@@ -245,6 +241,18 @@ def _apply_report_to_job(job: dict, flat: dict) -> None:
             if incoming_src:
                 job[src_field] = incoming_src
 
+    primary_experience = primary_experience_value(
+        job.get("seniority_str"),
+        job.get("experience_years_str"),
+    )
+    if primary_experience:
+        job["experience_str"] = primary_experience
+        if job.get("seniority_str"):
+            if job.get("seniority_src"):
+                job["experience_src"] = job["seniority_src"]
+        elif job.get("experience_years_src"):
+            job["experience_src"] = job["experience_years_src"]
+
     # Extra fields
     for extra in ("skills_str", "languages_str", "work_auth_str",
                    "apply_complexity", "auto_apply_support", "parse_confidence"):
@@ -264,6 +272,10 @@ def _build_persist_kwargs(flat: dict) -> dict:
         ("work_mode_src", "work_mode_src"),
         ("job_type_str", "job_type_str"),
         ("job_type_src", "job_type_src"),
+        ("seniority_str", "seniority_str"),
+        ("seniority_src", "seniority_src"),
+        ("experience_years_str", "experience_years_str"),
+        ("experience_years_src", "experience_years_src"),
         ("experience_str", "experience_str"),
         ("experience_src", "experience_src"),
         ("salary_str", "salary_str"),
@@ -274,6 +286,8 @@ def _build_persist_kwargs(flat: dict) -> dict:
         ("languages_str", "languages_str"),
         ("work_auth_str", "work_auth_str"),
         ("parse_confidence", "parse_confidence"),
+        ("apply_complexity", "apply_complexity"),
+        ("auto_apply_support", "auto_apply_support"),
     ]
     for flat_key, kwarg_key in field_map:
         val = flat.get(flat_key)
@@ -289,17 +303,7 @@ def process_single_job(job: dict) -> dict:
     Synchronous single-job extraction (no AI, no DB).
     Useful for quick scoring/classification at search time.
     """
-    structured = {}
-    if job.get("work_mode_str") and job.get("work_mode_src") == "structured":
-        structured["work_mode"] = job["work_mode_str"]
-    if job.get("job_type_str") and job.get("job_type_src") == "structured":
-        structured["job_type"] = job["job_type_str"]
-    if job.get("salary_str") and job.get("salary_src") == "structured":
-        structured["salary"] = job["salary_str"]
-    if job.get("experience_str") and job.get("experience_src") == "structured":
-        structured["experience"] = job["experience_str"]
-    if job.get("location_str"):
-        structured["location"] = job["location_str"]
+    structured = _build_structured_fields(job)
 
     report = extract_deterministic(
         title=job.get("title", ""),
@@ -317,3 +321,30 @@ def process_single_job(job: dict) -> dict:
     flat = report.to_flat_dict()
     _apply_report_to_job(job, flat)
     return job
+
+
+def _build_structured_fields(job: dict) -> dict:
+    structured: dict = {}
+
+    if job.get("work_mode_str") and job.get("work_mode_src") == "structured":
+        structured["work_mode"] = job["work_mode_str"]
+    if job.get("job_type_str") and job.get("job_type_src") == "structured":
+        structured["job_type"] = job["job_type_str"]
+    if job.get("salary_str") and job.get("salary_src") == "structured":
+        structured["salary"] = job["salary_str"]
+    if job.get("seniority_str") and job.get("seniority_src") == "structured":
+        structured["seniority"] = job["seniority_str"]
+    if job.get("experience_years_str") and job.get("experience_years_src") == "structured":
+        structured["experience_years"] = job["experience_years_str"]
+    if job.get("experience_str") and job.get("experience_src") == "structured":
+        seniority, years = split_experience_value(job["experience_str"])
+        if seniority and not structured.get("seniority"):
+            structured["seniority"] = seniority
+        if years and not structured.get("experience_years"):
+            structured["experience_years"] = years
+        if not structured.get("seniority") and not structured.get("experience_years"):
+            structured["experience"] = job["experience_str"]
+    if job.get("location_str"):
+        structured["location"] = job["location_str"]
+
+    return structured
