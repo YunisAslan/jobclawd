@@ -180,7 +180,9 @@ export default function FeedFilterForm({
 
     const available = pool
       .filter((item) => item.toLowerCase() !== normalizedQuery)
-      .filter((item) => !history.some((historyItem) => historyItem.toLowerCase() === item.toLowerCase()));
+      .filter(
+        (item) => !history.some((historyItem) => historyItem.toLowerCase() === item.toLowerCase()),
+      );
 
     const matched = available.filter(
       (item) => !normalizedQuery || item.toLowerCase().includes(normalizedQuery),
@@ -254,6 +256,11 @@ export default function FeedFilterForm({
           })}
           className="space-y-4"
         >
+          <p className="text-[10px] text-muted-foreground mb-1">
+            Selected filters usually make the search more specific and improve
+            result quality.
+          </p>
+
           <div className="flex gap-2">
             <div className="relative flex-1" ref={searchRef}>
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-muted-foreground pointer-events-none z-10" />
