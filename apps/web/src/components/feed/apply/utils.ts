@@ -1,5 +1,4 @@
-import { Mail, Zap, ExternalLink, MousePointerClick } from "lucide-react";
-import { UserProfile, JobListing, JobDetail, ApplyMethod } from "@/types";
+import { UserProfile } from "@/types";
 import { ApplyFormValues, ReadinessField } from "@/components/feed/types";
 
 export function formFromProfile(profile: UserProfile): ApplyFormValues {
@@ -13,14 +12,6 @@ export function formFromProfile(profile: UserProfile): ApplyFormValues {
   };
 }
 
-export function resolveApplyMethod(job: JobListing, detail: JobDetail | null): ApplyMethod {
-  // Trust the backend's page-level analysis first (most accurate)
-  if (detail?.apply_method) return detail.apply_method;
-  // Fall back to the search-time detection from the scraper
-  if (job.apply_method) return job.apply_method;
-  return "direct";
-}
-
 export function getReadiness(form: ApplyFormValues): ReadinessField[] {
   return [
     { label: "Name", filled: form.fullName.trim().length > 0 },
@@ -31,33 +22,3 @@ export function getReadiness(form: ApplyFormValues): ReadinessField[] {
     { label: "Portfolio", filled: form.portfolio_url.trim().length > 0 },
   ];
 }
-
-export const METHOD_CONFIG: Record<
-  ApplyMethod,
-  { label: string; desc: string; color: string; icon: typeof Mail }
-> = {
-  email: {
-    label: "Email Application",
-    desc: "Send your application directly to the recruiter",
-    color: "text-success",
-    icon: Mail,
-  },
-  easy_apply: {
-    label: "Quick Apply",
-    desc: "Apply through the platform's built-in system",
-    color: "text-[#0A66C2]",
-    icon: Zap,
-  },
-  external: {
-    label: "External Application",
-    desc: "You'll be redirected to the company's application page",
-    color: "text-warning",
-    icon: ExternalLink,
-  },
-  direct: {
-    label: "Direct Application",
-    desc: "Apply on the job listing page",
-    color: "text-muted-foreground",
-    icon: MousePointerClick,
-  },
-};

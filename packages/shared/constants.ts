@@ -18,9 +18,6 @@ export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
 export const JOB_SOURCES = ["jobsearch", "linkedin", "indeed"] as const;
 export type JobSource = (typeof JOB_SOURCES)[number];
 
-export const APPLY_METHODS = ["email", "easy_apply", "external", "direct"] as const;
-export type ApplyMethod = (typeof APPLY_METHODS)[number];
-
 export const SALARY_PERIODS = ["annual", "monthly", "hourly"] as const;
 export type SalaryPeriod = (typeof SALARY_PERIODS)[number];
 

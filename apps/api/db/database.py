@@ -63,11 +63,6 @@ def init_db() -> None:
             stmt = stmt.strip()
             if stmt:
                 cur.execute(stmt)
-        # Ensure the default autopilot setting exists
-        cur.execute(
-            "INSERT INTO settings (key, value) VALUES ('autopilot_enabled', 'false') "
-            "ON CONFLICT (key) DO NOTHING"
-        )
     finally:
         _pool.putconn(raw)
 

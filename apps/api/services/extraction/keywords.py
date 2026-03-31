@@ -667,77 +667,6 @@ SENIORITY: list[KeywordEntry] = [
 ]
 
 # ══════════════════════════════════════════════════════════════════════
-# APPLICATION METHOD
-# ══════════════════════════════════════════════════════════════════════
-
-APPLY_METHOD: list[KeywordEntry] = [
-    KeywordEntry(
-        canonical="email",
-        weight=1.0,
-        synonyms={
-            "en": [
-                "send your cv to", "email your resume", "send resume to",
-                "email your cv", "submit your cv via email", "apply via email",
-                "apply by email", "forward your cv", "attach your cv",
-                "send your resume to", "mail your cv", "mail your resume",
-                "submit resume to", "submit cv to", "email us your cv",
-                "email us your resume", "send your application to",
-                "applications to", "resumes to", "cv to the following email",
-                "apply by sending", "send your cover letter and cv",
-                "send your cv and cover letter",
-            ],
-            "az": [
-                "cv-nizi göndərin", "müraciət emailə", "göndər cv",
-                "cv-ni göndərin", "elektron poçta ilə müraciət",
-            ],
-            "tr": [
-                "cv'nizi gönderin", "e-posta ile başvurun", "cv gönderin",
-                "özgeçmişinizi gönderin", "mail ile başvurun",
-            ],
-            "ru": [
-                "отправьте резюме", "направьте резюме", "присылайте cv",
-                "резюме на почту", "отправить cv", "отправьте cv на",
-                "резюме направлять на", "заявку отправлять на",
-            ],
-        },
-        negatives=[],
-    ),
-    KeywordEntry(
-        canonical="external",
-        weight=0.8,
-        synonyms={
-            "en": [
-                "apply on our website", "apply on company website",
-                "apply through our portal", "visit our careers page",
-                "application portal", "apply at",
-                "click here to apply", "apply through the link",
-                "apply now", "apply here", "submit application",
-                "submit your application", "apply online",
-                "apply on the company site", "apply directly",
-                "apply through our careers page", "careers page",
-                "application form", "online application",
-                "apply using the link", "apply via the link",
-            ],
-            "az": [
-                "müraciət linki", "şirkətin saytında müraciət",
-                "onlayn müraciət", "müraciət forması",
-            ],
-            "tr": [
-                "şirket sitesinden başvurun", "başvuru linki",
-                "online başvuru", "başvuru formu",
-            ],
-            "ru": [
-                "подать заявку на сайте", "перейти по ссылке",
-                "подать заявку через", "откликнуться на сайте",
-                "форма заявки", "онлайн заявка",
-            ],
-        },
-        negatives=[],
-    ),
-]
-
-
-# ══════════════════════════════════════════════════════════════════════
 # COMPILED MATCHER
 # ══════════════════════════════════════════════════════════════════════
 
@@ -819,4 +748,3 @@ class CompiledDictionary:
 WORK_MODE_DICT = CompiledDictionary(WORK_MODE)
 JOB_TYPE_DICT = CompiledDictionary(JOB_TYPE)
 SENIORITY_DICT = CompiledDictionary(SENIORITY)
-APPLY_METHOD_DICT = CompiledDictionary(APPLY_METHOD)

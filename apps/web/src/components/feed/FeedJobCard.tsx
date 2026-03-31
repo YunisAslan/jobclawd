@@ -23,10 +23,8 @@ import {
   ExternalLink,
   GraduationCap,
   Laptop,
-  Mail,
   MapPin,
   MoreHorizontal,
-  Send,
   ShieldCheck,
   X,
   Zap,
@@ -128,55 +126,6 @@ function MetaChip({
           <Bot className="size-2" />
           AI
         </span>
-      )}
-    </span>
-  );
-}
-
-function ApplyMethodBadge({
-  method,
-  complexity,
-}: {
-  method: string;
-  complexity?: string | null;
-}) {
-  const config: Record<string, { label: string; icon: ReactNode; className: string }> = {
-    email: {
-      label: "Email Apply",
-      icon: <Mail className="size-2.5" />,
-      className: "text-blue-600 bg-blue-500/8 border-blue-500/20",
-    },
-    easy_apply: {
-      label: "Easy Apply",
-      icon: <Zap className="size-2.5" />,
-      className: "text-primary bg-primary/8 border-primary/20",
-    },
-    external: {
-      label: "External",
-      icon: <ExternalLink className="size-2.5" />,
-      className: "text-amber-600 bg-amber-500/8 border-amber-500/20",
-    },
-    direct: {
-      label: "Direct",
-      icon: <Send className="size-2.5" />,
-      className: "text-muted-foreground bg-muted/50 border-border/60",
-    },
-  };
-
-  const c = config[method] || config.direct;
-  const complexityLabel = complexity === "easy" ? "Quick" : complexity === "hard" ? "Complex" : null;
-
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 text-[10px] font-medium rounded-md px-1.5 py-0.5 border",
-        c.className,
-      )}
-    >
-      {c.icon}
-      {c.label}
-      {complexityLabel && (
-        <span className="opacity-60">· {complexityLabel}</span>
       )}
     </span>
   );
@@ -291,12 +240,9 @@ export default function FeedJobCard({
                 )}
               </div>
             )}
-            {/* Apply method & intelligence badges */}
-            {(job.apply_method || (job.badges && job.badges.length > 0)) && (
+            {/* Intelligence badges */}
+            {job.badges && job.badges.length > 0 && (
               <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                {job.apply_method && (
-                  <ApplyMethodBadge method={job.apply_method} complexity={job.apply_complexity} />
-                )}
                 {job.badges?.map((badge, i) => {
                   if (badge === "Email Apply" || badge === "Easy Apply" || badge === "External" || badge === "Direct") return null;
                   return (

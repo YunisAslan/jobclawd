@@ -8,7 +8,6 @@ from scraper import get_browser
 from models.schemas import JobListing, JobSource, LocationFilter
 from db.database import get_db
 from services.ai_metadata_extractor import extract_metadata_ai_batch
-from services.apply_method_detector import detect_from_linkedin_card
 from services.enrichment_service import fetch_metadata_for_urls
 from utils.job_meta_extractor import extract_all as extract_meta
 from utils.job_meta_extractor import primary_experience_value
@@ -329,10 +328,6 @@ async def scrape_linkedin(
                 except Exception:
                     pass
 
-                apply_method = detect_from_linkedin_card(
-                    {"has_easy_apply_badge": has_easy_apply}
-                )
-
                 badge_lines: list[str] = []
                 for raw_line in full_card_text.splitlines():
                     line = " ".join(raw_line.split()).strip()
@@ -370,7 +365,6 @@ async def scrape_linkedin(
                         logo_url=logo_url,
                         location_str=location_str,
                         description_snippet=(full_card_text[:2000] or snippet or None),
-                        apply_method=apply_method,
                         seniority_str=seniority_str,
                         seniority_src="rule" if seniority_str else None,
                         experience_years_str=experience_years_str,

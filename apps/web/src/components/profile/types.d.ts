@@ -6,5 +6,4 @@ export type {
   UserProfile,
   EducationEntry,
   LanguageEntry,
-  CoverLetterTemplate,
 } from "@jobclawd/shared";

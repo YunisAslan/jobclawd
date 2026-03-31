@@ -1,50 +1,44 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { CheckCircle2, HelpCircle, AlertTriangle, XCircle } from "lucide-react";
+import { CheckCircle2, HelpCircle, AlertTriangle } from "lucide-react";
 
 const SUPPORT_CONFIG: Record<
   string,
   { icon: typeof CheckCircle2; color: string; bg: string; border: string }
 > = {
-  auto: {
+  ready: {
     icon: CheckCircle2,
     color: "text-success",
     bg: "bg-success/8",
     border: "border-success/20",
   },
-  assisted: {
+  partial: {
     icon: HelpCircle,
     color: "text-primary",
     bg: "bg-primary/8",
     border: "border-primary/20",
   },
-  manual: {
+  basic: {
     icon: AlertTriangle,
     color: "text-warning",
     bg: "bg-warning/8",
     border: "border-warning/20",
   },
-  unsupported: {
-    icon: XCircle,
-    color: "text-destructive",
-    bg: "bg-destructive/8",
-    border: "border-destructive/20",
-  },
 };
 
 interface ApplySupportBadgeProps {
-  supportLevel: string;
-  supportLabel: string;
+  readinessLevel: string;
+  readinessLabel: string;
   score: number;
 }
 
 export default function ApplySupportBadge({
-  supportLevel,
-  supportLabel,
+  readinessLevel,
+  readinessLabel,
   score,
 }: ApplySupportBadgeProps) {
-  const cfg = SUPPORT_CONFIG[supportLevel] || SUPPORT_CONFIG.manual;
+  const cfg = SUPPORT_CONFIG[readinessLevel] || SUPPORT_CONFIG.basic;
   const Icon = cfg.icon;
 
   return (
@@ -65,7 +59,7 @@ export default function ApplySupportBadge({
       </div>
       <div className="flex-1 min-w-0">
         <p className={cn("text-sm font-semibold", cfg.color)}>
-          {supportLabel}
+          {readinessLabel}
         </p>
         <p className="text-xs text-muted-foreground mt-0.5">
           Readiness: {score}%

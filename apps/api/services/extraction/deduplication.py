@@ -139,7 +139,7 @@ def _metadata_richness(job: dict) -> int:
     for field in (
         "work_mode_str", "job_type_str", "salary_str",
         "seniority_str", "experience_years_str", "experience_str",
-        "hr_email", "apply_method", "description_snippet", "logo_url",
+        "hr_email", "description_snippet", "logo_url",
     ):
         if job.get(field):
             score += 1
@@ -185,11 +185,9 @@ def _merge_metadata(target: dict, donor: dict) -> None:
             else target.get("experience_years_src")
         ) or target.get("experience_src")
 
-    # Also merge HR email and apply_method
+    # Also merge HR email
     if not target.get("hr_email") and donor.get("hr_email"):
         target["hr_email"] = donor["hr_email"]
-    if (not target.get("apply_method") or target.get("apply_method") == "direct") and donor.get("apply_method"):
-        target["apply_method"] = donor["apply_method"]
 
 
 # ── DB-backed fingerprint cache ───────────────────────────────────
@@ -207,8 +205,8 @@ def get_cached_fingerprints(fingerprints: list[str]) -> dict[str, dict]:
                 "SELECT fingerprint, url, seniority_str, seniority_src, "
                 "experience_years_str, experience_years_src, experience_str, experience_src, "
                 "job_type_str, job_type_src, salary_str, salary_src, "
-                "work_mode_str, work_mode_src, apply_method_str, apply_method_src, "
-                "skills_str, languages_str, work_auth_str, parse_confidence "
+                "work_mode_str, work_mode_src, "
+                "skills_str, languages_str, parse_confidence "
                 "FROM job_metadata WHERE fingerprint = ANY(%s) AND expires_at > NOW()",
                 (fingerprints,),
             ).fetchall()

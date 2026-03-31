@@ -48,17 +48,15 @@ export default function ProfileIdentityCard({
   const jobTypes = useWatch({ control, name: "job_types" }) ?? [];
   const salaryMin = useWatch({ control, name: "salary_min" }) ?? "";
   const preferredLocation = useWatch({ control, name: "preferred_location" });
-  const availability = useWatch({ control, name: "availability" }) ?? "";
   const years = useWatch({ control, name: "years_of_experience" });
   const desiredTitles = useWatch({ control, name: "desired_titles" }) ?? [];
   const cvLinks = useWatch({ control, name: "cv_links" }) ?? [];
-  const currentEmployer = useWatch({ control, name: "current_employer" }) ?? "";
   const blacklist = useWatch({ control, name: "blacklist" }) ?? [];
   const skills = useWatch({ control, name: "skills" }) ?? [];
   const education = useWatch({ control, name: "education" }) ?? [];
   const languages = useWatch({ control, name: "language_levels" }) ?? [];
 
-  // One check per section: Identity, Targeting, Preferences, Availability, Skills, Education, Languages, CVs & Documents, Blocklist
+  // One check per section: Identity, Targeting, Preferences, Experience, Skills, Education, Languages, CVs & Documents, Blocklist
   const completionChecks = [
     name.length > 0, // Identity
     desiredTitles.length > 0, // Targeting
@@ -66,12 +64,12 @@ export default function ProfileIdentityCard({
       expLevel.length > 0 ||
       salaryMin.length > 0 ||
       !!(preferredLocation?.value || (preferredLocation?.values?.length ?? 0) > 0), // Preferences
-    availability.length > 0 || (years != null && years > 0), // Availability
+    years != null && years > 0, // Experience
     skills.length > 0, // Skills
     education.length > 0, // Education
     languages.length > 0, // Languages
     cvLinks.length > 0, // CVs & Documents
-    currentEmployer.length > 0 || blacklist.length > 0, // Blocklist
+    blacklist.length > 0, // Blocklist
   ];
   const filled = completionChecks.filter(Boolean).length;
   const total = completionChecks.length;

@@ -19,7 +19,7 @@ import json
 from typing import Optional
 
 from services.extraction.confidence import ExtractionReport, FieldResult
-from services.extraction.deterministic import extract_deterministic, classify_apply_complexity
+from services.extraction.deterministic import extract_deterministic
 from services.extraction.deduplication import (
     deduplicate_jobs,
     compute_fingerprint,
@@ -156,9 +156,6 @@ async def process_jobs(
                         for url, ai_meta in ai_results.items():
                             if not ai_meta or url not in reports:
                                 continue
-                            # Add apply_method from AI if available
-                            if ai_meta.get("apply_method"):
-                                ai_meta["apply_method_str"] = ai_meta.pop("apply_method")
                             reports[url] = merge_ai_results(reports[url], ai_meta)
 
                     except Exception as e:
@@ -214,12 +211,7 @@ def _apply_report_to_job(job: dict, flat: dict) -> None:
         ("experience_years_str", "experience_years_src", "experience_years_conf"),
         ("experience_str", "experience_src", "experience_conf"),
         ("salary_str", "salary_src", "salary_conf"),
-        ("apply_method", "apply_method_src", "apply_method_conf"),
     ]
-    # For apply_method, the flat dict uses "apply_method_str" but the job uses "apply_method"
-    apply_val = flat.get("apply_method_str")
-    if apply_val:
-        flat["apply_method"] = apply_val
 
     for val_field, src_field, conf_field in field_pairs:
         incoming_val = flat.get(val_field)
@@ -254,8 +246,7 @@ def _apply_report_to_job(job: dict, flat: dict) -> None:
             job["experience_src"] = job["experience_years_src"]
 
     # Extra fields
-    for extra in ("skills_str", "languages_str", "work_auth_str",
-                   "apply_complexity", "auto_apply_support", "parse_confidence"):
+    for extra in ("skills_str", "languages_str", "parse_confidence"):
         if flat.get(extra) is not None:
             job[extra] = flat[extra]
 
@@ -280,14 +271,9 @@ def _build_persist_kwargs(flat: dict) -> dict:
         ("experience_src", "experience_src"),
         ("salary_str", "salary_str"),
         ("salary_src", "salary_src"),
-        ("apply_method_str", "apply_method_str"),
-        ("apply_method_src", "apply_method_src"),
         ("skills_str", "skills_str"),
         ("languages_str", "languages_str"),
-        ("work_auth_str", "work_auth_str"),
         ("parse_confidence", "parse_confidence"),
-        ("apply_complexity", "apply_complexity"),
-        ("auto_apply_support", "auto_apply_support"),
     ]
     for flat_key, kwarg_key in field_map:
         val = flat.get(flat_key)

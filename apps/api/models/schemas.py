@@ -69,23 +69,15 @@ class LanguageEntry(BaseModel):
     level: str = ""  # "native" | "fluent" | "advanced" | "intermediate" | "basic"
 
 
-class CoverLetterTemplate(BaseModel):
-    name: str = ""
-    body: str = ""
-
-
 class UserProfile(BaseModel):
     name: str
     surname: str = ""
     email: str
-    current_employer: str = ""
     work_modes: list[WorkMode] = [WorkMode.hybrid]
     experience_level: list[ExperienceLevel] = []
     relocation: bool = False
     blacklist: list[str] = []
     cv_links: list[CVLink] = []
-    # legacy field kept for backward compat
-    cvLink: str = ""
 
     # Contact fields — used to pre-fill job applications
     phone: Optional[str] = None
@@ -102,15 +94,10 @@ class UserProfile(BaseModel):
     salary_min: Optional[str] = None
     salary_period: Optional[str] = None          # "annual" | "monthly" | "hourly"
     years_of_experience: Optional[int] = None
-    availability: Optional[str] = None
 
-    # Extended profile fields — Phase 2
-    work_authorization: Optional[str] = None     # "citizen" | "permanent_resident" | "visa_required" | "no_sponsorship"
-    notice_period: Optional[str] = None          # "immediately" | "2-weeks" | "1-month" | "3-months"
     education: list[EducationEntry] = []
     skills: list[str] = []
     language_levels: list[LanguageEntry] = []
-    cover_letter_templates: list[CoverLetterTemplate] = []
 
 
 # ---------- Search ----------
@@ -155,16 +142,9 @@ class JobListing(BaseModel):
     description_snippet: Optional[str] = None
     # Email extracted at search time (when available from API data)
     hr_email: Optional[str] = None
-    # How the user can apply — set at scrape time based on source & email availability
-    apply_method: Optional[str] = None
-    apply_method_src: Optional[str] = None
-    apply_method_conf: Optional[float] = None
     # Vacancy Intelligence Engine fields
     skills_str: Optional[str] = None
     languages_str: Optional[str] = None
-    work_auth_str: Optional[str] = None
-    apply_complexity: Optional[str] = None          # "easy" | "moderate" | "hard"
-    auto_apply_support: Optional[str] = None        # "full" | "assisted" | "manual"
     parse_confidence: Optional[int] = None          # 0-100
     # Summary badges for frontend display
     badges: list[str] = []
@@ -184,35 +164,6 @@ class JobDetailRequest(BaseModel):
     url: str
 
 
-class ApplyMethod(str, Enum):
-    email = "email"
-    easy_apply = "easy_apply"
-    external = "external"
-    direct = "direct"
-
-
-class EasyApplyAnalysis(BaseModel):
-    """LinkedIn Easy Apply flow complexity analysis."""
-    tier: str = "unknown"                       # "A" | "B" | "C" | "unknown"
-    tier_label: str = ""                        # human-readable label
-    step_count: int = 0                         # number of form steps detected
-    has_resume_upload: bool = False
-    has_custom_questions: bool = False
-    has_cover_letter: bool = False
-    unknown_fields: list[str] = []              # fields not auto-fillable from profile
-    safe_to_auto_submit: bool = False
-
-
-class ATSInfo(BaseModel):
-    """External ATS platform detection."""
-    platform: Optional[str] = None              # "greenhouse" | "lever" | "workable" | "smartrecruiters" | "breezy" | "ashby" | None
-    platform_label: str = ""                    # human-readable label
-    confidence: float = 0.0                     # 0.0–1.0
-    prefillable_fields: list[str] = []          # fields we can auto-fill from profile
-    missing_fields: list[str] = []              # fields user must fill manually
-    apply_url: Optional[str] = None             # direct application form URL if detected
-
-
 class JobDetailResponse(BaseModel):
     title: str
     company: str
@@ -220,12 +171,12 @@ class JobDetailResponse(BaseModel):
     email: Optional[str] = None
     email_found: bool
     apply_url: Optional[str] = None
-    apply_method: ApplyMethod = ApplyMethod.direct
     error_message: Optional[str] = None
-    # Phase 4: Easy Apply tier classification
-    easy_apply: Optional[EasyApplyAnalysis] = None
-    # Phase 5: ATS platform detection
-    ats_info: Optional[ATSInfo] = None
+    # Resolved apply link
+    resolved_apply_url: Optional[str] = None
+    apply_url_confidence: float = 0.0
+    apply_requires_login: bool = False
+    fallback_urls: list[str] = []
 
 
 # ---------- Apply ----------
@@ -250,8 +201,6 @@ class ApplyResponse(BaseModel):
     success: bool
     application_id: Optional[int] = None
     message: str
-    sent_via_smtp: bool = False
-    failure_reason: Optional[str] = None       # specific failure: "external_login_required", "captcha_detected", etc.
     status: str = "sent"                        # "sent" | "drafted" | "waiting_input" | "open_manually" | "failed"
 
 
@@ -267,13 +216,10 @@ class ApplyReadinessRequest(BaseModel):
 
 class ApplyReadinessResponse(BaseModel):
     score: int                                  # 0-100
-    support_level: str                          # "auto" | "assisted" | "manual" | "unsupported"
-    support_label: str                          # "Auto Apply — Supported", etc.
+    readiness_level: str                        # "ready" | "partial" | "basic"
+    readiness_label: str
     missing_required: list[MissingFieldInfo]
     missing_optional: list[MissingFieldInfo]
-    can_auto_apply: bool
-    method: str
-    method_label: str
 
 
 # ---------- Applications ----------
@@ -320,20 +266,6 @@ class StatsResponse(BaseModel):
     cv_performance: list[CVPerformanceEntry]
 
 
-# ---------- Settings ----------
-
-class SMTPSettings(BaseModel):
-    host: str
-    port: int = 587
-    username: str
-    password: Optional[str] = None
-    from_name: str = "JobClawd"
-
-
-class AutopilotSettings(BaseModel):
-    enabled: bool
-
-
 # ---------- Meta ----------
 
 class FilterOption(BaseModel):
@@ -352,23 +284,6 @@ class CountryOption(BaseModel):
     flag: Optional[str] = None
     currency: str
     cities: list[CityOption] = []
-
-
-# ---------- Screening Answers ----------
-
-class ScreeningAnswer(BaseModel):
-    id: Optional[int] = None
-    question: str
-    answer: str = ""
-
-
-class ScreeningAnswersResponse(BaseModel):
-    answers: list[ScreeningAnswer]
-
-
-class ScreeningAnswerUpsert(BaseModel):
-    question: str
-    answer: str
 
 
 # ---------- Meta ----------

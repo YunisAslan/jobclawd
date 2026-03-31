@@ -69,10 +69,8 @@ _FIELD_WEIGHTS = {
     "seniority": 0.8,
     "experience_years": 0.8,
     "salary": 0.7,
-    "apply_method": 1.2,       # user cares most about this
     "skills": 0.5,
     "languages": 0.3,
-    "work_authorization": 0.3,
     "location": 0.6,
 }
 
@@ -85,16 +83,9 @@ class ExtractionReport:
     seniority: FieldResult = field(default_factory=FieldResult)
     experience_years: FieldResult = field(default_factory=FieldResult)
     salary: FieldResult = field(default_factory=FieldResult)
-    apply_method: FieldResult = field(default_factory=FieldResult)
     skills: FieldResult = field(default_factory=FieldResult)         # comma-separated skill list
     languages: FieldResult = field(default_factory=FieldResult)      # comma-separated
-    work_authorization: FieldResult = field(default_factory=FieldResult)
     location: FieldResult = field(default_factory=FieldResult)
-
-    # Extra context carried through the pipeline
-    apply_url: Optional[str] = None
-    apply_complexity: Optional[str] = None    # "easy" | "moderate" | "hard"
-    auto_apply_support: Optional[str] = None  # "full" | "assisted" | "manual"
 
     @property
     def _core_fields(self) -> dict[str, FieldResult]:
@@ -105,7 +96,6 @@ class ExtractionReport:
             "seniority": self.seniority,
             "experience_years": self.experience_years,
             "salary": self.salary,
-            "apply_method": self.apply_method,
         }
 
     @property
@@ -114,7 +104,6 @@ class ExtractionReport:
             **self._core_fields,
             "skills": self.skills,
             "languages": self.languages,
-            "work_authorization": self.work_authorization,
             "location": self.location,
         }
 
@@ -150,9 +139,6 @@ class ExtractionReport:
             mine = getattr(self, name)
             theirs = getattr(other, name)
             setattr(merged, name, mine.merge(theirs))
-        merged.apply_url = other.apply_url or self.apply_url
-        merged.apply_complexity = other.apply_complexity or self.apply_complexity
-        merged.auto_apply_support = other.auto_apply_support or self.auto_apply_support
         return merged
 
     def to_flat_dict(self) -> dict:
@@ -164,7 +150,6 @@ class ExtractionReport:
             "seniority": "seniority",
             "experience_years": "experience_years",
             "salary": "salary",
-            "apply_method": "apply_method",
         }
         for attr_name, prefix in field_map.items():
             fr: FieldResult = getattr(self, attr_name)
@@ -191,17 +176,8 @@ class ExtractionReport:
             out["skills_str"] = self.skills.value
         if not self.languages.is_empty:
             out["languages_str"] = self.languages.value
-        if not self.work_authorization.is_empty:
-            out["work_auth_str"] = self.work_authorization.value
         if not self.location.is_empty:
             out["location_str"] = self.location.value
-
-        if self.apply_url:
-            out["apply_url"] = self.apply_url
-        if self.apply_complexity:
-            out["apply_complexity"] = self.apply_complexity
-        if self.auto_apply_support:
-            out["auto_apply_support"] = self.auto_apply_support
 
         out["parse_confidence"] = self.parse_confidence_pct
         return out
@@ -216,7 +192,6 @@ class ExtractionReport:
             "seniority": "seniority",
             "experience_years": "experience_years",
             "salary": "salary",
-            "apply_method": "apply_method",
         }
         for attr_name, prefix in field_map.items():
             val = d.get(f"{prefix}_str")
@@ -251,14 +226,9 @@ class ExtractionReport:
             report.skills = FieldResult(value=d["skills_str"], confidence=0.6, method="regex")
         if d.get("languages_str"):
             report.languages = FieldResult(value=d["languages_str"], confidence=0.6, method="regex")
-        if d.get("work_auth_str"):
-            report.work_authorization = FieldResult(value=d["work_auth_str"], confidence=0.6, method="regex")
         if d.get("location_str"):
             report.location = FieldResult(value=d["location_str"], confidence=0.7, method="structured")
 
-        report.apply_url = d.get("apply_url")
-        report.apply_complexity = d.get("apply_complexity")
-        report.auto_apply_support = d.get("auto_apply_support")
         return report
 
 

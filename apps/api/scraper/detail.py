@@ -3,11 +3,9 @@ import asyncio
 import json as _json
 from urllib.parse import urlsplit, urlunsplit
 from scraper import get_browser
-from models.schemas import JobDetailResponse, ApplyMethod
+from models.schemas import JobDetailResponse
 from utils.email_extractor import extract_emails
-from services.easy_apply_analyzer import analyze_easy_apply
-from services.ats_detector import detect_ats
-from services.apply_method_detector import detect_from_page
+from services.apply_link_resolver import resolve_apply_link
 
 
 def _normalize_detail_url(url: str) -> str:
@@ -264,26 +262,15 @@ async def scrape_job_detail(url: str) -> JobDetailResponse:
                 }
             """)
 
-        # Determine apply method by analyzing what the apply button does —
-        # NOT based on source, NOT based on email existence.
-        detected = await detect_from_page(page, url, email)
-        method = ApplyMethod(detected)
-
-        # Phase 4: LinkedIn Easy Apply tier analysis
-        easy_apply_result = None
-        if "linkedin.com" in url and method == ApplyMethod.easy_apply:
-            try:
-                easy_apply_result = await analyze_easy_apply(page, url)
-            except Exception as e:
-                print(f"[Detail] Easy Apply analysis error: {e}")
-
-        # Phase 5: ATS platform detection for external/direct jobs
-        ats_result = None
-        if method in (ApplyMethod.external, ApplyMethod.direct):
-            try:
-                ats_result = await detect_ats(page, url)
-            except Exception as e:
-                print(f"[Detail] ATS detection error: {e}")
+        # Resolve the real apply destination URL.
+        resolved = None
+        try:
+            resolved = await resolve_apply_link(
+                page=page,
+                url=url,
+            )
+        except Exception as e:
+            print(f"[Detail] Apply link resolution error: {e}")
 
         return JobDetailResponse(
             title=(title or "N/A")[:200],
@@ -292,12 +279,13 @@ async def scrape_job_detail(url: str) -> JobDetailResponse:
             email=email,
             email_found=email is not None,
             apply_url=url,
-            apply_method=method,
             error_message=(
                 None if email else "No email found — apply directly on the site."
             ),
-            easy_apply=easy_apply_result,
-            ats_info=ats_result,
+            resolved_apply_url=resolved.apply_url if resolved else None,
+            apply_url_confidence=resolved.confidence if resolved else 0.0,
+            apply_requires_login=resolved.requires_login if resolved else False,
+            fallback_urls=resolved.fallback_urls if resolved else [],
         )
 
     finally:

@@ -11,13 +11,11 @@ export const DEFAULT_PROFILE: UserProfile = {
   name: "",
   surname: "",
   email: "",
-  current_employer: "",
   work_modes: ["hybrid"],
   experience_level: [],
   relocation: false,
   blacklist: [],
   cv_links: [],
-  cvLink: "",
   phone: "",
   linkedin_url: "",
   portfolio_url: "",
@@ -29,13 +27,9 @@ export const DEFAULT_PROFILE: UserProfile = {
   salary_min: "",
   salary_period: "annual",
   years_of_experience: null,
-  availability: "",
-  work_authorization: "",
-  notice_period: "",
   education: [],
   skills: [],
   language_levels: [],
-  cover_letter_templates: [],
 };
 
 interface ProfileContextValue {

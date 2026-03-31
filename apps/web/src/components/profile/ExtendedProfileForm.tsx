@@ -17,7 +17,6 @@ import AvailabilitySection from "@/components/profile/sections/AvailabilitySecti
 import SkillsSection from "@/components/profile/sections/SkillsSection";
 import EducationSection from "@/components/profile/sections/EducationSection";
 import LanguagesSection from "@/components/profile/sections/LanguagesSection";
-import CoverLetterTemplatesSection from "@/components/profile/sections/CoverLetterTemplatesSection";
 import DocumentsSection from "@/components/profile/sections/DocumentsSection";
 
 export default function ExtendedProfileForm() {
@@ -74,7 +73,6 @@ export default function ExtendedProfileForm() {
           <SkillsSection control={control} setValue={setValue} />
           <EducationSection control={control} setValue={setValue} />
           <LanguagesSection control={control} setValue={setValue} />
-          <CoverLetterTemplatesSection control={control} setValue={setValue} />
           <DocumentsSection control={control} />
 
           {/* Mobile save */}

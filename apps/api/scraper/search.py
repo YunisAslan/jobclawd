@@ -6,7 +6,6 @@ from scraper import get_browser
 from models.schemas import JobListing, LocationFilter, JobSource
 from utils.email_extractor import extract_emails
 from utils.job_meta_extractor import extract_all as extract_meta
-from services.apply_method_detector import detect_from_jobsearch_item
 
 
 def _strip_html(text: str) -> str:
@@ -292,8 +291,6 @@ async def scrape_search(
             logo_url = slug_to_logo.get(item_slug) or item.get("company", {}).get("logo") or None
             
             hr_email = _extract_email_from_item(item)
-            apply_method = detect_from_jobsearch_item(item, hr_email)
-
             # --- Extract structured metadata from API item fields ---
             experience_str = None
             experience_src = None
@@ -437,7 +434,6 @@ async def scrape_search(
                     logo_url=logo_url,
                     location_str=city_value,
                     hr_email=hr_email,
-                    apply_method=apply_method,
                     description_snippet=snippet,
                     salary_str=salary_str,
                     salary_src=salary_src,

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Control, Controller } from "react-hook-form";
 import { UserProfile } from "@/types";
-import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import CVLinkManager from "@/components/profile/CVLinkManager";
 import BlacklistManager from "@/components/profile/BlacklistManager";
@@ -49,18 +48,6 @@ export default function DocumentsSection({ control }: Props) {
         >
           <div className="overflow-hidden">
             <div className="space-y-4 peer-hover/header:translate-y-0.5 transition-transform duration-150 pt-0.5 pb-8">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-1.5">
-                  <Label className="text-xs text-muted-foreground">Current employer</Label>
-                  <InfoTooltip text="The company you work for will not be included in the search." />
-                </div>
-                <Controller
-                  name="current_employer"
-                  control={control}
-                  render={({ field }) => <Input placeholder="Your current company" {...field} />}
-                />
-              </div>
-
               <div className="space-y-1.5">
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground">Blocked companies</Label>

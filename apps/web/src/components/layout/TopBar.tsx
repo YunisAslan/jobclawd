@@ -4,7 +4,6 @@ import { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Badge } from "@/components/ui/Badge";
 import { Separator } from "@/components/ui/Separator";
 import { Button } from "@/components/ui/Button";
 import {
@@ -35,11 +34,10 @@ import {
 interface TopBarProps {
   title: string;
   action?: ReactNode;
-  autopilotEnabled?: boolean;
   className?: string;
 }
 
-export default function TopBar({ title, action, autopilotEnabled, className }: TopBarProps) {
+export default function TopBar({ title, action, className }: TopBarProps) {
   const { open, toggle } = useSidebarShell();
   const { user, logout } = useAuth();
   const { profile } = useProfile();
@@ -91,13 +89,6 @@ export default function TopBar({ title, action, autopilotEnabled, className }: T
           </Button>
 
           <h1 className="text-base font-semibold tracking-tight">{title}</h1>
-
-          {autopilotEnabled && (
-            <Badge className="gap-1.5 bg-primary/15 text-primary border border-primary/30 hover:bg-primary/15">
-              <span className="size-1.5 rounded-full bg-primary animate-pulse" />
-              Autopilot active
-            </Badge>
-          )}
         </div>
 
         {/* Right: action slot + theme toggle + avatar menu */}

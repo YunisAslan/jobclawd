@@ -7,7 +7,6 @@ export type {
   MatchLevel,
   JobListing,
   SearchResponse,
-  ApplyMethod,
   JobDetail,
   ApplyRequest,
   ApplyResponse,
@@ -16,10 +15,6 @@ export type {
   ReadinessField,
   EducationEntry,
   LanguageEntry,
-  CoverLetterTemplate,
-  ScreeningAnswer,
-  EasyApplyAnalysis,
-  ATSInfo,
   ApplyReadinessResponse,
   MissingFieldInfo,
 } from "@jobclawd/shared";

@@ -1,38 +1,23 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { toast } from "sonner";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { JobListing } from "@/types";
 import { jobsService } from "@/services/jobs.service";
 import { applyService } from "@/services/apply.service";
-import { settingsService } from "@/services/settings.service";
-import { profileService } from "@/services/profile.service";
 import type { ApplyReadinessResponse } from "@/types";
 import { useProfile } from "@/contexts/ProfileContext";
 import { extractApiError } from "@/lib/utils";
-import { generateCoverLetter, generateEmailSubject } from "@/lib/cover-letter";
 import { ApplyFormValues } from "@/components/feed/types";
-import { formFromProfile, resolveApplyMethod, getReadiness } from "@/components/feed/apply/utils";
+import { formFromProfile, getReadiness } from "@/components/feed/apply/utils";
 
 export function useApplyDrawer(job: JobListing | null, onApplied: () => void) {
   const { profile } = useProfile();
 
   const [form, setForm] = useState<ApplyFormValues>(() => formFromProfile(profile));
-  const [coverLetter, setCoverLetter] = useState("");
-  const [emailSubject, setEmailSubject] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const [showEmailModal, setShowEmailModal] = useState(false);
-  const [extraFiles, setExtraFiles] = useState<File[]>([]);
-
-  const { data: smtpSettings } = useQuery({
-    queryKey: ["smtp-settings"],
-    queryFn: () => settingsService.getSMTP(),
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-  });
 
   const { data: detail, isLoading: loadingDetail } = useQuery({
     queryKey: ["job-detail", job?.url],
@@ -50,13 +35,12 @@ export function useApplyDrawer(job: JobListing | null, onApplied: () => void) {
   });
 
   const effectiveEmail = detail?.email ?? job?.hr_email ?? null;
-  const jobclawdEmail = process.env.NEXT_PUBLIC_JOBCLAWD_EMAIL;
-  const fromEmail = smtpSettings?.username || jobclawdEmail;
 
-  const method = useMemo(
-    () => (job ? resolveApplyMethod(job, detail ?? null) : "direct"),
-    [job, detail],
-  );
+  // Resolved apply URL: prefer resolver's output, fall back to original
+  const resolvedApplyUrl = useMemo(() => {
+    if (detail?.resolved_apply_url) return detail.resolved_apply_url;
+    return job?.url ?? "";
+  }, [detail, job]);
 
   useEffect(() => {
     if (job) {
@@ -64,17 +48,8 @@ export function useApplyDrawer(job: JobListing | null, onApplied: () => void) {
       setMessage(null);
       setSuccess(false);
       setShowDetails(false);
-      setShowEmailModal(false);
-      setExtraFiles([]);
     }
   }, [job?.url, profile]);
-
-  useEffect(() => {
-    if (job && detail) {
-      setCoverLetter(generateCoverLetter(profile, job, detail));
-      setEmailSubject(generateEmailSubject(profile, job));
-    }
-  }, [job?.url, detail?.description, profile]);
 
   const readiness = useMemo(() => getReadiness(form), [form]);
 
@@ -95,12 +70,6 @@ export function useApplyDrawer(job: JobListing | null, onApplied: () => void) {
       const [firstName = "", ...rest] = form.fullName.trim().split(" ");
       const lastName = rest.join(" ");
 
-      const extraUrls: string[] = [];
-      for (const file of extraFiles) {
-        const result = await profileService.uploadCV(file);
-        extraUrls.push(result.url);
-      }
-
       return applyService.apply({
         job_url: job!.url,
         job_title: job!.title,
@@ -111,9 +80,6 @@ export function useApplyDrawer(job: JobListing | null, onApplied: () => void) {
         cv_url: form.selectedCV?.url ?? null,
         match_score: job!.match_score,
         match_level: job!.match_level,
-        cover_letter: method === "email" ? coverLetter : null,
-        email_subject: method === "email" ? emailSubject : null,
-        extra_cv_urls: extraUrls.length > 0 ? extraUrls : null,
         profile: {
           ...profile,
           name: firstName,
@@ -125,17 +91,10 @@ export function useApplyDrawer(job: JobListing | null, onApplied: () => void) {
         },
       });
     },
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
       setMessage(res.message);
       setSuccess(true);
-      if (method === "email") {
-        toast.success("Application sent!", {
-          description: `Your email was delivered to ${effectiveEmail}.`,
-        });
-        setShowEmailModal(false);
-      } else {
-        window.open(job!.url, "_blank");
-      }
+      window.open(resolvedApplyUrl, "_blank");
       onApplied();
     },
     onError: (err: Error) => {
@@ -152,24 +111,14 @@ export function useApplyDrawer(job: JobListing | null, onApplied: () => void) {
   return {
     profile,
     form,
-    coverLetter,
-    setCoverLetter,
-    emailSubject,
-    setEmailSubject,
     message,
     success,
     showDetails,
     setShowDetails,
-    showEmailModal,
-    setShowEmailModal,
-    extraFiles,
-    setExtraFiles,
-    smtpSettings,
-    fromEmail,
     detail,
     loadingDetail,
     effectiveEmail,
-    method,
+    resolvedApplyUrl,
     readiness,
     applyReadiness,
     isEdited,

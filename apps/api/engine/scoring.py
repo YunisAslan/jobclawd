@@ -1,10 +1,7 @@
 """
 Pure scoring functions — no I/O, no external deps beyond difflib.
 
-Produces three scores:
-  1. candidateFit (match_score): 0-100, how well the job matches user profile
-  2. parseConfidence: 0-100, how confident we are in the extracted metadata
-  3. applyFeasibility: 0-100, how easy it is to apply to this job
+Produces match scoring plus lightweight summary badges.
 """
 
 import difflib
@@ -21,12 +18,6 @@ def is_blacklisted(company: str, blacklist: list[str]) -> bool:
         if fuzzy_ratio(company, entry) >= 0.75:
             return True
     return False
-
-
-def is_current_employer(company: str, current_employer: str) -> bool:
-    if not current_employer:
-        return False
-    return fuzzy_ratio(company, current_employer) >= 0.75
 
 
 _WORK_MODE_KEYWORDS: dict[WorkMode, list[str]] = {
@@ -54,11 +45,6 @@ def score_job(job: JobListing, profile: UserProfile) -> JobListing:
     if is_blacklisted(job.company, profile.blacklist):
         return job.model_copy(
             update={"match_score": 0, "match_level": MatchLevel.trash, "match_flags": ["Blacklisted company"]}
-        )
-
-    if is_current_employer(job.company, profile.current_employer):
-        return job.model_copy(
-            update={"match_score": 0, "match_level": MatchLevel.trash, "match_flags": ["Current employer"]}
         )
 
     score = 0
@@ -148,9 +134,6 @@ def score_job(job: JobListing, profile: UserProfile) -> JobListing:
     else:
         level = MatchLevel.trash
 
-    # --- Apply feasibility score ---
-    apply_feasibility = compute_apply_feasibility(job, profile)
-
     # --- Summary badges ---
     badges = compute_badges(job)
 
@@ -164,77 +147,9 @@ def score_job(job: JobListing, profile: UserProfile) -> JobListing:
     )
 
 
-def compute_apply_feasibility(job: JobListing, profile: UserProfile) -> int:
-    """
-    Score 0-100: how easy is it to apply to this job?
-
-    Factors:
-      - Apply method (email=100, easy_apply=80, external=40, direct=30)
-      - Apply complexity from extraction engine
-      - Profile completeness for required fields
-    """
-    base = {
-        "email": 90,
-        "easy_apply": 75,
-        "external": 40,
-        "direct": 30,
-    }.get(job.apply_method or "direct", 30)
-
-    # Adjust by complexity
-    complexity = job.apply_complexity
-    if complexity == "easy":
-        base = min(100, base + 10)
-    elif complexity == "hard":
-        base = max(10, base - 15)
-
-    # Bonus if we have the HR email for email apply
-    if job.apply_method == "email" and job.hr_email:
-        base = min(100, base + 5)
-
-    # Bonus if auto_apply_support is full
-    if job.auto_apply_support == "full":
-        base = min(100, base + 5)
-
-    # Penalty if profile is missing key fields
-    missing = 0
-    if not profile.cv_links:
-        missing += 1
-    if not profile.name:
-        missing += 1
-    if not profile.email:
-        missing += 1
-    base = max(0, base - missing * 10)
-
-    return max(0, min(100, base))
-
-
 def compute_badges(job: JobListing) -> list[str]:
     """Generate summary badges for frontend display."""
     badges: list[str] = []
-
-    # Apply method badge
-    apply_badges = {
-        "email": "Email Apply",
-        "easy_apply": "Easy Apply",
-        "external": "External",
-        "direct": "Direct",
-    }
-    if job.apply_method:
-        badge = apply_badges.get(job.apply_method)
-        if badge:
-            badges.append(badge)
-
-    # Auto-apply support badge
-    if job.auto_apply_support == "full":
-        badges.append("Auto-Apply Ready")
-    elif job.auto_apply_support == "assisted":
-        badges.append("Assisted Apply")
-
-    # Complexity badge
-    if job.apply_complexity == "easy":
-        badges.append("Quick Apply")
-    elif job.apply_complexity == "hard":
-        badges.append("Complex Application")
 
     # Skills badge
     if job.skills_str:

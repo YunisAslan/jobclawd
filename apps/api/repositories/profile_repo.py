@@ -31,5 +31,5 @@ def delete_account(email: str) -> None:
     """Delete all data associated with the given user email."""
     with get_db() as db:
         db.execute("DELETE FROM profiles WHERE email = %s", (email,))
-        # Delete per-user settings (smtp config, google refresh token, etc.)
+        # Delete per-user settings (for example stored OAuth tokens).
         db.execute("DELETE FROM settings WHERE key LIKE %s", (f"%_{email}",))

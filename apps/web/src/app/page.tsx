@@ -48,7 +48,7 @@ export default function LandingPage() {
       <main className="flex-1 flex flex-col items-center justify-center pt-20 px-6 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-8 border border-secondary/25 bg-secondary/10 text-muted-foreground">
           <span className="size-1.5 rounded-full inline-block bg-muted-foreground" />
-          AI-powered job automation
+          AI-powered job search intelligence
         </div>
 
         <h1 className="text-5xl sm:text-6xl font-bold tracking-tight leading-tight mb-5 max-w-2xl text-foreground">
@@ -56,8 +56,8 @@ export default function LandingPage() {
         </h1>
 
         <p className="text-lg max-w-xl leading-relaxed mb-10 text-muted-foreground">
-          JobClawd searches job boards, scores vacancies against your profile, finds HR emails, and
-          sends applications, all on autopilot.
+          JobClawd searches job boards, scores vacancies against your profile, and helps you focus
+          on the roles you are most ready for.
         </p>
 
         <div className="flex items-center gap-4 flex-wrap justify-center">
@@ -88,8 +88,8 @@ export default function LandingPage() {
             },
             {
               step: "03",
-              title: "Apply on autopilot",
-              desc: "We find the HR email, build a cover letter, and send it, or open your mail client in one click.",
+              title: "Prioritize & prepare",
+              desc: "See how ready you are for each role and choose the best CV before you apply.",
             },
           ].map((item) => (
             <div key={item.step} className="rounded-xl p-6 border border-border bg-card">

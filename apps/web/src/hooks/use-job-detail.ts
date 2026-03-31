@@ -5,7 +5,6 @@ import { jobsService } from "@/services/jobs.service";
 import { applyService } from "@/services/apply.service";
 import { useProfile } from "@/contexts/ProfileContext";
 import { extractApiError } from "@/lib/utils";
-import { buildMailtoUrl } from "@/lib/mailto";
 
 export function useJobDetail(job: JobListing | null, onApplied: () => void) {
   const { profile } = useProfile();
@@ -43,10 +42,6 @@ export function useJobDetail(job: JobListing | null, onApplied: () => void) {
       }),
     onSuccess: (res) => {
       setMessage(res.message);
-      if (detail?.email && !res.sent_via_smtp) {
-        const mailto = buildMailtoUrl(profile, detail, selectedCV?.url);
-        window.open(mailto, "_blank");
-      }
       onApplied();
     },
     onError: (err: unknown) => {

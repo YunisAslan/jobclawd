@@ -57,7 +57,6 @@ class CanonicalVacancySignals:
     experience_years_raw: list[str] = field(default_factory=list)
     salary_raw: list[str] = field(default_factory=list)
     apply_url: Optional[str] = None
-    apply_method_hints: list[str] = field(default_factory=list)
     card_badges: list[str] = field(default_factory=list)
     topline_labels: list[str] = field(default_factory=list)
     requirements_text: str = ""
@@ -168,10 +167,6 @@ def build_canonical_vacancy_signals(
             + _collect_text(card.get("salary"))
         ),
         apply_url=apply_url,
-        apply_method_hints=_dedupe(
-            _collect_text(structured.get("apply_method"))
-            + _collect_text(card.get("apply_method_hints"))
-        ),
         card_badges=_dedupe(
             _collect_text(card.get("card_badges"))
             + _collect_text(card.get("badges"))

@@ -90,8 +90,8 @@ function LoginForm() {
             job, faster.
           </h2>
           <p className="text-muted-foreground text-sm leading-relaxed mb-12 max-w-68">
-            JobClawd scans job boards, scores every vacancy against your profile, and fires off
-            applications — all on autopilot.
+            JobClawd scans job boards, scores every vacancy against your profile, and helps you
+            focus on the best-fit opportunities.
           </p>
           <div className="space-y-5">
             {FEATURES.map((f) => (
@@ -113,7 +113,7 @@ function LoginForm() {
         <div className="relative z-10 border-t border-sidebar-border pt-7 grid grid-cols-3 gap-4">
           {[
             { label: "Job boards", value: "3+" },
-            { label: "Auto-applied", value: "100s" },
+            { label: "Matched jobs", value: "100s" },
             { label: "Time saved", value: "10h/wk" },
           ].map((s) => (
             <div key={s.label}>

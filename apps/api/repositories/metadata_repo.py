@@ -2,8 +2,8 @@
 Repository: read/write job metadata cache in PostgreSQL.
 Keyed by job URL — stores extracted metadata from the Vacancy Intelligence Engine.
 
-Fields: experience, salary, job_type, work_mode, apply_method, skills,
-        languages, work_auth, parse_confidence, fingerprint, parser_version.
+Fields: experience, salary, job_type, work_mode, skills,
+        languages, parse_confidence, fingerprint, parser_version.
 """
 
 from typing import Optional
@@ -20,10 +20,9 @@ _META_COLUMNS = (
     "job_type_str", "job_type_src",
     "salary_str", "salary_src",
     "work_mode_str", "work_mode_src",
-    "apply_method_str", "apply_method_src",
-    "skills_str", "languages_str", "work_auth_str",
+    "skills_str", "languages_str",
     "parse_confidence", "parser_version",
-    "fingerprint", "apply_complexity", "auto_apply_support",
+    "fingerprint",
 )
 
 _SELECT_COLUMNS = ", ".join(_META_COLUMNS)
@@ -112,16 +111,11 @@ def upsert_metadata(
     salary_src: Optional[str] = None,
     work_mode_str: Optional[str] = None,
     work_mode_src: Optional[str] = None,
-    apply_method_str: Optional[str] = None,
-    apply_method_src: Optional[str] = None,
     skills_str: Optional[str] = None,
     languages_str: Optional[str] = None,
-    work_auth_str: Optional[str] = None,
     parse_confidence: Optional[int] = None,
     parser_version: Optional[str] = None,
     fingerprint: Optional[str] = None,
-    apply_complexity: Optional[str] = None,
-    auto_apply_support: Optional[str] = None,
 ) -> None:
     """Insert or update metadata for a job URL."""
     # Drop low-trust regex-only fields (except salary)
@@ -159,14 +153,12 @@ def upsert_metadata(
                 url, seniority_str, seniority_src, experience_years_str, experience_years_src,
                 experience_str, experience_src, job_type_str, job_type_src,
                 salary_str, salary_src, work_mode_str, work_mode_src,
-                apply_method_str, apply_method_src,
-                skills_str, languages_str, work_auth_str,
+                skills_str, languages_str,
                 parse_confidence, parser_version, fingerprint,
-                apply_complexity, auto_apply_support,
                 expires_at
             )
             VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                 NOW() + (%s || ' hours')::interval
             )
             ON CONFLICT (url) DO UPDATE SET
@@ -182,16 +174,11 @@ def upsert_metadata(
                 salary_src         = COALESCE(EXCLUDED.salary_src,         job_metadata.salary_src),
                 work_mode_str      = COALESCE(EXCLUDED.work_mode_str,      job_metadata.work_mode_str),
                 work_mode_src      = COALESCE(EXCLUDED.work_mode_src,      job_metadata.work_mode_src),
-                apply_method_str   = COALESCE(EXCLUDED.apply_method_str,   job_metadata.apply_method_str),
-                apply_method_src   = COALESCE(EXCLUDED.apply_method_src,   job_metadata.apply_method_src),
                 skills_str         = COALESCE(EXCLUDED.skills_str,         job_metadata.skills_str),
                 languages_str      = COALESCE(EXCLUDED.languages_str,      job_metadata.languages_str),
-                work_auth_str      = COALESCE(EXCLUDED.work_auth_str,      job_metadata.work_auth_str),
                 parse_confidence   = COALESCE(EXCLUDED.parse_confidence,   job_metadata.parse_confidence),
                 parser_version     = COALESCE(EXCLUDED.parser_version,     job_metadata.parser_version),
                 fingerprint        = COALESCE(EXCLUDED.fingerprint,        job_metadata.fingerprint),
-                apply_complexity   = COALESCE(EXCLUDED.apply_complexity,   job_metadata.apply_complexity),
-                auto_apply_support = COALESCE(EXCLUDED.auto_apply_support, job_metadata.auto_apply_support),
                 expires_at         = EXCLUDED.expires_at
             """,
             (
@@ -202,10 +189,8 @@ def upsert_metadata(
                 job_type_str, job_type_src,
                 salary_str, salary_src,
                 work_mode_str, work_mode_src,
-                apply_method_str, apply_method_src,
-                skills_str, languages_str, work_auth_str,
+                skills_str, languages_str,
                 parse_confidence, parser_version, fingerprint,
-                apply_complexity, auto_apply_support,
                 METADATA_TTL_HOURS,
             ),
         )

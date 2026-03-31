@@ -165,7 +165,6 @@ def _merge_missing_fields(base: Optional[dict], extra: Optional[dict]) -> dict:
         ("job_type_str", "job_type_src"),
         ("salary_str", "salary_src"),
         ("work_mode_str", "work_mode_src"),
-        ("apply_method_str", "apply_method_src"),
     ]
     for value_field, source_field in pairs:
         if not merged.get(value_field) and extra and extra.get(value_field):
@@ -187,8 +186,7 @@ def _merge_missing_fields(base: Optional[dict], extra: Optional[dict]) -> dict:
             else merged.get("experience_years_src")
         ) or merged.get("experience_src")
     # Merge extra metadata fields
-    for extra_field in ("skills_str", "languages_str", "work_auth_str",
-                        "parse_confidence", "apply_complexity", "auto_apply_support"):
+    for extra_field in ("skills_str", "languages_str", "parse_confidence"):
         if not merged.get(extra_field) and extra and extra.get(extra_field):
             merged[extra_field] = extra[extra_field]
     return merged
@@ -224,7 +222,6 @@ def _apply_metadata_to_job(job: dict, meta: dict, *, overwrite_non_structured: b
         ("job_type_str", "job_type_src"),
         ("salary_str", "salary_src"),
         ("work_mode_str", "work_mode_src"),
-        ("apply_method_str", "apply_method_src"),
     ]
     for value_field, source_field in pairs:
         incoming_value = meta.get(value_field)
@@ -255,15 +252,8 @@ def _apply_metadata_to_job(job: dict, meta: dict, *, overwrite_non_structured: b
             else job.get("experience_years_src")
         ) or job.get("experience_src")
 
-    # Map apply_method_str → apply_method (JobListing uses "apply_method" not "apply_method_str")
-    if meta.get("apply_method_str") and not job.get("apply_method"):
-        job["apply_method"] = meta["apply_method_str"]
-    if meta.get("apply_method_src") and not job.get("apply_method_src"):
-        job["apply_method_src"] = meta["apply_method_src"]
-
     # Copy extra metadata fields (non-overwrite)
-    for extra_field in ("skills_str", "languages_str", "work_auth_str",
-                        "parse_confidence", "apply_complexity", "auto_apply_support"):
+    for extra_field in ("skills_str", "languages_str", "parse_confidence"):
         if not job.get(extra_field) and meta.get(extra_field):
             job[extra_field] = meta[extra_field]
 
@@ -481,7 +471,7 @@ async def fetch_metadata_for_urls(
                     meta["seniority_src"] = "openai"
                 if meta.get("experience_years_str"):
                     meta["experience_years_src"] = "openai"
-                for field in ("experience_str", "job_type_str", "salary_str", "work_mode_str", "apply_method_str"):
+                for field in ("experience_str", "job_type_str", "salary_str", "work_mode_str"):
                     if meta.get(field):
                         meta[f"{field.replace('_str', '_src')}"] = "openai"
                 results[url] = _merge_missing_fields(results.get(url), meta) or None

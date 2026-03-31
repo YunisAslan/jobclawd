@@ -10,7 +10,6 @@ from scraper import get_browser
 from models.schemas import JobListing, JobSource, LocationFilter
 from db.database import get_db
 from services.ai_metadata_extractor import extract_metadata_ai_batch
-from services.apply_method_detector import detect_from_indeed_card
 from services.enrichment_service import fetch_metadata_for_urls
 from utils.job_meta_extractor import extract_all as extract_meta
 from utils.job_meta_extractor import primary_experience_value, split_experience_value
@@ -616,13 +615,6 @@ async def scrape_indeed(
                     except Exception:
                         pass
 
-                    apply_method = detect_from_indeed_card(
-                        {
-                            "has_easily_apply": has_easily_apply,
-                            "has_indeed_apply": has_indeed_apply,
-                        }
-                    )
-
                     job_url = f"{INDEED_BASE}/viewjob?jk={jk}"
                     jobs.append(
                         JobListing(
@@ -634,7 +626,6 @@ async def scrape_indeed(
                             location_str=location_str,
                             logo_url=logo_url,
                             description_snippet=snippet or None,
-                            apply_method=apply_method,
                             seniority_str=seniority_str,
                             seniority_src=field_sources.get("seniority_str"),
                             experience_years_str=experience_years_str,

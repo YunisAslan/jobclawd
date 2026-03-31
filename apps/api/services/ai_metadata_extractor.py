@@ -98,20 +98,13 @@ For each job, extract:
    - "Office available if you want to come in" + "apply to work remotely" should be Remote, not Hybrid.
    - null if the posting doesn't clearly state the work arrangement
 
-6. **apply_method**: How should a candidate apply? One of: email, easy_apply, external, direct.
-   - "email" = posting says to send CV/resume via email, or provides an email address for applications
-   - "easy_apply" = platform's built-in one-click apply (LinkedIn Easy Apply, Indeed Apply)
-   - "external" = redirects to company website, ATS portal, or external form (Greenhouse, Lever, Workday, etc.)
-   - "direct" = apply directly on the job board page itself
-   - null if unclear
-
 Use this precedence:
 1. Structured hints / card badges / platform metadata
 2. Explicit requirements and qualifications
 3. Title and summary labels
 4. General narrative text
 
-Return: {"results": [{"id": "...", "salary": ..., "job_type": ..., "seniority": ..., "experience_years": ..., "work_mode": ..., "apply_method": ...}]}
+Return: {"results": [{"id": "...", "salary": ..., "job_type": ..., "seniority": ..., "experience_years": ..., "work_mode": ...}]}
 Use null for any field you cannot confidently extract."""
 
 def _clean(value: object) -> Optional[str]:
@@ -129,21 +122,6 @@ def _normalize_job_type(value: object) -> Optional[str]:
     return normalize_job_type(value)
 
 
-_APPLY_METHOD_MAP = {
-    "email": "email",
-    "easy_apply": "easy_apply", "easy apply": "easy_apply", "easyapply": "easy_apply",
-    "external": "external", "ats": "external", "company website": "external", "company site": "external",
-    "direct": "direct", "on-site": "direct", "on site": "direct",
-}
-
-
-def _normalize_apply_method(value: object) -> Optional[str]:
-    cleaned = _clean(value)
-    if not cleaned:
-        return None
-    return _APPLY_METHOD_MAP.get(cleaned.lower(), cleaned if cleaned in _APPLY_METHOD_MAP.values() else None)
-
-
 def _normalize_result(item: dict) -> dict:
     seniority = normalize_seniority(item.get("seniority"))
     experience_years = normalize_experience_years(item.get("experience_years"))
@@ -155,7 +133,6 @@ def _normalize_result(item: dict) -> dict:
         "experience_years_str": experience_years,
         "experience_str": experience,
         "work_mode_str": _normalize_work_mode(item.get("work_mode")),
-        "apply_method_str": _normalize_apply_method(item.get("apply_method")),
     }
 
 

@@ -105,7 +105,6 @@ def build_ai_input(
                 job.get("experience_years_str"),
             ) or job.get("experience_str"),
             "salary": job.get("salary_str"),
-            "apply_method": job.get("apply_method"),
         },
         "card_badges": ((job.get("_card_data") or {}).get("card_badges") or []),
         "topline_labels": ((job.get("_card_data") or {}).get("topline_labels") or []),
@@ -128,7 +127,6 @@ def merge_ai_results(
         "seniority": ("seniority_str", "seniority"),
         "experience_years": ("experience_years_str", "experience_years"),
         "salary": ("salary_str", "salary"),
-        "apply_method": ("apply_method_str", "apply_method"),
     }
 
     for report_attr, (ai_key, _) in field_map.items():
