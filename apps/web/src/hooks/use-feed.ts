@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { jobsService, SearchProgress } from "@/services/jobs.service";
-import { applyService } from "@/services/apply.service";
 import { JobListing, JobSource, LocationValue } from "@/types";
 import { useProfile } from "@/contexts/ProfileContext";
 import { extractApiError } from "@/lib/utils";
@@ -36,9 +35,7 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
   const { profile } = useProfile();
   const queryClient = useQueryClient();
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [drawerJob, setDrawerJob] = useState<JobListing | null>(null);
-  const [bulkApplying, setBulkApplying] = useState(false);
+  const [panelJob, setPanelJob] = useState<JobListing | null>(null);
   const forceRefreshRef = useRef(false);
   const [progress, setProgress] = useState<SearchProgress | null>(null);
 
@@ -112,56 +109,13 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
   useEffect(() => {
     if (prevKeyRef.current && prevKeyRef.current !== currentKey) {
       setSkipped(new Set());
-      setSelected(new Set());
     }
     prevKeyRef.current = currentKey;
   }, [currentKey]);
 
-  const applyMutation = useMutation({
-    mutationFn: (job: JobListing) =>
-      applyService.apply({
-        job_url: job.url,
-        job_title: job.title,
-        company: job.company,
-        source: job.source,
-        match_score: job.match_score,
-        match_level: job.match_level,
-        profile,
-      }),
-  });
-
-  const toggleSelect = (url: string) =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      next.has(url) ? next.delete(url) : next.add(url);
-      return next;
-    });
-
   const handleSkip = (url: string) => {
     setSkipped((prev) => new Set([...prev, url]));
-    setSelected((prev) => {
-      const n = new Set(prev);
-      n.delete(url);
-      return n;
-    });
   };
-
-  const handleApplied = () => {
-    if (drawerJob) {
-      setSkipped((prev) => new Set([...prev, drawerJob.url]));
-      setDrawerJob(null);
-    }
-  };
-
-  const handleBulkApply = useCallback(async () => {
-    if (!data?.jobs) return;
-    setBulkApplying(true);
-    const toApply = data.jobs.filter((j) => selected.has(j.url));
-    await Promise.all(toApply.map((job) => applyMutation.mutateAsync(job).catch(() => {})));
-    setSkipped((prev) => new Set([...prev, ...toApply.map((j) => j.url)]));
-    setSelected(new Set());
-    setBulkApplying(false);
-  }, [data?.jobs, selected, applyMutation]);
 
   const jobs = data?.jobs ?? [];
   const visible = jobs.filter((j) => !skipped.has(j.url));
@@ -184,20 +138,13 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
     loading: isLoading || isFetching,
     error: errorMsg,
     progress,
-    selected,
-    drawerJob,
-    setDrawerJob,
-    bulkApplying,
-    toggleSelect,
+    panelJob,
+    setPanelJob,
     handleSkip,
-    handleApplied,
-    handleBulkApply,
-    clearSelected: () => setSelected(new Set()),
     visible,
     highMatch,
     needsReview,
     hasScoring,
-    allVisible: hasScoring ? [] : visible,
     hasSearched: isFetched,
     isCached: data?.cached ?? false,
     creditsLeft,

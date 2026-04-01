@@ -16,7 +16,7 @@ from models.schemas import (
     JobSource,
     UserProfile,
 )
-from scraper.detail import scrape_job_detail
+from services.job_detail_service import get_enhanced_job_detail
 from services.search_service import run_search
 from repositories import profile_repo
 from repositories.credits_repo import get_credits, use_credit
@@ -164,7 +164,7 @@ async def get_job_details(request: JobDetailRequest):
             detail="Only jobsearch.az, LinkedIn, and Indeed URLs are accepted.",
         )
     try:
-        return await scrape_job_detail(request.url)
+        return await get_enhanced_job_detail(request.url)
     except TimeoutError:
         raise HTTPException(
             status_code=504,

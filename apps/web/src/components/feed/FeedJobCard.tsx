@@ -4,9 +4,9 @@ import { useState, type ReactNode } from "react";
 
 import { JobListing } from "@/types";
 import SourceBadge from "@/components/ui/SourceBadge";
+import SaveToggleButton from "@/components/ui/SaveToggleButton";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Checkbox } from "@/components/ui/Checkbox";
 import { Badge } from "@/components/ui/Badge";
 import {
   DropdownMenu,
@@ -19,24 +19,21 @@ import {
   Banknote,
   Bot,
   Briefcase,
-  CircleCheck,
   ExternalLink,
+  Eye,
   GraduationCap,
   Laptop,
   MapPin,
   MoreHorizontal,
   ShieldCheck,
-  X,
-  Zap,
 } from "lucide-react";
 import Link from "next/link";
 
 interface FeedJobCardProps {
   job: JobListing;
-  selected: boolean;
-  onToggleSelect: () => void;
-  onApply: () => void;
-  onSkip: () => void;
+  saved: boolean;
+  onToggleSave: () => void;
+  savePending?: boolean;
   onDetails: () => void;
   onHideCompany?: (company: string) => void;
 }
@@ -133,10 +130,9 @@ function MetaChip({
 
 export default function FeedJobCard({
   job,
-  selected,
-  onToggleSelect,
-  onApply,
-  onSkip,
+  saved,
+  onToggleSave,
+  savePending,
   onDetails,
   onHideCompany,
 }: FeedJobCardProps) {
@@ -146,14 +142,12 @@ export default function FeedJobCard({
   return (
     <Card
       className={cn(
-        "gap-0 py-0 transition-all duration-200 overflow-hidden",
-        selected ? "ring-2 ring-primary shadow-md" : "hover:shadow-md hover:-translate-y-0.5",
+        "gap-0 py-0 transition-all duration-200 overflow-hidden hover:shadow-md hover:-translate-y-0.5",
         isHigh && "border-match-high/30",
       )}
     >
       <CardContent className="px-4 pt-4 pb-4 space-y-3.5">
         <div className="flex items-start gap-3">
-          <Checkbox checked={selected} onCheckedChange={onToggleSelect} className="mt-1 shrink-0" />
           <CompanyAvatar company={job.company} logoUrl={job.logo_url} />
           <div className="flex-1 min-w-0 pr-8">
             <h3 className="font-semibold text-sm leading-snug line-clamp-2 text-foreground mb-1.5 pr-8">
@@ -244,14 +238,12 @@ export default function FeedJobCard({
             {job.badges && job.badges.length > 0 && (
               <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                 {job.badges?.map((badge, i) => {
-                  if (badge === "Email Apply" || badge === "Easy Apply" || badge === "External" || badge === "Direct") return null;
+                  if (badge === "Email Apply" || badge === "Easy Apply" || badge === "External" || badge === "Direct" || badge === "Auto-Apply Ready" || badge === "Quick Apply") return null;
                   return (
                     <span
                       key={i}
                       className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/40 border border-border/50 rounded-md px-1.5 py-0.5"
                     >
-                      {badge === "Auto-Apply Ready" && <Zap className="size-2.5 text-primary" />}
-                      {badge === "Quick Apply" && <Zap className="size-2.5 text-emerald-500" />}
                       {badge === "Salary Listed" && <ShieldCheck className="size-2.5 text-emerald-500" />}
                       {badge}
                     </span>
@@ -272,32 +264,29 @@ export default function FeedJobCard({
                 key={i}
                 className="bg-warning/8 text-warning border border-warning/25 hover:bg-warning/8 gap-1 text-[11px] py-0.5 font-medium"
               >
-                ⚠ {flag}
+                {flag}
               </Badge>
             ))}
           </div>
         )}
 
         <div className="flex items-center gap-2 pt-0.5">
-          <Button onClick={onApply} size="sm" className="flex-1 h-8 text-xs font-medium gap-1.5">
-            <CircleCheck className="size-3.5" />
-            Apply
+          <Button onClick={onDetails} size="sm" className="flex-1 h-8 text-xs font-medium gap-1.5">
+            <Eye className="size-3.5" />
+            View Details
           </Button>
           <Button asChild size="sm" variant="outline" className="flex-1 h-8 text-xs gap-1.5">
             <Link href={job.url} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="size-3.5" />
-              Details
+              Open
             </Link>
           </Button>
-          <Button
-            onClick={onSkip}
+          <SaveToggleButton
+            saved={saved}
+            onToggle={onToggleSave}
+            pending={savePending}
             size="sm"
-            variant="ghost"
-            className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
-            title="Skip"
-          >
-            <X className="size-3.5" />
-          </Button>
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

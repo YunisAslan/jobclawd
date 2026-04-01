@@ -1,9 +1,5 @@
-import TopBar from "@/components/layout/TopBar";
+import { redirect } from "next/navigation";
 
 export default function ApplicationsPage() {
-  return (
-    <div>
-      <TopBar title="Applications" />
-    </div>
-  );
+  redirect("/dashboard/saved");
 }

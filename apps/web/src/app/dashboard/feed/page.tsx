@@ -7,8 +7,9 @@ import { paramsToFilters, filtersToParams } from "@/lib/feed-params";
 import TopBar from "@/components/layout/TopBar";
 import FeedFilterForm from "@/components/feed/search/FeedFilterForm";
 import FeedResults from "@/components/feed/FeedResults";
-import ApplyDrawer from "@/components/feed/apply/ApplyDrawer";
+import VacancyPanel from "@/components/feed/vacancy/VacancyPanel";
 import { useFeed } from "@/hooks/use-feed";
+import { useSavedCheck, useSavedVacancies } from "@/hooks/use-saved-vacancies";
 import { useProfile } from "@/contexts/ProfileContext";
 import { useFeedUrl } from "@/contexts/FeedUrlContext";
 import { JobSource, JobListing } from "@/types";
@@ -21,8 +22,6 @@ const DATE_RANGES: Record<string, number> = {
 };
 
 // Refinement layer — runs client-side on already-fetched results.
-// Does NOT re-apply query or location (those require a new backend search).
-// Only narrows by sources, workModes, experience, jobTypes, datePosted, sortBy.
 function applyLocalFilters(jobs: JobListing[], filters: Partial<FeedFilterValues>) {
   if (!filters) return jobs;
 
@@ -37,7 +36,7 @@ function applyLocalFilters(jobs: JobListing[], filters: Partial<FeedFilterValues
       if (!filters.sources.includes(job.source as JobSource)) return false;
     }
 
-    // Work modes — only filter if the job explicitly mentions a mode we don't want
+    // Work modes
     if (filters.workModes && filters.workModes.length > 0) {
       const allowed = filters.workModes.map((m) => m.toLowerCase());
       const mentionsRemote = combined.includes("remote");
@@ -55,28 +54,14 @@ function applyLocalFilters(jobs: JobListing[], filters: Partial<FeedFilterValues
       }
     }
 
-    // Experience — check title and snippet
+    // Experience
     if (filters.experience && filters.experience.length > 0) {
       const allowed = filters.experience.map((e) => e.toLowerCase());
       const seniorWords = [
-        "senior",
-        "lead",
-        "head",
-        "director",
-        "principal",
-        "manager",
-        "expert",
-        "sr",
+        "senior", "lead", "head", "director", "principal", "manager", "expert", "sr",
       ];
       const internWords = [
-        "intern",
-        "internship",
-        "trainee",
-        "graduate",
-        "fresher",
-        "freshmen",
-        "stajyer",
-        "entry",
+        "intern", "internship", "trainee", "graduate", "fresher", "freshmen", "stajyer", "entry",
       ];
 
       const isSenior = seniorWords.some((w) => new RegExp(`\\b${w}\\b`).test(titleNorm));
@@ -85,32 +70,27 @@ function applyLocalFilters(jobs: JobListing[], filters: Partial<FeedFilterValues
           new RegExp(`\\b${w}\\b`).test(titleNorm) || new RegExp(`\\b${w}\\b`).test(snippetNorm),
       );
 
-      // Reject explicitly senior jobs when user wants entry-level
       if (isSenior && !allowed.some((e) => ["senior", "lead"].includes(e))) return false;
 
-      // When "intern" is the only selected level, require a positive intern signal
       const onlyIntern =
         allowed.includes("intern") &&
         !["junior", "mid", "senior", "lead"].some((e) => allowed.includes(e));
       if (onlyIntern && !isInternSignal) return false;
 
-      // Reject intern/trainee signals when user only wants senior
       const onlySenior = allowed.every((e) => ["senior", "lead"].includes(e));
       if (onlySenior && isInternSignal && !isSenior) return false;
     }
 
-    // Job types — only filter if the job explicitly signals a type we don't want
+    // Job types
     if (filters.jobTypes && filters.jobTypes.length > 0) {
       const allowed = filters.jobTypes.map((jt) => jt.toLowerCase());
-      const isContract = /\b(contract|contractor|freelance|temporary|temp|consulting)\b/i.test(
-        combined,
-      );
+      const isContract = /\b(contract|contractor|freelance|temporary|temp|consulting)\b/i.test(combined);
       const isPartTime = /\b(part[\s-]?time|p\/t)\b/i.test(combined);
       if (isContract && !allowed.includes("contract")) return false;
       if (isPartTime && !allowed.includes("part-time")) return false;
     }
 
-    // Salary — best-effort via title + snippet. Ranges use the MAX value.
+    // Salary
     if (filters.salaryMin) {
       const annualMin = parseInt(filters.salaryMin.replace(/,/g, ""), 10);
       if (!isNaN(annualMin) && annualMin > 0) {
@@ -118,7 +98,6 @@ function applyLocalFilters(jobs: JobListing[], filters: Partial<FeedFilterValues
         let foundSalary = false;
         let passesSalary = true;
 
-        // Range k–k: "30k-50k", "$30k - $50k"
         const rangeKK = salaryText.match(
           /[\$£€]?\s*\d+(?:\.\d+)?\s*k\s*[-–]\s*[\$£€]?\s*(\d+(?:\.\d+)?)\s*k/,
         );
@@ -126,7 +105,6 @@ function applyLocalFilters(jobs: JobListing[], filters: Partial<FeedFilterValues
           foundSalary = true;
           if (parseFloat(rangeKK[1]) * 1000 < annualMin) passesSalary = false;
         }
-        // Range plain–k: "30-50k"
         if (!foundSalary) {
           const rangeK = salaryText.match(/[\$£€]?\s*\d+\s*[-–]\s*[\$£€]?\s*(\d+(?:\.\d+)?)\s*k/);
           if (rangeK) {
@@ -134,7 +112,6 @@ function applyLocalFilters(jobs: JobListing[], filters: Partial<FeedFilterValues
             if (parseFloat(rangeK[1]) * 1000 < annualMin) passesSalary = false;
           }
         }
-        // Hourly: "$40/hr"
         if (!foundSalary) {
           const hourly = salaryText.match(
             /[\$£€]?\s*(\d+(?:[.,]\d+)?)\s*(?:\/\s*h(?:r|our)?|per\s*h(?:r|our))/,
@@ -145,7 +122,6 @@ function applyLocalFilters(jobs: JobListing[], filters: Partial<FeedFilterValues
             if (!isNaN(rate) && rate * 2080 < annualMin) passesSalary = false;
           }
         }
-        // Annual k: "$80k"
         if (!foundSalary) {
           const annualK = salaryText.match(/[\$£€]?\s*(\d+(?:\.\d+)?)\s*k(?:\/yr)?/);
           if (annualK) {
@@ -206,23 +182,14 @@ function FeedPageInner() {
   const pathname = usePathname();
 
   const urlFilters = useMemo(() => paramsToFilters(searchParams), [searchParams]);
-
-  // localFilters tracks form state before submission (for live onChange preview).
-  // Starts from URL so it's always in sync on load / refresh.
   const [localFilters, setLocalFilters] = useState<Partial<FeedFilterValues>>(urlFilters);
 
-  // URL is the single source of truth for the active search — useFeed fires
-  // useQuery automatically whenever urlFilters change.
   const {
     highMatch,
     needsReview,
     error,
-    selected,
-    drawerJob,
-    setDrawerJob,
-    handleSkip,
-    handleApplied,
-    toggleSelect,
+    panelJob,
+    setPanelJob,
     loading,
     progress,
     hasSearched,
@@ -236,6 +203,29 @@ function FeedPageInner() {
 
   const { profile } = useProfile();
   const { setFeedUrl } = useFeedUrl();
+
+  // Saved vacancies integration
+  const allJobUrls = useMemo(() => {
+    return [...highMatch, ...needsReview].map((j) => j.url);
+  }, [highMatch, needsReview]);
+
+  const { savedSet } = useSavedCheck(allJobUrls);
+  const { saveMutation, unsaveMutation } = useSavedVacancies();
+  const [savePendingUrl, setSavePendingUrl] = useState<string | null>(null);
+
+  const handleToggleSave = (job: JobListing) => {
+    setSavePendingUrl(job.url);
+    if (savedSet.has(job.url)) {
+      unsaveMutation.mutate(job.url, {
+        onSettled: () => setSavePendingUrl(null),
+      });
+    } else {
+      saveMutation.mutate(
+        { job_url: job.url, job_data: job },
+        { onSettled: () => setSavePendingUrl(null) },
+      );
+    }
+  };
 
   useEffect(() => {
     const qs = searchParams.toString();
@@ -272,7 +262,6 @@ function FeedPageInner() {
     [needsReview, localFilters],
   );
 
-  // Count every active filter except the free-text query
   const activeFilterCount = useMemo(() => {
     let n = 0;
     if (localFilters.sources?.length) n++;
@@ -294,11 +283,9 @@ function FeedPageInner() {
     setLocalFilters(values);
     invalidateFeed();
 
-    // Write filters to URL — useQuery in useFeed fires automatically via urlFilters change.
     const qs = filtersToParams(values).toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
 
-    // Visual feedback for cache hits — driven from event handler, not an effect
     clearTimeout(flashTimer.current!);
     setFlash(true);
     flashTimer.current = setTimeout(() => setFlash(false), 600);
@@ -336,15 +323,15 @@ function FeedPageInner() {
             outOfCredits={outOfCredits}
             dataUpdatedAt={dataUpdatedAt}
             onRefresh={refreshFeed}
-            selected={selected}
-            onToggleSelect={toggleSelect}
-            onApply={(job) => setDrawerJob(job)}
-            onSkip={(url) => handleSkip(url)}
+            savedUrls={savedSet}
+            onToggleSave={handleToggleSave}
+            savePending={savePendingUrl}
+            onDetails={(job) => setPanelJob(job)}
           />
         </div>
       </div>
 
-      <ApplyDrawer job={drawerJob} onClose={() => setDrawerJob(null)} onApplied={handleApplied} />
+      <VacancyPanel job={panelJob} onClose={() => setPanelJob(null)} />
     </>
   );
 }

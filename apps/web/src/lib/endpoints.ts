@@ -31,4 +31,15 @@ export const ENDPOINTS = {
 
   // Account
   DELETE_ACCOUNT: "/api/auth/account",
+
+  // Saved Vacancies
+  SAVED_VACANCIES: "/api/saved-vacancies",
+  SAVED_VACANCIES_CHECK: "/api/saved-vacancies/check",
+
+  // CV Analysis
+  CV_ANALYSIS_BUNDLE: "/api/cv-analysis-bundle",
+  CV_MATCH: "/api/cv-match",
+  CV_SUGGESTIONS: "/api/cv-suggestions",
+  CV_DRAFT: "/api/cv-draft",
+  CV_EXPORT: "/api/cv-export",
 } as const;

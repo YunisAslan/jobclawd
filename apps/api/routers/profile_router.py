@@ -2,7 +2,7 @@
 
 GET  /profile                   — load profile for authenticated user
 POST /profile                   — save profile for authenticated user
-POST /profile/cv/upload         — upload CV (PDF / DOC / DOCX), returns { name, url }
+POST /profile/cv/upload         — upload CV (PDF / DOCX), returns { name, url }
 POST /profile/avatar/upload     — upload avatar image (PNG / JPG / WEBP), returns { url }
 GET  /files/cv/{filename}       — serve an uploaded CV file
 GET  /files/avatar/{filename}   — serve an uploaded avatar image
@@ -26,7 +26,7 @@ CV_DIR.mkdir(parents=True, exist_ok=True)
 AVATAR_DIR = Path(__file__).resolve().parent.parent / "uploads" / "avatar"
 AVATAR_DIR.mkdir(parents=True, exist_ok=True)
 
-ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx"}
+ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
@@ -61,7 +61,7 @@ async def upload_cv(
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail="Unsupported file type. Allowed: PDF, DOC, DOCX.",
+            detail="Unsupported file type. Allowed: PDF, DOCX.",
         )
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:

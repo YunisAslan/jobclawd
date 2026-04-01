@@ -72,7 +72,7 @@ export default function TopBar({ title, action, className }: TopBarProps) {
     <>
       <div
         className={cn(
-          "flex items-center justify-between px-4 py-0 h-14.25 bg-background sticky top-0 z-50",
+          "flex items-center justify-between px-4 py-0 h-14 bg-background sticky top-0 z-50",
           className,
         )}
       >

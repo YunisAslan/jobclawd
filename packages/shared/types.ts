@@ -148,6 +148,12 @@ export interface JobDetail {
   apply_url_confidence: number;
   apply_requires_login: boolean;
   fallback_urls: string[];
+  // Structured vacancy understanding (enhanced detail)
+  requirements?: string[];
+  nice_to_haves?: string[];
+  required_skills?: string[];
+  required_experience?: string | null;
+  job_summary?: string | null;
 }
 
 // ── Apply ──
@@ -224,6 +230,92 @@ export interface ApplicationRecord {
   status: ApplicationStatus;
   sent_at: string;
   notes?: string | null;
+}
+
+// ── Saved Vacancies ──
+
+export interface SavedVacancy {
+  id: number;
+  job_url: string;
+  job_data: JobListing;
+  saved_at: string;
+  expires_at: string;
+}
+
+export interface SavedVacanciesResponse {
+  vacancies: SavedVacancy[];
+  total: number;
+}
+
+export interface SaveCheckResponse {
+  saved_urls: string[];
+}
+
+// ── CV Match Analysis ──
+
+export interface CVMatchCategory {
+  category: string;
+  score: number;
+  matched: string[];
+  missing: string[];
+  reasoning: string;
+}
+
+export interface CVMatchAnalysis {
+  overall_score: number;
+  match_level: MatchLevel;
+  categories: CVMatchCategory[];
+  summary: string;
+}
+
+// ── CV Optimization Suggestions ──
+
+export type SuggestionPriority = "high" | "medium" | "low";
+export type SuggestionCategory =
+  | "add_keywords"
+  | "rewrite_bullets"
+  | "elevate_experience"
+  | "reduce_irrelevant"
+  | "improve_headline"
+  | "address_requirements";
+
+export interface CVSuggestion {
+  category: SuggestionCategory;
+  priority: SuggestionPriority;
+  title: string;
+  description: string;
+  specific_text?: string | null;
+  suggested_text?: string | null;
+}
+
+export interface CVSuggestionsResponse {
+  suggestions: CVSuggestion[];
+  total: number;
+  job_title: string;
+  job_company: string;
+}
+
+export interface CVDraftResponse {
+  text: string;
+  file_name: string;
+  html?: string | null;
+}
+
+export interface CVAnalysisBundleResponse {
+  analysis: CVMatchAnalysis;
+  suggestions: CVSuggestionsResponse;
+  draft: CVDraftResponse;
+  error_analysis?: string | null;
+  error_suggestions?: string | null;
+  error_draft?: string | null;
+}
+
+// ── Vacancy Panel ──
+
+export interface VacancyPanelProps {
+  job: JobListing | null;
+  onClose: () => void;
+  onSaved?: () => void;
 }
 
 // ── Stats / Dashboard ──

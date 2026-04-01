@@ -36,6 +36,21 @@ class ApplicationStatus(str, Enum):
     failed = "failed"
 
 
+class SuggestionPriority(str, Enum):
+    high = "high"
+    medium = "medium"
+    low = "low"
+
+
+class SuggestionCategory(str, Enum):
+    add_keywords = "add_keywords"
+    rewrite_bullets = "rewrite_bullets"
+    elevate_experience = "elevate_experience"
+    reduce_irrelevant = "reduce_irrelevant"
+    improve_headline = "improve_headline"
+    address_requirements = "address_requirements"
+
+
 class JobSource(str, Enum):
     jobsearch = "jobsearch"
     linkedin = "linkedin"
@@ -177,6 +192,12 @@ class JobDetailResponse(BaseModel):
     apply_url_confidence: float = 0.0
     apply_requires_login: bool = False
     fallback_urls: list[str] = []
+    # Structured vacancy understanding (enhanced detail)
+    requirements: list[str] = []
+    nice_to_haves: list[str] = []
+    required_skills: list[str] = []
+    required_experience: Optional[str] = None
+    job_summary: Optional[str] = None
 
 
 # ---------- Apply ----------
@@ -296,3 +317,92 @@ class MetaFiltersResponse(BaseModel):
     date_posted: list[FilterOption]
     sort_options: list[FilterOption]
     countries: list[CountryOption]
+
+
+# ---------- Saved Vacancies ----------
+
+class SaveVacancyRequest(BaseModel):
+    job_url: str
+    job_data: dict
+
+class UnsaveVacancyRequest(BaseModel):
+    job_url: str
+
+class SavedVacancyRecord(BaseModel):
+    id: int
+    job_url: str
+    job_data: dict
+    saved_at: str
+    expires_at: str
+
+class SavedVacanciesResponse(BaseModel):
+    vacancies: list[SavedVacancyRecord]
+    total: int
+
+class BatchCheckSavedRequest(BaseModel):
+    job_urls: list[str]
+
+class BatchCheckSavedResponse(BaseModel):
+    saved_urls: list[str]
+
+
+# ---------- CV Match Analysis ----------
+
+class CVMatchRequest(BaseModel):
+    job_url: str
+    cv_url: str
+
+class MatchCategoryScore(BaseModel):
+    category: str               # "skills", "experience", "education", "keywords"
+    score: int                  # 0-100
+    matched: list[str] = []
+    missing: list[str] = []
+    reasoning: str = ""
+
+class CVMatchResponse(BaseModel):
+    overall_score: int          # 0-100
+    match_level: MatchLevel
+    categories: list[MatchCategoryScore]
+    summary: str = ""
+
+
+# ---------- CV Optimization Suggestions ----------
+
+class CVSuggestionRequest(BaseModel):
+    job_url: str
+    cv_url: str
+
+class CVDraftRequest(BaseModel):
+    cv_url: str
+
+class CVDraftResponse(BaseModel):
+    text: str
+    file_name: str = ""
+    html: Optional[str] = None
+
+class CVExportRequest(BaseModel):
+    cv_url: str
+    content: str
+    file_name: Optional[str] = None
+
+class CVSuggestion(BaseModel):
+    category: SuggestionCategory
+    priority: SuggestionPriority
+    title: str
+    description: str
+    specific_text: Optional[str] = None
+    suggested_text: Optional[str] = None
+
+class CVSuggestionsResponse(BaseModel):
+    suggestions: list[CVSuggestion]
+    total: int
+    job_title: str = ""
+    job_company: str = ""
+
+class CVAnalysisBundleResponse(BaseModel):
+    analysis: CVMatchResponse
+    suggestions: CVSuggestionsResponse
+    draft: CVDraftResponse
+    error_analysis: Optional[str] = None
+    error_suggestions: Optional[str] = None
+    error_draft: Optional[str] = None

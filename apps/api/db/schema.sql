@@ -119,3 +119,20 @@ ALTER TABLE job_metadata ADD COLUMN IF NOT EXISTS parser_version    TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_job_metadata_fingerprint
   ON job_metadata (fingerprint) WHERE fingerprint IS NOT NULL;
+
+-- Saved Vacancies with 7-day TTL
+CREATE TABLE IF NOT EXISTS saved_vacancies (
+  id         SERIAL PRIMARY KEY,
+  user_email TEXT NOT NULL,
+  job_url    TEXT NOT NULL,
+  job_data   JSONB NOT NULL DEFAULT '{}',
+  saved_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '7 days',
+  CONSTRAINT saved_vacancies_user_job_key UNIQUE (user_email, job_url)
+);
+
+CREATE INDEX IF NOT EXISTS idx_saved_vacancies_user_email
+  ON saved_vacancies (user_email);
+
+CREATE INDEX IF NOT EXISTS idx_saved_vacancies_expires
+  ON saved_vacancies (expires_at);

@@ -17,4 +17,17 @@ export type {
   LanguageEntry,
   ApplyReadinessResponse,
   MissingFieldInfo,
+  // New product model types
+  SavedVacancy,
+  SavedVacanciesResponse,
+  SaveCheckResponse,
+  CVMatchCategory,
+  CVMatchAnalysis,
+  CVSuggestion,
+  CVSuggestionsResponse,
+  CVDraftResponse,
+  CVAnalysisBundleResponse,
+  VacancyPanelProps,
+  SuggestionPriority,
+  SuggestionCategory,
 } from "@jobclawd/shared";

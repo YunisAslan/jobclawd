@@ -37,10 +37,10 @@ interface FeedResultsProps {
   outOfCredits?: boolean;
   dataUpdatedAt?: number;
   onRefresh?: () => void;
-  selected?: Set<string>;
-  onToggleSelect?: (url: string) => void;
-  onApply?: (job: JobListing) => void;
-  onSkip?: (url: string) => void;
+  savedUrls: Set<string>;
+  onToggleSave: (job: JobListing) => void;
+  savePending?: string | null;
+  onDetails: (job: JobListing) => void;
   onHideCompany?: (company: string) => void;
 }
 
@@ -408,10 +408,10 @@ export default function FeedResults({
   outOfCredits = false,
   dataUpdatedAt,
   onRefresh,
-  selected,
-  onToggleSelect,
-  onApply,
-  onSkip,
+  savedUrls,
+  onToggleSave,
+  savePending,
+  onDetails,
   onHideCompany,
 }: FeedResultsProps) {
   const cacheCountdown = useCacheCountdown(dataUpdatedAt);
@@ -535,11 +535,10 @@ export default function FeedResults({
                   <FeedJobCard
                     key={job.url}
                     job={job}
-                    selected={selected?.has(job.url) ?? false}
-                    onToggleSelect={() => onToggleSelect?.(job.url)}
-                    onApply={() => onApply?.(job)}
-                    onSkip={() => onSkip?.(job.url)}
-                    onDetails={() => onApply?.(job)}
+                    saved={savedUrls.has(job.url)}
+                    onToggleSave={() => onToggleSave(job)}
+                    savePending={savePending === job.url}
+                    onDetails={() => onDetails(job)}
                     onHideCompany={(c) => onHideCompany?.(c)}
                   />
                 ))}

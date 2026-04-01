@@ -51,7 +51,7 @@ export default function CVLinkManager({ cvLinks, onChange }: CVLinkManagerProps)
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.doc,.docx"
+        accept=".pdf,.docx"
         className="hidden"
         onChange={handleFileChange}
       />
@@ -128,7 +128,7 @@ export default function CVLinkManager({ cvLinks, onChange }: CVLinkManagerProps)
           ) : (
             <Upload className="size-3.5" />
           )}
-          {uploading ? "Uploading..." : "Upload PDF / Word"}
+          {uploading ? "Uploading..." : "Upload PDF / DOCX"}
         </Button>
         <Button
           type="button"
@@ -143,7 +143,7 @@ export default function CVLinkManager({ cvLinks, onChange }: CVLinkManagerProps)
       </div>
 
       <p className="text-[10px] text-muted-foreground">
-        PDF, DOC, DOCX · max 10 MB. Or paste a Google Drive / Dropbox link.
+        PDF, DOCX · max 10 MB. Or paste a Google Drive / Dropbox link.
       </p>
     </div>
   );

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import AppSidebar from "@/components/layout/Sidebar";
 
-const APP_ROUTES = ["/dashboard", "/feed", "/applications", "/profile", "/settings"];
+const APP_ROUTES = ["/dashboard", "/feed", "/saved", "/applications", "/profile", "/settings"];
 
 function isAppRoute(pathname: string) {
   return APP_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"));

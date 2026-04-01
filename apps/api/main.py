@@ -19,6 +19,8 @@ from routers import stats
 from routers import auth_router
 from routers import meta
 from routers import profile_router
+from routers import saved_vacancies_router
+from routers import cv_analysis_router
 from scraper import shutdown_browser
 from db.database import init_db
 
@@ -30,12 +32,16 @@ async def _cache_cleanup_loop() -> None:
         try:
             from repositories.cache_repo import delete_expired_cache
             from repositories.metadata_repo import delete_expired_metadata
+            from repositories.saved_vacancies_repo import delete_expired_saved_vacancies
             deleted = delete_expired_cache()
             deleted_meta = delete_expired_metadata()
+            deleted_saved = delete_expired_saved_vacancies()
             if deleted:
                 print(f"[Cache] Cleaned up {deleted} expired entries")
             if deleted_meta:
                 print(f"[Metadata] Cleaned up {deleted_meta} expired entries")
+            if deleted_saved:
+                print(f"[SavedVacancies] Cleaned up {deleted_saved} expired entries")
         except Exception as exc:
             print(f"[Cache] Cleanup error: {exc}")
 
@@ -81,6 +87,8 @@ app.include_router(stats.router, prefix="/api")
 app.include_router(auth_router.router, prefix="/api")
 app.include_router(meta.router, prefix="/api")
 app.include_router(profile_router.router, prefix="/api")
+app.include_router(saved_vacancies_router.router, prefix="/api")
+app.include_router(cv_analysis_router.router, prefix="/api")
 
 
 @app.get("/health")
