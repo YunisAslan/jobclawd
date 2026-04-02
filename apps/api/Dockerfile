@@ -38,6 +38,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-liberation \
     fonts-noto-color-emoji \
     fonts-unifont \
+    # LibreOffice for high-fidelity DOCX → HTML conversion
+    libreoffice \
     && rm -rf /var/lib/apt/lists/*
 
 COPY apps/api/requirements.txt .

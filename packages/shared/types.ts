@@ -338,3 +338,43 @@ export interface StatsResponse {
   weekly_chart: WeeklyChartEntry[];
   cv_performance: CVPerformanceEntry[];
 }
+
+// ── Document Session ──
+
+export type DocumentSourceType = "pdf" | "docx";
+export type DocumentConversionStatus = "none" | "pending" | "done" | "failed";
+
+export interface OnlyOfficeConfig {
+  documentType: string;
+  document: {
+    fileType: string;
+    key: string;
+    title: string;
+    url: string;
+    permissions?: Record<string, boolean>;
+  };
+  editorConfig: {
+    callbackUrl: string;
+    mode: string;
+    lang?: string;
+    user?: { id: string; name: string };
+    customization?: Record<string, unknown>;
+  };
+  token?: string;
+  /** Browser-accessible ONLYOFFICE server URL (not in the signed JWT payload) */
+  _server_url?: string;
+  type?: string;
+  height?: string;
+  width?: string;
+}
+
+export interface DocumentSession {
+  session_id: string;
+  source_type: DocumentSourceType;
+  preview_url: string;
+  editable_url: string | null;
+  requires_conversion: boolean;
+  conversion_status: DocumentConversionStatus;
+  cv_name: string;
+  onlyoffice_config: OnlyOfficeConfig | null;
+}

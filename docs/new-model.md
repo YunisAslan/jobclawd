@@ -1,166 +1,219 @@
-Design the next product direction for JobClawd based on the new strategy:
+Hədəf
 
-Core model:
-"Filter-based job search + match score + CV optimization suggestions"
+Məqsədimiz CV update axınını text extraction tool-dan çıxarıb high-fidelity document editing pipeline-a çevirməkdir. Əsas prinsip belə olmalıdır:
 
-Important context:
-JobClawd is no longer focused on browser extension-assisted form filling, apply automation, SMTP-based application sending, screening answer storage, or vacancy apply-type workflows.
-Those surfaces and related product logic have been removed.
-The product direction has shifted away from automation and toward search intelligence, readiness/match understanding, and CV optimization.
+Analysis üçün plain text çıxarmaq olar
+Preview üçün orijinal sənəd göstərilməlidir
+Edit üçün sənəd formatına uyğun ayrıca editor axını olmalıdır
+Export orijinal sənəd modelindən gəlməlidir, yenidən sıfırdan qurulmamalıdır
+Tövsiyə Edilən Həll
 
-You must design the product around this new direction and explicitly reflect that transition.
+Ən praktik və stabil həll:
 
-New product direction to emphasize:
-- Filter-based vacancy search
-- Structured vacancy understanding
-- Match / readiness score
-- CV optimization suggestions
-- Saved vacancies as a short-lived decision workspace
+DOCX üçün ONLYOFFICE Docs inteqrasiyası
+PDF üçün preview-only + convert to editable DOCX
+AI suggestion-lar üçün plain text replace yox, document patch workflow
+Bu yanaşma ilə:
 
-Main objective:
-Help users make better application decisions and improve their CVs for specific vacancies before they apply manually.
+DOCX-də font, icon, line, image, color, table, spacing daha yaxşı qorunur
+PDF-də istifadəçiyə yanlış gözlənti vermirsən
+mövcud AI müqayisə sistemi də qalır
+Implementasiya Planı
 
-Key questions to solve:
-1. What should the apply/search sidebar become now that autofill automation is gone?
-2. Should profile information still be shown there?
-3. If yes, how should it be shown in a minimal, relevant, and intelligent way?
-4. How should CV become the primary object in this workflow?
-5. How should users update their CV live inside the experience?
-6. What kind of suggestion system should guide CV improvement with strong UX and UI?
-7. How should saved vacancies work as a lightweight temporary workspace?
-8. How should the system connect search results, match score, and CV improvement into one coherent flow?
+Mövcud axını iki hissəyə böl
+Analysis pipeline
+fayldan plain text çıxar
+job ilə müqayisə et
+suggestion yarat
+Document pipeline
+orijinal faylı saxla
+preview ver
+edit session yarat
+save et
+export et
+Yeni sənəd domain-i əlavə et
+Backend-də ayrıca modul yarat:
+apps/api/services/document_session_service.py
+apps/api/services/document_conversion_service.py
+apps/api/services/document_patch_service.py
+Bu modulların rolu:
 
-Product direction to enforce:
-Do not design this as an autofill assistant, extension automation tool, or submission bot.
-Design it as a job application intelligence product.
+document_session_service
+edit session yaradır
+source file, editable file, preview metadata saxlayır
+document_conversion_service
+PDF -> DOCX conversion idarə edir
+DOCX preview/export helper-ləri saxlayır
+document_patch_service
+AI suggestion-ları sənədə tətbiq etmək üçün patch hazırlayır
+Məlumat modelini genişləndir
+Yeni entity-lər və response field-lər lazım olacaq:
+document_id
+source_type = pdf | docx
+editable_type = docx | none
+preview_url
+editable_url
+original_file_url
+requires_conversion
+conversion_status
+Pydantic schema-lara əlavə et:
 
-Requirements:
+schemas.py
+Upload axınını dəyiş
+Hazır upload saxlanılsın, amma metadata artsın:
+orijinal fayl ayrıca saxlanılsın
+docx isə birbaşa editable sayılsın
+pdf isə əvvəlcə preview-only kimi qeyd olunsun
+Yeni storage strukturu tövsiyəsi:
 
-1. Sidebar rethink
-The current apply sidebar must be redefined for the new product strategy.
-Propose whether it should remain a sidebar at all, or become a different kind of panel/workspace.
+uploads/cv/original/
+uploads/cv/editable/
+uploads/cv/derived/
+uploads/cv/previews/
+Yeni backend endpoint-lər əlavə et
+cv_analysis_router.py içində və ya ayrıca document_router.py aç:
+POST /api/document/session
+cv_url qəbul edir
+session yaradır
+source type qaytarır
+POST /api/document/convert-to-docx
+pdf üçün editable DOCX yaradır
+GET /api/document/session/{id}
+status, preview_url, editable_url qaytarır
+POST /api/document/apply-suggestions
+suggestion-ları structured şəkildə tətbiq edir
+POST /api/document/save
+editor-dən gələn dəyişiklikləri saxlayır
+POST /api/document/export
+final DOCX/PDF export verir
+DOCX editing üçün ONLYOFFICE inteqrasiyası qur
+İdeal flow:
+backend ONLYOFFICE config yaradır
+frontend editor iframe və ya official component ilə açır
+save callback backend-ə qayıdır
+backend updated DOCX-i saxlayır
+Burada ayrıca config lazımdır:
 
-If a sidebar/panel remains, it should focus on:
-- vacancy summary
-- match score
-- why this role matches or does not match
-- missing signals / weak points
-- selected CV
-- CV improvement suggestions
-- saved status
+ONLYOFFICE_DOCUMENT_SERVER_URL
+ONLYOFFICE_JWT_SECRET
+.env.example-a da əlavə olunmalıdır.
 
-It should not show full raw profile forms.
-If profile data is shown, it must be shown as a vacancy-relevant summary rather than a generic account/profile dump.
+PDF üçün düzgün UX qur
+PDF-i birbaşa contentEditable etmə. Bunun əvəzinə:
+solda AI suggestion-lar
+sağda PDF preview
+üst hissədə Convert to editable DOCX action
+conversion bitəndən sonra Edit in document editor
+Yəni PDF axını belə olsun:
 
-2. Profile display strategy
-Define how user profile information should appear in this new model.
-The system should show only the parts of the profile that matter for this vacancy, for example:
-- matched skills
-- missing skills
-- experience alignment
-- location/work mode alignment
-- salary alignment where relevant
+upload PDF
 
-Explain what should be visible, what should be hidden, and why.
+analysis işləsin
 
-3. CV-first workflow
-The user’s CV must become the most important editable object in this experience.
-Design a workflow where:
-- the user selects a CV for the vacancy
-- the system evaluates how well that CV fits the job
-- the user can update the CV live
-- the match/readiness result refreshes after updates
-- the system gives structured, high-value suggestions
+preview göstərilsin
 
-This should feel interactive and premium, not like a simple document upload widget.
+user istəsə convert et
 
-4. Live CV updating
-Design how live CV updating should work in product terms.
-Include:
-- edit flow
-- save/update flow
-- versioning or draft behavior if needed
-- whether updates affect the master CV or a vacancy-specific variant
-- how the UI communicates changes and impact
+DOCX editor aç
 
-5. Suggestion system
-Design a strong UX/UI model for CV optimization suggestions.
-Suggestions should be:
-- concrete
-- actionable
-- prioritized
-- tied to vacancy requirements
-- clearly justified
+save/export et
 
-Examples of suggestion categories:
-- add missing keywords
-- rewrite weak bullets
-- elevate more relevant experience
-- reduce irrelevant content
-- improve title/headline alignment
-- address missing must-have requirements where possible
+Mövcud draft sistemini mərhələli şəkildə dəyiş
+Hazırda problemli hissələr:
 
-The suggestion model should feel like a guided copilot for improvement, not a generic AI text box.
+cv_extractor.py
+cv_document_service.py
+CVWorkspaceDialog.tsx
+use-cv-match.ts
+Dəyişiklik strategiyası:
 
-6. Saved vacancies
-Add a saved-vacancies/bookmark feature.
-Requirements:
-- users can save vacancies they want to review later
-- saved vacancies should support comparison, follow-up, and CV optimization workflows
-- saved vacancies are temporary in the database for now
-- retention policy: maximum 7 days in DB
-- the system should treat saved vacancies as a lightweight working set, not a permanent archive
+draftText analysis üçün qalsın
+draftHtml əsas editor modeli olmaqdan çıxsın
+onun yerinə documentSession modeli gəlsin
+Frontend state modelini yenilə
+useCVMatch içində yeni state əlavə et:
+documentSession
+documentMode
+conversionStatus
+editableAvailable
+previewUrl
+editorConfig
+Yəni draftHtml mərkəzli state-dən document-session mərkəzli state-ə keç.
 
-Design:
-- save flow
-- saved jobs view/workspace
-- how saved jobs interact with score and CV suggestions
-- what happens when saved jobs expire
+UI axınını yenidən qur
+CVWorkspaceDialog.tsx üçün yeni davranış:
+DOCX
+Preview original
+Edit live
+Apply suggestion
+Save
+Download
+PDF
+Preview original
+Suggestions only
+Convert to editable DOCX
+conversion bitəndən sonra Edit live
+Suggestion tətbiq etmə məntiqini dəyiş
+Hazırkı applySuggestionToDraft/applySuggestionToHtml zəifdir. Bunun əvəzinə:
+suggestion-lar section-based olsun
+məsələn skills, summary, experience anchor-ları ilə işləsin
+editor açıqdırsa suggestion “insert at section” əmri kimi getsin
+mümkün deyilsə user-a review mode göstərilsin
+Yəni text replace yox, belə model:
 
-7. Search-to-decision flow
-Design the ideal end-to-end experience:
-- user searches with filters
-- sees structured vacancy parameters
-- opens a vacancy
-- sees match score and reasoning
-- sees selected CV and optimization suggestions
-- optionally saves the vacancy
-- improves CV
-- then manually applies outside the system
+operation: insert | replace | append
+target_section
+target_hint
+payload_text
+Conversion layer seçimi
+PDF -> DOCX üçün seçimlər:
+ilkin mərhələ: LibreOffice/unoconv ilə yoxla
+daha yaxşı nəticə üçün kommersiya converter düşün
+əgər fidelity kritikdirsə Apryse/PDFTron kimi alət lazım ola bilər
+Vacib qeyd:
 
-8. UX principles
-The product should feel:
-- focused
-- intelligent
-- calm
-- trustworthy
-- high-signal
-- not automation-heavy
-- not cluttered
+open-source conversion ilə PDF-də 100% fidelity gözləmə
+bu səbəbdən PDF üçün “preview + convert for editing” modeli daha dürüstdür
+Təhlükəsizlik və storage
+edit session user-a bağlı olsun
+callback URL-lər imzalı olsun
+uploaded və derived file-lar üçün access control olsun
+temp conversion faylları TTL ilə silinsin
+Test planı
+Ayrı test dataset hazırla:
+sadə DOCX
+icon-lu DOCX
+table-lı DOCX
+iki sütunlu DOCX
+şəkilli DOCX
+text-based PDF
+scanned PDF
+complex layout PDF
+Yoxlanacaq kriteriyalar:
 
-Avoid:
-- extension-era automation language
-- generic autofill metaphors
-- raw profile dumps
-- weak or generic AI suggestions
-- noisy temporary panels with no strategic value
+preview fidelity
+edit sonrası layout qorunması
+export correctness
+suggestion insertion accuracy
+conversion failure handling
+İcra Sırası
 
-9. Output format
-Provide the result as a practical product/UX spec with:
-- product framing
-- updated information architecture
-- sidebar/panel recommendation
-- profile display recommendation
-- CV-first workflow
-- live CV update model
-- suggestion engine UX model
-- saved vacancies model with 7-day retention
-- end-to-end user flow
-- MVP scope
-- non-goals
-- rollout recommendation
+document session backend skeleti
+schema və endpoint-lər
+frontend state refactor
+PDF/DOCX flow ayrımı
+ONLYOFFICE DOCX editor inteqrasiyası
+PDF -> DOCX conversion flow
+suggestion patch workflow
+export/save sabitləşdirmə
+test dataset və regression testlər
+Ən Vacib Qərar
 
-Important:
-Explicitly acknowledge that the product has transitioned to this model:
-"Filter-based vacancy search + match score + CV optimization suggestions"
-and that previous automation-oriented surfaces have been removed from scope.
+Bu işdə ən kritik qərar budur:
+
+contentEditable HTML editor saxlanılsın, yoxsa
+embedded real document editor-a keçilsin
+Mənim güclü tövsiyəm:
+
+contentEditable yanaşmasını tərk et
+DOCX = real editor, PDF = preview + convert modelinə keç

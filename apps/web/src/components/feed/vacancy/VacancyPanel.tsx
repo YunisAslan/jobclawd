@@ -25,7 +25,6 @@ import CVWorkspaceDialog from "./CVWorkspaceDialog";
 import { useVacancyPanel, type VacancyTab } from "@/hooks/use-vacancy-panel";
 import type { JobListing } from "@/types";
 import Link from "next/link";
-import { useState } from "react";
 
 interface VacancyPanelProps {
   job: JobListing | null;
@@ -64,19 +63,27 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
     rejectSuggestion,
     resetSuggestion,
     downloadDraft,
+    documentSession,
+    loadingSession,
+    convertingToDocs,
+    errorSession,
+    convertSessionToDocx,
+    onSessionUpdated,
+    workspaceOpen,
+    openWorkspace,
+    closeWorkspace,
     isSaved,
     toggleSave,
     profile,
   } = useVacancyPanel(job);
 
-  const [workspaceOpen, setWorkspaceOpen] = useState(false);
-
   if (!job) return null;
+
   const isHigh = job.match_level === "high";
   const hasCV = !!selectedCV;
-
   const suggestionCount = suggestions?.suggestions?.length ?? 0;
   const showSuggestionsSection = analyzed && suggestionCount > 0;
+  const canOpenWorkspace = analyzed && hasCV;
 
   return (
     <>
@@ -99,20 +106,16 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {job.match_score > 0 && (
-                  <div
-                    className={cn(
-                      "flex flex-col items-center justify-center rounded-lg px-2.5 py-1.5",
-                      isHigh
-                        ? "bg-match-high/10 border border-match-high/20"
-                        : "bg-match-review/10 border border-match-review/20",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "text-base font-bold leading-none tabular-nums",
-                        isHigh ? "text-match-high" : "text-match-review",
-                      )}
-                    >
+                  <div className={cn(
+                    "flex flex-col items-center justify-center rounded-lg px-2.5 py-1.5",
+                    isHigh
+                      ? "bg-match-high/10 border border-match-high/20"
+                      : "bg-match-review/10 border border-match-review/20",
+                  )}>
+                    <span className={cn(
+                      "text-base font-bold leading-none tabular-nums",
+                      isHigh ? "text-match-high" : "text-match-review",
+                    )}>
                       {job.match_score}
                     </span>
                   </div>
@@ -130,12 +133,10 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
             <div className="px-5 pt-3 pb-0">
               <TabsList className="w-full">
                 <TabsTrigger value="overview" className="gap-1.5 text-xs">
-                  <Eye className="size-3.5" />
-                  Overview
+                  <Eye className="size-3.5" /> Overview
                 </TabsTrigger>
                 <TabsTrigger value="improve" className="gap-1.5 text-xs">
-                  <Sparkles className="size-3.5" />
-                  Improve CV
+                  <Sparkles className="size-3.5" /> Improve CV
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -148,7 +149,6 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
                 </TabsContent>
 
                 <TabsContent value="improve" className="mt-0 space-y-4">
-                  {/* CV selector — shown once at the top */}
                   <CVSelector
                     cvLinks={profile.cv_links ?? []}
                     selectedCV={selectedCV}
@@ -157,7 +157,6 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
                     uploading={uploading}
                   />
 
-                  {/* CV match results */}
                   <CVMatchResults
                     analysis={cvAnalysis}
                     loading={loadingAnalysis}
@@ -167,24 +166,18 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
                     onAnalyze={analyzeCV}
                   />
 
-                  {/* Divider + Suggestions section */}
                   {showSuggestionsSection && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-px bg-border/50" />
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-                            Suggestions
-                          </span>
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] font-semibold px-1.5 py-0 h-4"
-                          >
-                            {suggestionCount}
-                          </Badge>
-                        </div>
-                        <div className="flex-1 h-px bg-border/50" />
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-px bg-border/50" />
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                          Suggestions
+                        </span>
+                        <Badge variant="outline" className="text-[10px] font-semibold px-1.5 py-0 h-4">
+                          {suggestionCount}
+                        </Badge>
                       </div>
+                      <div className="flex-1 h-px bg-border/50" />
                     </div>
                   )}
 
@@ -206,19 +199,21 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
             </ScrollArea>
           </Tabs>
 
-          {/* Sticky action bar — improve tab primary actions */}
+          {/* Sticky action bar */}
           {activeTab === "improve" && analyzed && (
             <div className="px-5 py-3 border-t border-border/40 bg-background shrink-0 flex gap-2">
-              {draftText && (
+              {canOpenWorkspace && (
                 <Button
                   type="button"
                   size="sm"
                   className="flex-1 gap-2"
-                  onClick={() => setWorkspaceOpen(true)}
-                  disabled={loadingDraft}
+                  onClick={openWorkspace}
+                  disabled={loadingSession}
                 >
                   <PencilLine className="size-3.5" />
-                  <span className="text-xs"> Edit CV</span>
+                  <span className="text-xs">
+                    {loadingSession ? "Opening…" : "Edit CV"}
+                  </span>
                 </Button>
               )}
               <Button
@@ -253,10 +248,10 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
         </SheetContent>
       </Sheet>
 
-      {/* CV Workspace Dialog — rendered outside Sheet to avoid stacking context issues */}
+      {/* CV Workspace Dialog */}
       <CVWorkspaceDialog
         open={workspaceOpen}
-        onOpenChange={setWorkspaceOpen}
+        onOpenChange={(open) => { if (!open) closeWorkspace(); }}
         cvName={selectedCV?.name ?? ""}
         cvUrl={selectedCV?.url ?? ""}
         draftText={draftText}
@@ -274,6 +269,12 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
         onUndoAcceptSuggestion={undoAcceptSuggestion}
         onRejectSuggestion={rejectSuggestion}
         onResetSuggestion={resetSuggestion}
+        documentSession={documentSession}
+        loadingSession={loadingSession}
+        convertingToDocs={convertingToDocs}
+        errorSession={errorSession}
+        onConvertToDocx={convertSessionToDocx}
+        onSessionUpdated={onSessionUpdated}
       />
     </>
   );

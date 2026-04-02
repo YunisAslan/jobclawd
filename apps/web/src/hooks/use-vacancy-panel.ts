@@ -5,7 +5,7 @@ import { savedVacanciesService } from "@/services/saved-vacancies.service";
 import { profileService } from "@/services/profile.service";
 import { jobsService } from "@/services/jobs.service";
 import { useCVMatch } from "@/hooks/use-cv-match";
-import type { JobListing, CVLink } from "@/types";
+import type { JobListing, CVLink, DocumentSession } from "@/types";
 
 export type VacancyTab = "overview" | "improve";
 
@@ -16,6 +16,7 @@ export function useVacancyPanel(job: JobListing | null) {
   const [selectedCV, setSelectedCV] = useState<CVLink | null>(null);
   const [activeTab, setActiveTab] = useState<VacancyTab>("overview");
   const [uploading, setUploading] = useState(false);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
 
   const cvMatch = useCVMatch();
 
@@ -26,18 +27,17 @@ export function useVacancyPanel(job: JobListing | null) {
       const firstCV = profile.cv_links?.[0] ?? null;
       setSelectedCV(firstCV);
       cvMatch.reset();
+      setWorkspaceOpen(false);
     } else {
       setSelectedCV(null);
       setActiveTab("overview");
       cvMatch.reset();
+      setWorkspaceOpen(false);
     }
   }, [job?.url]);
 
   // Job detail query
-  const {
-    data: detail,
-    isLoading: loadingDetail,
-  } = useQuery({
+  const { data: detail, isLoading: loadingDetail } = useQuery({
     queryKey: ["job-detail", job?.url],
     queryFn: () => jobsService.getDetail(job!.url),
     enabled: !!job?.url,
@@ -50,7 +50,22 @@ export function useVacancyPanel(job: JobListing | null) {
     cvMatch.analyze(job.url, selectedCV.url);
   }, [job?.url, selectedCV?.url]);
 
-  // When user changes CV, reset analysis
+  // Open workspace: create document session then open dialog
+  const openWorkspace = useCallback(async () => {
+    if (!selectedCV?.url) return;
+    setWorkspaceOpen(true);
+    // Create a new session if none exists or if the CV changed
+    const existingSession = cvMatch.documentSession;
+    if (!existingSession || existingSession.preview_url !== selectedCV.url) {
+      await cvMatch.openDocumentSession(selectedCV.url);
+    }
+  }, [selectedCV?.url, cvMatch.documentSession, cvMatch.openDocumentSession]);
+
+  const closeWorkspace = useCallback(() => {
+    setWorkspaceOpen(false);
+  }, []);
+
+  // When user changes CV, reset analysis + clear session
   const handleCVChange = useCallback((cv: CVLink | null) => {
     setSelectedCV(cv);
     cvMatch.reset();
@@ -84,15 +99,11 @@ export function useVacancyPanel(job: JobListing | null) {
   });
   const isSaved = savedCheck?.saved_urls?.includes(job?.url ?? "") ?? false;
 
-  // Save/unsave mutation
   const toggleSave = useMutation({
     mutationFn: async () => {
       if (!job) return;
-      if (isSaved) {
-        await savedVacanciesService.unsave(job.url);
-      } else {
-        await savedVacanciesService.save(job.url, job);
-      }
+      if (isSaved) await savedVacanciesService.unsave(job.url);
+      else await savedVacanciesService.save(job.url, job);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["saved-check-single", job?.url] });
@@ -114,6 +125,7 @@ export function useVacancyPanel(job: JobListing | null) {
     activeTab,
     setActiveTab,
     analyzeCV,
+    // CV analysis
     cvAnalysis: cvMatch.analysis,
     loadingAnalysis: cvMatch.loadingAnalysis,
     errorAnalysis: cvMatch.errorAnalysis,
@@ -137,6 +149,17 @@ export function useVacancyPanel(job: JobListing | null) {
     rejectSuggestion: cvMatch.rejectSuggestion,
     resetSuggestion: cvMatch.resetSuggestion,
     downloadDraft: () => (selectedCV?.url ? cvMatch.downloadDraft(selectedCV.url) : Promise.resolve()),
+    // Document session
+    documentSession: cvMatch.documentSession,
+    loadingSession: cvMatch.loadingSession,
+    convertingToDocs: cvMatch.convertingToDocs,
+    errorSession: cvMatch.errorSession,
+    convertSessionToDocx: cvMatch.convertSessionToDocx,
+    onSessionUpdated: cvMatch.refreshDocumentSession,
+    // Workspace dialog control
+    workspaceOpen,
+    openWorkspace,
+    closeWorkspace,
     isSaved,
     toggleSave,
     profile,

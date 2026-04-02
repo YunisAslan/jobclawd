@@ -119,7 +119,7 @@ def extract_cv_html(cv_url: str) -> Optional[str]:
     """
     Extract HTML content from a CV file given its URL path
     (e.g. "/api/files/cv/abc123.docx").
-    For DOCX: uses mammoth to produce rich HTML.
+    For DOCX: uses faithful converter preserving fonts, colors, sizes, images.
     For PDF: wraps plain text lines in <p> tags.
     Returns None if the file cannot be read or parsed.
     """
@@ -132,16 +132,19 @@ def extract_cv_html(cv_url: str) -> Optional[str]:
     ext = filepath.suffix.lower()
 
     if ext == ".docx":
-        try:
-            import mammoth  # type: ignore
-            with open(filepath, "rb") as f:
-                result = mammoth.convert_to_html(f)
-            return result.value if result.value else None
-        except ImportError:
-            pass
-        except Exception:
-            pass
-        # Fallback: wrap plain text in <p> tags
+        # Try LibreOffice first — highest visual fidelity (columns, colors, icons)
+        from services.cv_libreoffice_converter import convert_docx_to_html_libreoffice
+        result = convert_docx_to_html_libreoffice(filepath)
+        if result:
+            return result
+
+        # Fallback: python-docx based converter (no LibreOffice needed)
+        from services.cv_html_converter import convert_docx_to_html
+        result = convert_docx_to_html(filepath)
+        if result:
+            return result
+
+        # Last resort: wrap plain text in <p> tags
         text = extract_cv_text(cv_url)
         if not text:
             return None

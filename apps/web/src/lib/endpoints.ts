@@ -42,4 +42,9 @@ export const ENDPOINTS = {
   CV_SUGGESTIONS: "/api/cv-suggestions",
   CV_DRAFT: "/api/cv-draft",
   CV_EXPORT: "/api/cv-export",
+
+  // Document session (ONLYOFFICE + PDF→DOCX)
+  DOCUMENT_SESSION: "/api/document/session",
+  DOCUMENT_CONVERT: "/api/document/convert-to-docx",
+  DOCUMENT_EXPORT: "/api/document/export",
 } as const;

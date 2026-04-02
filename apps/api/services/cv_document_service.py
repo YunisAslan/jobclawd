@@ -93,7 +93,12 @@ def _is_html_content(content: str) -> bool:
 
 
 def _build_word_html_export_from_html(html_content: str, source_name: str | None = None) -> tuple[BytesIO, str, str]:
-    """Wrap rich HTML content in a Word-compatible HTML document."""
+    """Wrap rich HTML content in a Word-compatible HTML document.
+
+    The HTML content already has inline styles preserving fonts, colors, and
+    sizes from the original document.  The base stylesheet only provides
+    sensible fallback defaults and does not override inline styles.
+    """
     base = _slugify(source_name or "updated-cv")
 
     html_doc = f"""\
@@ -120,35 +125,32 @@ def _build_word_html_export_from_html(html_content: str, source_name: str | None
         margin: 1in;
       }}
       body {{
-        font-family: Calibri, Arial, sans-serif;
         font-size: 11pt;
         line-height: 1.45;
-        color: #111827;
+        color: #000000;
       }}
       p {{
-        margin: 0 0 8pt 0;
+        margin: 0;
       }}
       ul, ol {{
-        margin: 0 0 8pt 0;
+        margin: 0 0 4pt 0;
         padding-left: 20pt;
       }}
       li {{
-        margin-bottom: 3pt;
+        margin-bottom: 2pt;
       }}
-      h1 {{
-        font-size: 16pt;
-        font-weight: bold;
-        margin: 0 0 8pt 0;
+      table {{
+        border-collapse: collapse;
+        width: 100%;
       }}
-      h2 {{
-        font-size: 13pt;
-        font-weight: bold;
-        margin: 0 0 6pt 0;
+      td, th {{
+        border: 1px solid #ccc;
+        padding: 4pt 6pt;
+        vertical-align: top;
       }}
-      h3 {{
-        font-size: 11pt;
-        font-weight: bold;
-        margin: 0 0 4pt 0;
+      img {{
+        max-width: 100%;
+        height: auto;
       }}
     </style>
   </head>
