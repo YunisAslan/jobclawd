@@ -30,4 +30,7 @@ export type {
   VacancyPanelProps,
   SuggestionPriority,
   SuggestionCategory,
+  DocumentSession,
+  DocumentSourceType,
+  DocumentConversionStatus,
 } from "@jobclawd/shared";

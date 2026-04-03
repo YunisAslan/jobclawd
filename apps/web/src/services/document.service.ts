@@ -32,10 +32,10 @@ class DocumentService extends APIService {
     return res.data;
   }
 
-  async convertToDocx(session_id: string, converter: "auto" | "libreoffice" | "pdf2docx" = "auto"): Promise<DocumentSession> {
+  async convertToDocx(session_id: string): Promise<DocumentSession> {
     const res = await this.post(
       ENDPOINTS.DOCUMENT_CONVERT,
-      { session_id, converter },
+      { session_id },
       { headers: getAuthHeader(), timeout: 120000 },
     );
     return res.data;

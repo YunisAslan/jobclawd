@@ -132,19 +132,13 @@ def extract_cv_html(cv_url: str) -> Optional[str]:
     ext = filepath.suffix.lower()
 
     if ext == ".docx":
-        # Try LibreOffice first — highest visual fidelity (columns, colors, icons)
-        from services.cv_libreoffice_converter import convert_docx_to_html_libreoffice
-        result = convert_docx_to_html_libreoffice(filepath)
-        if result:
-            return result
-
-        # Fallback: python-docx based converter (no LibreOffice needed)
+        # python-docx based converter
         from services.cv_html_converter import convert_docx_to_html
         result = convert_docx_to_html(filepath)
         if result:
             return result
 
-        # Last resort: wrap plain text in <p> tags
+        # Fallback: wrap plain text in <p> tags
         text = extract_cv_text(cv_url)
         if not text:
             return None

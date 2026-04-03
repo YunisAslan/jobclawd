@@ -117,7 +117,32 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
     setSkipped((prev) => new Set([...prev, url]));
   };
 
-  const jobs = data?.jobs ?? [];
+  const realJobs = data?.jobs ?? [];
+
+  // ── DEV: inject a dummy vacancy so CV workspace can be tested without a real search ──
+  const jobs: JobListing[] =
+    realJobs.length === 0 && !hasQuery && process.env.NODE_ENV === "development"
+      ? [
+          {
+            title: "Senior Frontend Developer (React / Next.js)",
+            company: "Acme Corp",
+            url: "https://example.com/jobs/acme-senior-frontend-dev",
+            date_posted: new Date().toISOString(),
+            source: "linkedin" as JobSource,
+            match_score: 82,
+            match_level: "high",
+            match_flags: ["title-match", "skills-match", "experience-match"],
+            location_str: "Remote (Europe)",
+            work_mode_str: "Remote",
+            seniority_str: "Senior",
+            job_type_str: "Full-time",
+            salary_str: "$90k – $130k",
+            description_snippet:
+              "We are looking for a Senior Frontend Developer to build and maintain our Next.js platform. You will work with React 19, TypeScript, Tailwind CSS, and a headless CMS. Experience with VTEX or similar e-commerce platforms is a plus.",
+          },
+        ]
+      : realJobs;
+
   const visible = jobs.filter((j) => !skipped.has(j.url));
   const highMatch = visible.filter((j) => j.match_level === "high");
   const needsReview = visible.filter((j) => j.match_level === "review");

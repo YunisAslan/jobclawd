@@ -425,16 +425,6 @@ class CVAnalysisBundleResponse(BaseModel):
 class CreateSessionRequest(BaseModel):
     cv_url: str
 
-class DocumentConvertRequest(BaseModel):
-    session_id: str
-    converter: str = "auto"  # "auto" | "libreoffice" | "pdf2docx"
-
-class DocumentCallbackRequest(BaseModel):
-    """ONLYOFFICE save callback payload."""
-    status: int          # 2 = ready for saving, 6 = error
-    url: Optional[str] = None   # download URL of the saved file
-    key: Optional[str] = None
-
 class DocumentSessionResponse(BaseModel):
     session_id: str
     source_type: DocumentSourceType
@@ -443,4 +433,3 @@ class DocumentSessionResponse(BaseModel):
     requires_conversion: bool                 # PDF needs explicit conversion
     conversion_status: DocumentConversionStatus
     cv_name: str = ""
-    onlyoffice_config: Optional[dict] = None  # full ONLYOFFICE editor config

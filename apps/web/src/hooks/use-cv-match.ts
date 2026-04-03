@@ -113,22 +113,20 @@ export function useCVMatch() {
     }
   }
 
-  async function convertSessionToDocx(converter: "auto" | "libreoffice" | "pdf2docx" = "auto") {
+  async function convertSessionToDocx() {
     const sessionId = state.documentSession?.session_id;
     if (!sessionId) return;
     setState((s) => ({ ...s, convertingToDocs: true, errorSession: null }));
     try {
-      // Kick off conversion
-      const pending = await documentService.convertToDocx(sessionId, converter);
+      const pending = await documentService.convertToDocx(sessionId);
       setState((s) => ({ ...s, documentSession: pending }));
-      // Poll until done
       const done = await documentService.pollConversionDone(sessionId);
       setState((s) => ({ ...s, documentSession: done, convertingToDocs: false }));
     } catch {
       setState((s) => ({
         ...s,
         convertingToDocs: false,
-        errorSession: "Conversion failed. Make sure LibreOffice is available.",
+        errorSession: "Conversion failed.",
       }));
     }
   }
