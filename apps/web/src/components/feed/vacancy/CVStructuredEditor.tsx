@@ -1,11 +1,20 @@
 "use client";
 
 import { useCallback } from "react";
-import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
-import { Label } from "@/components/ui/Label";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  GripVertical,
+  User,
+  Briefcase,
+  GraduationCap,
+  Zap,
+  Globe,
+  Award,
+  LayoutGrid,
+} from "lucide-react";
 import type {
   CVData,
   CVExperienceEntry,
@@ -22,6 +31,17 @@ interface CVStructuredEditorProps {
   onChange: (data: CVData) => void;
 }
 
+/* ── Section icon map ── */
+
+const SECTION_ICONS: Record<string, React.ReactNode> = {
+  "Personal Information": <User className="size-3.5" />,
+  "Work Experience": <Briefcase className="size-3.5" />,
+  Education: <GraduationCap className="size-3.5" />,
+  Skills: <Zap className="size-3.5" />,
+  Languages: <Globe className="size-3.5" />,
+  Certifications: <Award className="size-3.5" />,
+};
+
 /* ── Main component ── */
 
 export default function CVStructuredEditor({ data, onChange }: CVStructuredEditorProps) {
@@ -31,10 +51,11 @@ export default function CVStructuredEditor({ data, onChange }: CVStructuredEdito
   );
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="px-6 py-8">
-        <div className="mx-auto max-w-225 space-y-6">
-          {/* Personal Info */}
+    <div className="flex-1 overflow-y-auto bg-slate-100 dark:bg-slate-950">
+      <div className="px-5 py-6">
+        <div className="mx-auto max-w-225 space-y-4">
+
+          {/* Personal Information */}
           <Section title="Personal Information">
             <div className="grid grid-cols-2 gap-3">
               <Field label="Full Name" value={data.personal_info.full_name}
@@ -50,181 +71,187 @@ export default function CVStructuredEditor({ data, onChange }: CVStructuredEdito
               <Field label="Portfolio" value={data.personal_info.portfolio}
                 onChange={(v) => update({ personal_info: { ...data.personal_info, portfolio: v } })} />
             </div>
-            <div className="mt-3">
-              <Label className="text-[11px] text-muted-foreground mb-1 block">Summary</Label>
+            <div className="mt-1">
+              <FieldLabel>Summary</FieldLabel>
               <Textarea
                 value={data.personal_info.summary}
                 onChange={(e) => update({ personal_info: { ...data.personal_info, summary: e.target.value } })}
                 rows={3}
-                className="text-sm resize-none"
-                placeholder="Professional summary..."
+                className="text-sm resize-none bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-0 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-lg"
+                placeholder="Write a short professional summary..."
               />
             </div>
           </Section>
 
-          {/* Experience */}
+          {/* Work Experience */}
           <Section
             title="Work Experience"
-            onAdd={() => update({
-              experience: [...data.experience, emptyExperience()],
-            })}
+            onAdd={() => update({ experience: [...data.experience, emptyExperience()] })}
           >
-            {data.experience.map((entry, i) => (
-              <ExperienceCard
-                key={entry.id}
-                entry={entry}
-                onChange={(updated) => {
-                  const next = [...data.experience];
-                  next[i] = updated;
-                  update({ experience: next });
-                }}
-                onRemove={() => update({ experience: data.experience.filter((_, j) => j !== i) })}
-              />
-            ))}
+            <div className="space-y-3">
+              {data.experience.map((entry, i) => (
+                <ExperienceCard
+                  key={entry.id}
+                  entry={entry}
+                  onChange={(updated) => {
+                    const next = [...data.experience];
+                    next[i] = updated;
+                    update({ experience: next });
+                  }}
+                  onRemove={() => update({ experience: data.experience.filter((_, j) => j !== i) })}
+                />
+              ))}
+              {data.experience.length === 0 && <EmptyState label="No experience added yet" />}
+            </div>
           </Section>
 
           {/* Education */}
           <Section
             title="Education"
-            onAdd={() => update({
-              education: [...data.education, emptyEducation()],
-            })}
+            onAdd={() => update({ education: [...data.education, emptyEducation()] })}
           >
-            {data.education.map((entry, i) => (
-              <EducationCard
-                key={entry.id}
-                entry={entry}
-                onChange={(updated) => {
-                  const next = [...data.education];
-                  next[i] = updated;
-                  update({ education: next });
-                }}
-                onRemove={() => update({ education: data.education.filter((_, j) => j !== i) })}
-              />
-            ))}
+            <div className="space-y-3">
+              {data.education.map((entry, i) => (
+                <EducationCard
+                  key={entry.id}
+                  entry={entry}
+                  onChange={(updated) => {
+                    const next = [...data.education];
+                    next[i] = updated;
+                    update({ education: next });
+                  }}
+                  onRemove={() => update({ education: data.education.filter((_, j) => j !== i) })}
+                />
+              ))}
+              {data.education.length === 0 && <EmptyState label="No education added yet" />}
+            </div>
           </Section>
 
           {/* Skills */}
           <Section
             title="Skills"
-            onAdd={() => update({
-              skills: [...data.skills, { category: "", items: [] }],
-            })}
+            onAdd={() => update({ skills: [...data.skills, { category: "", items: [] }] })}
           >
-            {data.skills.map((group, i) => (
-              <SkillGroupCard
-                key={i}
-                group={group}
-                onChange={(updated) => {
-                  const next = [...data.skills];
-                  next[i] = updated;
-                  update({ skills: next });
-                }}
-                onRemove={() => update({ skills: data.skills.filter((_, j) => j !== i) })}
-              />
-            ))}
+            <div className="space-y-3">
+              {data.skills.map((group, i) => (
+                <SkillGroupCard
+                  key={i}
+                  group={group}
+                  onChange={(updated) => {
+                    const next = [...data.skills];
+                    next[i] = updated;
+                    update({ skills: next });
+                  }}
+                  onRemove={() => update({ skills: data.skills.filter((_, j) => j !== i) })}
+                />
+              ))}
+              {data.skills.length === 0 && <EmptyState label="No skills added yet" />}
+            </div>
           </Section>
 
           {/* Languages */}
           <Section
             title="Languages"
-            onAdd={() => update({
-              languages: [...data.languages, { language: "", level: "" }],
-            })}
+            onAdd={() => update({ languages: [...data.languages, { language: "", level: "" }] })}
           >
             <div className="space-y-2">
               {data.languages.map((lang, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <Input
-                    value={lang.language}
-                    onChange={(e) => {
-                      const next = [...data.languages];
-                      next[i] = { ...lang, language: e.target.value };
-                      update({ languages: next });
-                    }}
-                    placeholder="Language"
-                    className="text-sm flex-1"
-                  />
-                  <Input
-                    value={lang.level}
-                    onChange={(e) => {
-                      const next = [...data.languages];
-                      next[i] = { ...lang, level: e.target.value };
-                      update({ languages: next });
-                    }}
-                    placeholder="Level (e.g. Fluent, B2)"
-                    className="text-sm flex-1"
-                  />
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <Field
+                      label="Language"
+                      value={lang.language}
+                      onChange={(v) => {
+                        const next = [...data.languages];
+                        next[i] = { ...lang, language: v };
+                        update({ languages: next });
+                      }}
+                    />
+                    <Field
+                      label="Proficiency"
+                      value={lang.level}
+                      onChange={(v) => {
+                        const next = [...data.languages];
+                        next[i] = { ...lang, level: v };
+                        update({ languages: next });
+                      }}
+                      placeholder="e.g. Fluent, B2, Native"
+                    />
+                  </div>
                   <RemoveButton onClick={() => update({ languages: data.languages.filter((_, j) => j !== i) })} />
                 </div>
               ))}
+              {data.languages.length === 0 && <EmptyState label="No languages added yet" />}
             </div>
           </Section>
 
           {/* Certifications */}
           <Section
             title="Certifications"
-            onAdd={() => update({
-              certifications: [...data.certifications, emptyCertification()],
-            })}
+            onAdd={() => update({ certifications: [...data.certifications, emptyCertification()] })}
           >
-            {data.certifications.map((cert, i) => (
-              <div key={cert.id} className="flex items-start gap-2 p-3 rounded-lg bg-slate-50 border border-slate-100">
-                <div className="flex-1 grid grid-cols-3 gap-2">
-                  <Input value={cert.name} placeholder="Certification name"
-                    className="text-sm"
-                    onChange={(e) => {
-                      const next = [...data.certifications];
-                      next[i] = { ...cert, name: e.target.value };
-                      update({ certifications: next });
-                    }} />
-                  <Input value={cert.issuer} placeholder="Issuer"
-                    className="text-sm"
-                    onChange={(e) => {
-                      const next = [...data.certifications];
-                      next[i] = { ...cert, issuer: e.target.value };
-                      update({ certifications: next });
-                    }} />
-                  <Input value={cert.date} placeholder="Date"
-                    className="text-sm"
-                    onChange={(e) => {
-                      const next = [...data.certifications];
-                      next[i] = { ...cert, date: e.target.value };
-                      update({ certifications: next });
-                    }} />
+            <div className="space-y-2">
+              {data.certifications.map((cert, i) => (
+                <div key={cert.id} className="flex items-end gap-2">
+                  <div className="flex-1 grid grid-cols-3 gap-2">
+                    <Field label="Certificate Name" value={cert.name} placeholder="e.g. AWS Solutions Architect"
+                      onChange={(v) => {
+                        const next = [...data.certifications];
+                        next[i] = { ...cert, name: v };
+                        update({ certifications: next });
+                      }} />
+                    <Field label="Issuer" value={cert.issuer} placeholder="e.g. Amazon"
+                      onChange={(v) => {
+                        const next = [...data.certifications];
+                        next[i] = { ...cert, issuer: v };
+                        update({ certifications: next });
+                      }} />
+                    <Field label="Date" value={cert.date} placeholder="e.g. 2024-03"
+                      onChange={(v) => {
+                        const next = [...data.certifications];
+                        next[i] = { ...cert, date: v };
+                        update({ certifications: next });
+                      }} />
+                  </div>
+                  <div className="pb-0.5">
+                    <RemoveButton onClick={() => update({ certifications: data.certifications.filter((_, j) => j !== i) })} />
+                  </div>
                 </div>
-                <RemoveButton onClick={() => update({ certifications: data.certifications.filter((_, j) => j !== i) })} />
-              </div>
-            ))}
+              ))}
+              {data.certifications.length === 0 && <EmptyState label="No certifications added yet" />}
+            </div>
           </Section>
 
           {/* Additional sections */}
           {Object.entries(data.additional_sections).map(([name, items]) => (
-            <Section key={name} title={name.charAt(0).toUpperCase() + name.slice(1)}>
-              <div className="space-y-1.5">
+            <Section key={name} title={name.charAt(0).toUpperCase() + name.slice(1)} icon={<LayoutGrid className="size-3.5" />}>
+              <div className="space-y-2">
                 {items.map((item, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <Input
+                    <Field
+                      label={`Item ${i + 1}`}
                       value={item}
-                      className="text-sm flex-1"
-                      onChange={(e) => {
+                      onChange={(v) => {
                         const next = { ...data.additional_sections };
                         next[name] = [...items];
-                        next[name][i] = e.target.value;
+                        next[name][i] = v;
                         update({ additional_sections: next });
                       }}
                     />
-                    <RemoveButton onClick={() => {
-                      const next = { ...data.additional_sections };
-                      next[name] = items.filter((_, j) => j !== i);
-                      if (next[name].length === 0) delete next[name];
-                      update({ additional_sections: next });
-                    }} />
+                    <div className="pt-5">
+                      <RemoveButton onClick={() => {
+                        const next = { ...data.additional_sections };
+                        next[name] = items.filter((_, j) => j !== i);
+                        if (next[name].length === 0) delete next[name];
+                        update({ additional_sections: next });
+                      }} />
+                    </div>
                   </div>
                 ))}
               </div>
             </Section>
           ))}
+
         </div>
       </div>
     </div>
@@ -233,17 +260,42 @@ export default function CVStructuredEditor({ data, onChange }: CVStructuredEdito
 
 /* ── Section wrapper ── */
 
-function Section({ title, children, onAdd }: { title: string; children: React.ReactNode; onAdd?: () => void }) {
+function Section({
+  title,
+  children,
+  onAdd,
+  icon,
+}: {
+  title: string;
+  children: React.ReactNode;
+  onAdd?: () => void;
+  icon?: React.ReactNode;
+}) {
+  const resolvedIcon = icon ?? SECTION_ICONS[title];
+
   return (
-    <div className="bg-white rounded-xl shadow-[0_2px_16px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-slate-50/50">
-        <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center gap-2">
+          {resolvedIcon && (
+            <span className="flex items-center justify-center size-6 rounded-md bg-primary/10 text-primary">
+              {resolvedIcon}
+            </span>
+          )}
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
+        </div>
         {onAdd && (
-          <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={onAdd}>
+          <button
+            type="button"
+            onClick={onAdd}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+          >
             <Plus className="size-3" /> Add
-          </Button>
+          </button>
         )}
       </div>
+      {/* Body */}
       <div className="p-5 space-y-3">{children}</div>
     </div>
   );
@@ -257,30 +309,40 @@ function ExperienceCard({ entry, onChange, onRemove }: {
   onRemove: () => void;
 }) {
   return (
-    <div className="p-4 rounded-lg bg-slate-50 border border-slate-100 space-y-3">
-      <div className="flex items-start gap-2">
-        <GripVertical className="size-4 text-slate-300 mt-2 shrink-0" />
-        <div className="flex-1 grid grid-cols-2 gap-2">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 overflow-hidden">
+      {/* Card header row */}
+      <div className="flex items-start gap-2 p-4 pb-3">
+        <GripVertical className="size-4 text-slate-300 dark:text-slate-600 mt-2.5 shrink-0 cursor-grab" />
+        <div className="flex-1 grid grid-cols-2 gap-2.5">
           <Field label="Job Title" value={entry.title}
             onChange={(v) => onChange({ ...entry, title: v })} />
           <Field label="Company" value={entry.company}
             onChange={(v) => onChange({ ...entry, company: v })} />
           <Field label="Location" value={entry.location}
             onChange={(v) => onChange({ ...entry, location: v })} />
-          <div className="flex gap-2">
-            <Field label="Start" value={entry.start_date} className="flex-1"
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Start Date" value={entry.start_date} placeholder="MM/YYYY"
               onChange={(v) => onChange({ ...entry, start_date: v })} />
-            <Field label="End" value={entry.end_date} className="flex-1"
+            <Field label="End Date" value={entry.end_date} placeholder="Present"
               onChange={(v) => onChange({ ...entry, end_date: v })} />
           </div>
         </div>
-        <RemoveButton onClick={onRemove} />
+        <button
+          type="button"
+          onClick={onRemove}
+          className="mt-1 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
       </div>
-      <BulletList
-        items={entry.bullets}
-        onChange={(bullets) => onChange({ ...entry, bullets })}
-        placeholder="Add accomplishment or responsibility..."
-      />
+      {/* Bullets */}
+      <div className="px-4 pb-4">
+        <BulletList
+          items={entry.bullets}
+          onChange={(bullets) => onChange({ ...entry, bullets })}
+          placeholder="Add accomplishment or responsibility..."
+        />
+      </div>
     </div>
   );
 }
@@ -293,30 +355,38 @@ function EducationCard({ entry, onChange, onRemove }: {
   onRemove: () => void;
 }) {
   return (
-    <div className="p-4 rounded-lg bg-slate-50 border border-slate-100 space-y-3">
-      <div className="flex items-start gap-2">
-        <GripVertical className="size-4 text-slate-300 mt-2 shrink-0" />
-        <div className="flex-1 grid grid-cols-2 gap-2">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 overflow-hidden">
+      <div className="flex items-start gap-2 p-4 pb-3">
+        <GripVertical className="size-4 text-slate-300 dark:text-slate-600 mt-2.5 shrink-0 cursor-grab" />
+        <div className="flex-1 grid grid-cols-2 gap-2.5">
           <Field label="Institution" value={entry.institution}
             onChange={(v) => onChange({ ...entry, institution: v })} />
           <Field label="Degree" value={entry.degree}
             onChange={(v) => onChange({ ...entry, degree: v })} />
           <Field label="Field of Study" value={entry.field_of_study}
             onChange={(v) => onChange({ ...entry, field_of_study: v })} />
-          <div className="flex gap-2">
-            <Field label="Start" value={entry.start_date} className="flex-1"
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Start Date" value={entry.start_date} placeholder="YYYY"
               onChange={(v) => onChange({ ...entry, start_date: v })} />
-            <Field label="End" value={entry.end_date} className="flex-1"
+            <Field label="End Date" value={entry.end_date} placeholder="YYYY or Present"
               onChange={(v) => onChange({ ...entry, end_date: v })} />
           </div>
         </div>
-        <RemoveButton onClick={onRemove} />
+        <button
+          type="button"
+          onClick={onRemove}
+          className="mt-1 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
       </div>
-      <BulletList
-        items={entry.details}
-        onChange={(details) => onChange({ ...entry, details })}
-        placeholder="Add detail..."
-      />
+      <div className="px-4 pb-4">
+        <BulletList
+          items={entry.details}
+          onChange={(details) => onChange({ ...entry, details })}
+          placeholder="Add detail or achievement..."
+        />
+      </div>
     </div>
   );
 }
@@ -329,19 +399,29 @@ function SkillGroupCard({ group, onChange, onRemove }: {
   onRemove: () => void;
 }) {
   return (
-    <div className="p-4 rounded-lg bg-slate-50 border border-slate-100 space-y-2">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <Input
+        <input
           value={group.category}
           onChange={(e) => onChange({ ...group, category: e.target.value })}
-          placeholder="Category (e.g. Frontend, Tools)"
-          className="text-sm font-medium flex-1"
+          placeholder="Category (e.g. Frontend, Tools, Frameworks)"
+          className="flex-1 text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-primary transition-colors"
         />
-        <RemoveButton onClick={onRemove} />
+        <button
+          type="button"
+          onClick={onRemove}
+          className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
       </div>
+
       <div className="flex flex-wrap gap-1.5">
         {group.items.map((item, i) => (
-          <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white border border-slate-200 text-xs text-slate-700">
+          <span
+            key={i}
+            className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300"
+          >
             <input
               value={item}
               onChange={(e) => {
@@ -349,11 +429,14 @@ function SkillGroupCard({ group, onChange, onRemove }: {
                 next[i] = e.target.value;
                 onChange({ ...group, items: next });
               }}
-              className="bg-transparent outline-none w-auto min-w-[3ch]"
+              className="bg-transparent outline-none min-w-[3ch] text-slate-700 dark:text-slate-300"
               style={{ width: `${Math.max(3, item.length)}ch` }}
             />
-            <button type="button" onClick={() => onChange({ ...group, items: group.items.filter((_, j) => j !== i) })}
-              className="text-slate-400 hover:text-red-500 transition-colors">
+            <button
+              type="button"
+              onClick={() => onChange({ ...group, items: group.items.filter((_, j) => j !== i) })}
+              className="text-slate-400 hover:text-red-500 transition-colors cursor-pointer leading-none"
+            >
               ×
             </button>
           </span>
@@ -361,18 +444,24 @@ function SkillGroupCard({ group, onChange, onRemove }: {
         <button
           type="button"
           onClick={() => onChange({ ...group, items: [...group.items, ""] })}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-dashed border-slate-300 text-xs text-slate-500 hover:border-slate-400 hover:text-slate-600 transition-colors"
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 text-xs text-slate-500 dark:text-slate-400 hover:border-primary hover:text-primary transition-colors cursor-pointer"
         >
-          <Plus className="size-3" /> Add
+          <Plus className="size-3" /> Add skill
         </button>
       </div>
     </div>
   );
 }
 
-/* ── Shared primitives ── */
+/* ── Field (label + input) ── */
 
-function Field({ label, value, onChange, className, placeholder }: {
+function Field({
+  label,
+  value,
+  onChange,
+  className,
+  placeholder,
+}: {
   label: string;
   value: string;
   onChange: (v: string) => void;
@@ -381,16 +470,28 @@ function Field({ label, value, onChange, className, placeholder }: {
 }) {
   return (
     <div className={className}>
-      <Label className="text-[11px] text-muted-foreground mb-1 block">{label}</Label>
-      <Input
+      <FieldLabel>{label}</FieldLabel>
+      <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="text-sm"
         placeholder={placeholder || label}
+        className="w-full text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 h-9 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-primary transition-colors"
       />
     </div>
   );
 }
+
+/* ── Field label ── */
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="block text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-1.5">
+      {children}
+    </label>
+  );
+}
+
+/* ── Bullet list ── */
 
 function BulletList({ items, onChange, placeholder }: {
   items: string[];
@@ -398,10 +499,13 @@ function BulletList({ items, onChange, placeholder }: {
   placeholder: string;
 }) {
   return (
-    <div className="space-y-1.5 pl-6">
+    <div className="space-y-2">
+      {items.length > 0 && (
+        <FieldLabel>Responsibilities &amp; Achievements</FieldLabel>
+      )}
       {items.map((item, i) => (
-        <div key={i} className="flex items-start gap-1.5">
-          <span className="text-slate-400 mt-2 text-xs shrink-0">•</span>
+        <div key={i} className="flex items-start gap-2">
+          <span className="text-primary mt-2.5 text-xs shrink-0 font-bold">•</span>
           <Textarea
             value={item}
             onChange={(e) => {
@@ -410,29 +514,48 @@ function BulletList({ items, onChange, placeholder }: {
               onChange(next);
             }}
             rows={1}
-            className="text-sm flex-1 resize-none min-h-[32px]"
+            placeholder={placeholder}
+            className="text-sm flex-1 resize-none min-h-9 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-0 transition-colors placeholder:text-slate-400 rounded-lg"
           />
           <button
             type="button"
             onClick={() => onChange(items.filter((_, j) => j !== i))}
-            className="text-slate-400 hover:text-red-500 mt-1.5 shrink-0 transition-colors"
+            className="mt-1.5 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
           >
             <Trash2 className="size-3.5" />
           </button>
         </div>
       ))}
-      <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1 text-muted-foreground"
-        onClick={() => onChange([...items, ""])}>
+      <button
+        type="button"
+        onClick={() => onChange([...items, ""])}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-primary hover:text-primary transition-colors cursor-pointer"
+      >
         <Plus className="size-3" /> Add item
-      </Button>
+      </button>
     </div>
   );
 }
 
+/* ── Empty state ── */
+
+function EmptyState({ label }: { label: string }) {
+  return (
+    <div className="py-6 text-center text-sm text-slate-400 dark:text-slate-600 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
+      {label}
+    </div>
+  );
+}
+
+/* ── Remove button ── */
+
 function RemoveButton({ onClick }: { onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick}
-      className="text-slate-400 hover:text-red-500 p-1 shrink-0 transition-colors">
+    <button
+      type="button"
+      onClick={onClick}
+      className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
+    >
       <Trash2 className="size-3.5" />
     </button>
   );
