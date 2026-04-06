@@ -149,6 +149,13 @@ def extract_cv_html(cv_url: str) -> Optional[str]:
         )
 
     if ext == ".pdf":
+        # Use structured converter that detects headings, bullets, sections
+        from services.cv_pdf_html_converter import convert_pdf_to_html
+        result = convert_pdf_to_html(filepath)
+        if result:
+            return result
+
+        # Fallback: wrap plain text in <p> tags
         text = _extract_pdf(filepath)
         if not text:
             return None

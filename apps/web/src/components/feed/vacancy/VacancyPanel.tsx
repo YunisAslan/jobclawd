@@ -65,10 +65,13 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
     downloadDraft,
     documentSession,
     loadingSession,
-    convertingToDocs,
     errorSession,
-    convertSessionToDocx,
-    onSessionUpdated,
+    cvData,
+    updateCvData,
+    resetCvData,
+    generateAndDownloadPdf,
+    loadingParse,
+    generatingPdf,
     workspaceOpen,
     openWorkspace,
     closeWorkspace,
@@ -254,11 +257,9 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
         onOpenChange={(open) => { if (!open) closeWorkspace(); }}
         cvName={selectedCV?.name ?? ""}
         cvUrl={selectedCV?.url ?? ""}
-        draftText={draftText}
         draftHtml={draftHtml}
         loading={loadingDraft}
         downloading={downloadingDraft}
-        onDraftChange={updateDraft}
         onDraftHtmlChange={updateDraftHtml}
         onReset={resetDraft}
         onDownload={downloadDraft}
@@ -271,10 +272,13 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
         onResetSuggestion={resetSuggestion}
         documentSession={documentSession}
         loadingSession={loadingSession}
-        convertingToDocs={convertingToDocs}
         errorSession={errorSession}
-        onConvertToDocx={convertSessionToDocx}
-        onSessionUpdated={onSessionUpdated}
+        cvData={cvData}
+        onCvDataChange={updateCvData}
+        onCvDataReset={resetCvData}
+        onGeneratePdf={generateAndDownloadPdf}
+        loadingParse={loadingParse}
+        generatingPdf={generatingPdf}
       />
     </>
   );

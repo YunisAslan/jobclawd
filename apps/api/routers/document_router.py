@@ -1,8 +1,10 @@
-"""Router: Document session and PDF->DOCX conversion.
+"""Router: Document session, parsing, and PDF generation.
 
 POST /api/document/session                  - create edit session
 GET  /api/document/session/{id}             - get session status
 POST /api/document/convert-to-docx         - convert PDF to editable DOCX
+POST /api/document/parse                   - parse CV into structured JSON
+POST /api/document/generate                - generate PDF from structured JSON
 GET  /api/document/export/{session_id}     - download final DOCX
 GET  /api/files/cv/editable/{filename}     - serve editable DOCX files
 """
@@ -11,9 +13,10 @@ import asyncio
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
+from models.cv_schema import CVData
 from models.schemas import (
     CreateSessionRequest,
     DocumentSessionResponse,
@@ -36,10 +39,17 @@ _EDITABLE_DIR = Path(__file__).resolve().parent.parent / "uploads" / "cv" / "edi
 _EDITABLE_DIR.mkdir(parents=True, exist_ok=True)
 
 
-# -- Inline request model for convert endpoint --------------------------------
+# -- Request models ------------------------------------------------------------
 
 class _ConvertRequest(BaseModel):
     session_id: str
+
+class _ParseRequest(BaseModel):
+    cv_url: str
+
+class _GenerateRequest(BaseModel):
+    data: CVData
+    file_name: str | None = None
 
 
 # -- Session endpoints ---------------------------------------------------------
@@ -67,6 +77,61 @@ async def get_document_session(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found.")
     return _session_to_response(session)
+
+
+# -- Structured parsing --------------------------------------------------------
+
+@router.post("/document/parse")
+async def parse_cv_endpoint(
+    request: _ParseRequest,
+    email: str = Depends(get_current_email),
+):
+    """Parse a PDF/DOCX CV into structured CVData JSON."""
+    from services.cv_parser_service import parse_cv
+    from services.cv_extractor import CV_DIR
+
+    cv_url = request.cv_url
+    filename = cv_url.rstrip("/").split("/")[-1]
+
+    # Check both regular and editable directories
+    filepath = CV_DIR / filename
+    if not filepath.exists():
+        filepath = _EDITABLE_DIR / filename
+    if not filepath.exists():
+        raise HTTPException(status_code=404, detail="CV file not found.")
+
+    data = parse_cv(filepath)
+    if not data:
+        raise HTTPException(status_code=400, detail="Could not parse CV content.")
+
+    cv_name = filepath.stem.replace("-", " ").replace("_", " ").strip()
+    return {"data": data.model_dump(), "cv_name": cv_name}
+
+
+# -- PDF generation from structured data ---------------------------------------
+
+@router.post("/document/generate")
+async def generate_cv_endpoint(
+    request: _GenerateRequest,
+    email: str = Depends(get_current_email),
+):
+    """Generate a clean PDF from structured CVData."""
+    from services.cv_pdf_generator import generate_cv_pdf
+
+    try:
+        buf = generate_cv_pdf(request.data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {e}")
+
+    file_name = request.file_name or "cv"
+    if not file_name.endswith(".pdf"):
+        file_name += ".pdf"
+
+    return StreamingResponse(
+        buf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
+    )
 
 
 # -- PDF -> DOCX conversion ---------------------------------------------------
@@ -100,6 +165,65 @@ async def _do_conversion(session_id: str, cv_url: str):
         update_session(session_id, editable_url=editable_url, conversion_status="done")
     else:
         update_session(session_id, conversion_status="failed")
+
+
+# -- Extract HTML from converted DOCX -----------------------------------------
+
+@router.get("/document/extract-html/{session_id}")
+async def extract_html(
+    session_id: str,
+    email: str = Depends(get_current_email),
+):
+    """Return HTML representation of the converted DOCX for editing."""
+    session = get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    editable_url = session.get("editable_url")
+    if not editable_url:
+        raise HTTPException(status_code=400, detail="No editable file available yet.")
+
+    filename = editable_url.rstrip("/").split("/")[-1]
+    path = _EDITABLE_DIR / filename
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Converted file not found.")
+
+    # Use the HTML converter for faithful rendering
+    try:
+        from services.cv_html_converter import convert_docx_to_html
+        html = convert_docx_to_html(path)
+    except Exception:
+        html = None
+
+    if not html:
+        # Fallback: plain text wrapped in <p> tags
+        from services.cv_extractor import extract_cv_text as _extract_text
+        import html as _html_mod
+        # temporarily symlink-resolve to extract from editable dir
+        text = None
+        try:
+            import zipfile
+            from xml.etree import ElementTree as ET
+            with zipfile.ZipFile(path) as z:
+                xml_content = z.read("word/document.xml")
+            tree = ET.fromstring(xml_content)
+            ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+            paragraphs = tree.findall(".//w:p", ns)
+            lines = []
+            for p in paragraphs:
+                texts = p.findall(".//w:t", ns)
+                line = "".join(t.text or "" for t in texts)
+                if line.strip():
+                    lines.append(line)
+            text = "\n".join(lines) if lines else None
+        except Exception:
+            pass
+
+        if not text:
+            raise HTTPException(status_code=500, detail="Could not extract content from converted file.")
+        html = "".join(f"<p>{_html_mod.escape(line)}</p>" for line in text.splitlines() if line.strip())
+
+    return {"html": html, "cv_name": session.get("cv_name", "")}
 
 
 # -- Export --------------------------------------------------------------------

@@ -33,4 +33,11 @@ export type {
   DocumentSession,
   DocumentSourceType,
   DocumentConversionStatus,
+  CVData,
+  CVPersonalInfo,
+  CVExperienceEntry,
+  CVEducationEntry,
+  CVSkillGroup,
+  CVLanguageEntry,
+  CVCertificationEntry,
 } from "@jobclawd/shared";

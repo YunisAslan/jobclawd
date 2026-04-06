@@ -1,6 +1,6 @@
 import { API_BASE_URL, ENDPOINTS } from "@/lib/endpoints";
 import { APIService } from "@/services/api.service";
-import type { DocumentSession } from "@/types";
+import type { CVData, DocumentSession } from "@/types";
 
 function getAuthHeader(): Record<string, string> {
   if (typeof document === "undefined") return {};
@@ -51,6 +51,58 @@ class DocumentService extends APIService {
       await new Promise((r) => setTimeout(r, intervalMs));
     }
     throw new Error("Conversion timed out.");
+  }
+
+  async extractHtml(session_id: string): Promise<{ html: string; cv_name: string }> {
+    const res = await this.get(
+      `${ENDPOINTS.DOCUMENT_EXTRACT_HTML}/${session_id}`,
+      {},
+      { headers: getAuthHeader() },
+    );
+    return res.data;
+  }
+
+  async downloadExport(session_id: string, filename: string): Promise<void> {
+    const res = await this.get(
+      `${ENDPOINTS.DOCUMENT_EXPORT}/${session_id}`,
+      {},
+      { headers: getAuthHeader(), responseType: "blob" },
+    );
+    const blob = new Blob([res.data]);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async parseCv(cv_url: string): Promise<{ data: CVData; cv_name: string }> {
+    const res = await this.post(
+      ENDPOINTS.DOCUMENT_PARSE,
+      { cv_url },
+      { headers: getAuthHeader(), timeout: 30000 },
+    );
+    return res.data;
+  }
+
+  async generatePdf(data: CVData, file_name?: string): Promise<void> {
+    const res = await this.post(
+      ENDPOINTS.DOCUMENT_GENERATE,
+      { data, file_name },
+      { headers: getAuthHeader(), timeout: 30000, responseType: "blob" },
+    );
+    const blob = new Blob([res.data], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file_name ? `${file_name}.pdf` : "cv.pdf";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   }
 
   exportUrl(session_id: string): string {

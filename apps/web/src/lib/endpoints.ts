@@ -47,4 +47,7 @@ export const ENDPOINTS = {
   DOCUMENT_SESSION: "/api/document/session",
   DOCUMENT_CONVERT: "/api/document/convert-to-docx",
   DOCUMENT_EXPORT: "/api/document/export",
+  DOCUMENT_EXTRACT_HTML: "/api/document/extract-html",
+  DOCUMENT_PARSE: "/api/document/parse",
+  DOCUMENT_GENERATE: "/api/document/generate",
 } as const;

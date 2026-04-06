@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { cvMatchService } from "@/services/cv-match.service";
 import { documentService } from "@/services/document.service";
-import type { CVMatchAnalysis, CVSuggestion, CVSuggestionsResponse, DocumentSession } from "@/types";
+import type { CVData, CVMatchAnalysis, CVSuggestion, CVSuggestionsResponse, DocumentSession } from "@/types";
 
 interface CVMatchState {
   analysis: CVMatchAnalysis | null;
@@ -27,6 +27,11 @@ interface CVMatchState {
   loadingSession: boolean;
   convertingToDocs: boolean;
   errorSession: string | null;
+  // ── Structured CV data (for PDFs) ──
+  cvData: CVData | null;
+  originalCvData: CVData | null;
+  loadingParse: boolean;
+  generatingPdf: boolean;
 }
 
 export function useCVMatch() {
@@ -53,6 +58,10 @@ export function useCVMatch() {
     loadingSession: false,
     convertingToDocs: false,
     errorSession: null,
+    cvData: null,
+    originalCvData: null,
+    loadingParse: false,
+    generatingPdf: false,
   });
 
   async function analyze(jobUrl: string, cvUrl: string) {
@@ -133,6 +142,42 @@ export function useCVMatch() {
 
   function refreshDocumentSession(updated: DocumentSession) {
     setState((s) => ({ ...s, documentSession: updated }));
+  }
+
+  // ── Structured CV parsing & generation ──────────────────────────────────
+
+  async function parseCv(cvUrl: string) {
+    setState((s) => ({ ...s, loadingParse: true }));
+    try {
+      const { data, cv_name } = await documentService.parseCv(cvUrl);
+      setState((s) => ({
+        ...s,
+        cvData: data,
+        originalCvData: data,
+        draftFileName: cv_name || s.draftFileName,
+        loadingParse: false,
+      }));
+    } catch {
+      setState((s) => ({ ...s, loadingParse: false }));
+    }
+  }
+
+  function updateCvData(data: CVData) {
+    setState((s) => ({ ...s, cvData: data }));
+  }
+
+  function resetCvData() {
+    setState((s) => ({ ...s, cvData: s.originalCvData }));
+  }
+
+  async function generateAndDownloadPdf(fileName?: string) {
+    if (!state.cvData) return;
+    setState((s) => ({ ...s, generatingPdf: true }));
+    try {
+      await documentService.generatePdf(state.cvData, fileName || state.draftFileName || "cv");
+    } finally {
+      setState((s) => ({ ...s, generatingPdf: false }));
+    }
   }
 
   // ── Draft editing (fallback contentEditable for PDF-only / no ONLYOFFICE) ─
@@ -248,6 +293,10 @@ export function useCVMatch() {
       loadingSession: false,
       convertingToDocs: false,
       errorSession: null,
+      cvData: null,
+      originalCvData: null,
+      loadingParse: false,
+      generatingPdf: false,
     });
   }
 
@@ -265,6 +314,10 @@ export function useCVMatch() {
     rejectSuggestion,
     resetSuggestion,
     downloadDraft,
+    parseCv,
+    updateCvData,
+    resetCvData,
+    generateAndDownloadPdf,
     reset,
   };
 }

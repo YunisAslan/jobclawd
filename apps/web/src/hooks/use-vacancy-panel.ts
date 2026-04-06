@@ -59,7 +59,12 @@ export function useVacancyPanel(job: JobListing | null) {
     if (!existingSession || existingSession.preview_url !== selectedCV.url) {
       await cvMatch.openDocumentSession(selectedCV.url);
     }
-  }, [selectedCV?.url, cvMatch.documentSession, cvMatch.openDocumentSession]);
+    // Auto-parse PDF into structured data for the section editor
+    const isPdf = selectedCV.url.toLowerCase().endsWith(".pdf");
+    if (isPdf && !cvMatch.cvData && !cvMatch.loadingParse) {
+      cvMatch.parseCv(selectedCV.url);
+    }
+  }, [selectedCV?.url, cvMatch.documentSession, cvMatch.openDocumentSession, cvMatch.cvData, cvMatch.loadingParse, cvMatch.parseCv]);
 
   const closeWorkspace = useCallback(() => {
     setWorkspaceOpen(false);
@@ -156,6 +161,14 @@ export function useVacancyPanel(job: JobListing | null) {
     errorSession: cvMatch.errorSession,
     convertSessionToDocx: cvMatch.convertSessionToDocx,
     onSessionUpdated: cvMatch.refreshDocumentSession,
+    // Structured CV data (for PDFs)
+    cvData: cvMatch.cvData,
+    updateCvData: cvMatch.updateCvData,
+    resetCvData: cvMatch.resetCvData,
+    generateAndDownloadPdf: cvMatch.generateAndDownloadPdf,
+    loadingParse: cvMatch.loadingParse,
+    generatingPdf: cvMatch.generatingPdf,
+    parseCv: cvMatch.parseCv,
     // Workspace dialog control
     workspaceOpen,
     openWorkspace,

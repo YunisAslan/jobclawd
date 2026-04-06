@@ -339,6 +339,65 @@ export interface StatsResponse {
   cv_performance: CVPerformanceEntry[];
 }
 
+// ── Structured CV Data ──
+
+export interface CVPersonalInfo {
+  full_name: string;
+  email: string;
+  phone: string;
+  location: string;
+  linkedin: string;
+  portfolio: string;
+  summary: string;
+}
+
+export interface CVExperienceEntry {
+  id: string;
+  company: string;
+  title: string;
+  location: string;
+  start_date: string;
+  end_date: string;
+  bullets: string[];
+}
+
+export interface CVEducationEntry {
+  id: string;
+  institution: string;
+  degree: string;
+  field_of_study: string;
+  start_date: string;
+  end_date: string;
+  details: string[];
+}
+
+export interface CVSkillGroup {
+  category: string;
+  items: string[];
+}
+
+export interface CVLanguageEntry {
+  language: string;
+  level: string;
+}
+
+export interface CVCertificationEntry {
+  id: string;
+  name: string;
+  issuer: string;
+  date: string;
+}
+
+export interface CVData {
+  personal_info: CVPersonalInfo;
+  experience: CVExperienceEntry[];
+  education: CVEducationEntry[];
+  skills: CVSkillGroup[];
+  languages: CVLanguageEntry[];
+  certifications: CVCertificationEntry[];
+  additional_sections: Record<string, string[]>;
+}
+
 // ── Document Session ──
 
 export type DocumentSourceType = "pdf" | "docx";
