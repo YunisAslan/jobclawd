@@ -1,6 +1,5 @@
 """CV content extraction — extract text from uploaded PDF and DOCX files."""
 
-import html as _html
 import re
 import zipfile
 from pathlib import Path
@@ -115,54 +114,3 @@ def _normalize_text(parts: list[str]) -> Optional[str]:
     return "\n".join(lines) if lines else None
 
 
-def extract_cv_html(cv_url: str) -> Optional[str]:
-    """
-    Extract HTML content from a CV file given its URL path
-    (e.g. "/api/files/cv/abc123.docx").
-    For DOCX: uses faithful converter preserving fonts, colors, sizes, images.
-    For PDF: wraps plain text lines in <p> tags.
-    Returns None if the file cannot be read or parsed.
-    """
-    filename = cv_url.rstrip("/").split("/")[-1]
-    filepath = CV_DIR / filename
-
-    if not filepath.exists():
-        return None
-
-    ext = filepath.suffix.lower()
-
-    if ext == ".docx":
-        # python-docx based converter
-        from services.cv_html_converter import convert_docx_to_html
-        result = convert_docx_to_html(filepath)
-        if result:
-            return result
-
-        # Fallback: wrap plain text in <p> tags
-        text = extract_cv_text(cv_url)
-        if not text:
-            return None
-        return "".join(
-            f"<p>{_html.escape(line)}</p>"
-            for line in text.splitlines()
-            if line.strip()
-        )
-
-    if ext == ".pdf":
-        # Use structured converter that detects headings, bullets, sections
-        from services.cv_pdf_html_converter import convert_pdf_to_html
-        result = convert_pdf_to_html(filepath)
-        if result:
-            return result
-
-        # Fallback: wrap plain text in <p> tags
-        text = _extract_pdf(filepath)
-        if not text:
-            return None
-        return "".join(
-            f"<p>{_html.escape(line)}</p>"
-            for line in text.splitlines()
-            if line.strip()
-        )
-
-    return None

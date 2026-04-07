@@ -298,7 +298,6 @@ export interface CVSuggestionsResponse {
 export interface CVDraftResponse {
   text: string;
   file_name: string;
-  html?: string | null;
 }
 
 export interface CVAnalysisBundleResponse {
@@ -398,17 +397,3 @@ export interface CVData {
   additional_sections: Record<string, string[]>;
 }
 
-// ── Document Session ──
-
-export type DocumentSourceType = "pdf" | "docx";
-export type DocumentConversionStatus = "none" | "pending" | "done" | "failed";
-
-export interface DocumentSession {
-  session_id: string;
-  source_type: DocumentSourceType;
-  preview_url: string;
-  editable_url: string | null;
-  requires_conversion: boolean;
-  conversion_status: DocumentConversionStatus;
-  cv_name: string;
-}

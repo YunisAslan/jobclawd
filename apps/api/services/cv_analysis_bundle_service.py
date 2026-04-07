@@ -4,7 +4,6 @@ import asyncio
 
 from services.cv_analysis_shared import prepare_cv_analysis_inputs
 from services.cv_document_service import infer_cv_filename
-from services.cv_extractor import extract_cv_html
 from services.cv_match_service import compute_cv_match_from_data
 from services.cv_suggestions_service import generate_cv_suggestions_from_data
 
@@ -19,7 +18,6 @@ async def analyze_cv_bundle(job_url: str, cv_url: str) -> dict:
             "suggestions": _empty_suggestions(reason),
             "draft": {
                 "text": "",
-                "html": None,
                 "file_name": infer_cv_filename(cv_url),
             },
             "error_analysis": reason,
@@ -37,7 +35,6 @@ async def analyze_cv_bundle(job_url: str, cv_url: str) -> dict:
         "suggestions": suggestions,
         "draft": {
             "text": cv_text,
-            "html": extract_cv_html(cv_url),
             "file_name": infer_cv_filename(cv_url),
         },
         "error_analysis": analysis["summary"] if not analysis.get("categories") else None,

@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Textarea } from "@/components/ui/Textarea";
+import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/utils";
 import {
   Plus,
   Trash2,
@@ -29,6 +31,9 @@ import type {
 interface CVStructuredEditorProps {
   data: CVData;
   onChange: (data: CVData) => void;
+  /** When set, the editor scrolls to this section and highlights it briefly, then clears. */
+  highlightSection?: string | null;
+  onHighlightDone?: () => void;
 }
 
 /* ── Section icon map ── */
@@ -44,19 +49,34 @@ const SECTION_ICONS: Record<string, React.ReactNode> = {
 
 /* ── Main component ── */
 
-export default function CVStructuredEditor({ data, onChange }: CVStructuredEditorProps) {
+export default function CVStructuredEditor({ data, onChange, highlightSection, onHighlightDone }: CVStructuredEditorProps) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const update = useCallback(
     (patch: Partial<CVData>) => onChange({ ...data, ...patch }),
     [data, onChange],
   );
 
+  // Scroll to and highlight section when highlightSection changes
+  useEffect(() => {
+    if (!highlightSection) return;
+    const el = document.getElementById(highlightSection);
+    if (!el) { onHighlightDone?.(); return; }
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("cv-section-highlight");
+    const timer = setTimeout(() => {
+      el.classList.remove("cv-section-highlight");
+      onHighlightDone?.();
+    }, 1800);
+    return () => clearTimeout(timer);
+  }, [highlightSection, onHighlightDone]);
+
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-100 dark:bg-slate-950">
+    <div ref={scrollContainerRef} className="flex-1 overflow-y-auto bg-muted/40">
       <div className="px-5 py-6">
         <div className="mx-auto max-w-225 space-y-4">
 
           {/* Personal Information */}
-          <Section title="Personal Information">
+          <Section title="Personal Information" id="cv-section-personal">
             <div className="grid grid-cols-2 gap-3">
               <Field label="Full Name" value={data.personal_info.full_name}
                 onChange={(v) => update({ personal_info: { ...data.personal_info, full_name: v } })} />
@@ -77,7 +97,7 @@ export default function CVStructuredEditor({ data, onChange }: CVStructuredEdito
                 value={data.personal_info.summary}
                 onChange={(e) => update({ personal_info: { ...data.personal_info, summary: e.target.value } })}
                 rows={3}
-                className="text-sm resize-none bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-0 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-lg"
+                className="text-sm resize-none bg-background border-input focus:border-primary focus:ring-0 transition-colors placeholder:text-muted-foreground rounded-lg"
                 placeholder="Write a short professional summary..."
               />
             </div>
@@ -86,6 +106,7 @@ export default function CVStructuredEditor({ data, onChange }: CVStructuredEdito
           {/* Work Experience */}
           <Section
             title="Work Experience"
+            id="cv-section-experience"
             onAdd={() => update({ experience: [...data.experience, emptyExperience()] })}
           >
             <div className="space-y-3">
@@ -108,6 +129,7 @@ export default function CVStructuredEditor({ data, onChange }: CVStructuredEdito
           {/* Education */}
           <Section
             title="Education"
+            id="cv-section-education"
             onAdd={() => update({ education: [...data.education, emptyEducation()] })}
           >
             <div className="space-y-3">
@@ -130,6 +152,7 @@ export default function CVStructuredEditor({ data, onChange }: CVStructuredEdito
           {/* Skills */}
           <Section
             title="Skills"
+            id="cv-section-skills"
             onAdd={() => update({ skills: [...data.skills, { category: "", items: [] }] })}
           >
             <div className="space-y-3">
@@ -152,6 +175,7 @@ export default function CVStructuredEditor({ data, onChange }: CVStructuredEdito
           {/* Languages */}
           <Section
             title="Languages"
+            id="cv-section-languages"
             onAdd={() => update({ languages: [...data.languages, { language: "", level: "" }] })}
           >
             <div className="space-y-2">
@@ -188,6 +212,7 @@ export default function CVStructuredEditor({ data, onChange }: CVStructuredEdito
           {/* Certifications */}
           <Section
             title="Certifications"
+            id="cv-section-certifications"
             onAdd={() => update({ certifications: [...data.certifications, emptyCertification()] })}
           >
             <div className="space-y-2">
@@ -265,31 +290,33 @@ function Section({
   children,
   onAdd,
   icon,
+  id,
 }: {
   title: string;
   children: React.ReactNode;
   onAdd?: () => void;
   icon?: React.ReactNode;
+  id?: string;
 }) {
   const resolvedIcon = icon ?? SECTION_ICONS[title];
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+    <div id={id} className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm transition-shadow duration-500 [&.cv-section-highlight]:ring-2 [&.cv-section-highlight]:ring-primary [&.cv-section-highlight]:shadow-[0_0_20px_rgba(123,124,255,0.15)]">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60">
         <div className="flex items-center gap-2">
           {resolvedIcon && (
             <span className="flex items-center justify-center size-6 rounded-md bg-primary/10 text-primary">
               {resolvedIcon}
             </span>
           )}
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         </div>
         {onAdd && (
           <button
             type="button"
             onClick={onAdd}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-muted hover:bg-muted/70 text-muted-foreground transition-colors cursor-pointer"
           >
             <Plus className="size-3" /> Add
           </button>
@@ -309,10 +336,10 @@ function ExperienceCard({ entry, onChange, onRemove }: {
   onRemove: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 overflow-hidden">
+    <div className="rounded-xl border border-border bg-muted/30 overflow-hidden">
       {/* Card header row */}
       <div className="flex items-start gap-2 p-4 pb-3">
-        <GripVertical className="size-4 text-slate-300 dark:text-slate-600 mt-2.5 shrink-0 cursor-grab" />
+        <GripVertical className="size-4 text-muted-foreground/40 mt-2.5 shrink-0 cursor-grab" />
         <div className="flex-1 grid grid-cols-2 gap-2.5">
           <Field label="Job Title" value={entry.title}
             onChange={(v) => onChange({ ...entry, title: v })} />
@@ -330,7 +357,7 @@ function ExperienceCard({ entry, onChange, onRemove }: {
         <button
           type="button"
           onClick={onRemove}
-          className="mt-1 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
+          className="mt-1 p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
         >
           <Trash2 className="size-3.5" />
         </button>
@@ -355,9 +382,9 @@ function EducationCard({ entry, onChange, onRemove }: {
   onRemove: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 overflow-hidden">
+    <div className="rounded-xl border border-border bg-muted/30 overflow-hidden">
       <div className="flex items-start gap-2 p-4 pb-3">
-        <GripVertical className="size-4 text-slate-300 dark:text-slate-600 mt-2.5 shrink-0 cursor-grab" />
+        <GripVertical className="size-4 text-muted-foreground/40 mt-2.5 shrink-0 cursor-grab" />
         <div className="flex-1 grid grid-cols-2 gap-2.5">
           <Field label="Institution" value={entry.institution}
             onChange={(v) => onChange({ ...entry, institution: v })} />
@@ -375,7 +402,7 @@ function EducationCard({ entry, onChange, onRemove }: {
         <button
           type="button"
           onClick={onRemove}
-          className="mt-1 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
+          className="mt-1 p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
         >
           <Trash2 className="size-3.5" />
         </button>
@@ -399,18 +426,18 @@ function SkillGroupCard({ group, onChange, onRemove }: {
   onRemove: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4 space-y-3">
+    <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <input
+        <Input
           value={group.category}
           onChange={(e) => onChange({ ...group, category: e.target.value })}
           placeholder="Category (e.g. Frontend, Tools, Frameworks)"
-          className="flex-1 text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-primary transition-colors"
+          className="flex-1 text-sm font-semibold"
         />
         <button
           type="button"
           onClick={onRemove}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
         >
           <Trash2 className="size-3.5" />
         </button>
@@ -420,7 +447,7 @@ function SkillGroupCard({ group, onChange, onRemove }: {
         {group.items.map((item, i) => (
           <span
             key={i}
-            className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300"
+            className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-lg bg-background border border-border text-xs text-foreground"
           >
             <input
               value={item}
@@ -429,13 +456,13 @@ function SkillGroupCard({ group, onChange, onRemove }: {
                 next[i] = e.target.value;
                 onChange({ ...group, items: next });
               }}
-              className="bg-transparent outline-none min-w-[3ch] text-slate-700 dark:text-slate-300"
+              className="bg-transparent outline-none min-w-[3ch] text-foreground"
               style={{ width: `${Math.max(3, item.length)}ch` }}
             />
             <button
               type="button"
               onClick={() => onChange({ ...group, items: group.items.filter((_, j) => j !== i) })}
-              className="text-slate-400 hover:text-red-500 transition-colors cursor-pointer leading-none"
+              className="text-muted-foreground hover:text-destructive transition-colors cursor-pointer leading-none"
             >
               ×
             </button>
@@ -444,7 +471,7 @@ function SkillGroupCard({ group, onChange, onRemove }: {
         <button
           type="button"
           onClick={() => onChange({ ...group, items: [...group.items, ""] })}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 text-xs text-slate-500 dark:text-slate-400 hover:border-primary hover:text-primary transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
         >
           <Plus className="size-3" /> Add skill
         </button>
@@ -471,11 +498,11 @@ function Field({
   return (
     <div className={className}>
       <FieldLabel>{label}</FieldLabel>
-      <input
+      <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder || label}
-        className="w-full text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 h-9 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-primary transition-colors"
+        className="text-sm h-9"
       />
     </div>
   );
@@ -485,7 +512,7 @@ function Field({
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <label className="block text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-1.5">
+    <label className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
       {children}
     </label>
   );
@@ -515,12 +542,12 @@ function BulletList({ items, onChange, placeholder }: {
             }}
             rows={1}
             placeholder={placeholder}
-            className="text-sm flex-1 resize-none min-h-9 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-0 transition-colors placeholder:text-slate-400 rounded-lg"
+            className="text-sm flex-1 resize-none min-h-9 bg-background border-input focus:border-primary focus:ring-0 transition-colors placeholder:text-muted-foreground rounded-lg"
           />
           <button
             type="button"
             onClick={() => onChange(items.filter((_, j) => j !== i))}
-            className="mt-1.5 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
+            className="mt-1.5 p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
           >
             <Trash2 className="size-3.5" />
           </button>
@@ -529,7 +556,7 @@ function BulletList({ items, onChange, placeholder }: {
       <button
         type="button"
         onClick={() => onChange([...items, ""])}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-primary hover:text-primary transition-colors cursor-pointer"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
       >
         <Plus className="size-3" /> Add item
       </button>
@@ -541,7 +568,7 @@ function BulletList({ items, onChange, placeholder }: {
 
 function EmptyState({ label }: { label: string }) {
   return (
-    <div className="py-6 text-center text-sm text-slate-400 dark:text-slate-600 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
+    <div className="py-6 text-center text-sm text-muted-foreground border border-dashed border-border rounded-xl">
       {label}
     </div>
   );
@@ -554,7 +581,7 @@ function RemoveButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
+      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
     >
       <Trash2 className="size-3.5" />
     </button>

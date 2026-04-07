@@ -42,18 +42,6 @@ class SuggestionPriority(str, Enum):
     low = "low"
 
 
-class DocumentSourceType(str, Enum):
-    pdf = "pdf"
-    docx = "docx"
-
-
-class DocumentConversionStatus(str, Enum):
-    none = "none"
-    pending = "pending"
-    done = "done"
-    failed = "failed"
-
-
 class SuggestionCategory(str, Enum):
     add_keywords = "add_keywords"
     rewrite_bullets = "rewrite_bullets"
@@ -390,7 +378,6 @@ class CVDraftRequest(BaseModel):
 class CVDraftResponse(BaseModel):
     text: str
     file_name: str = ""
-    html: Optional[str] = None
 
 class CVExportRequest(BaseModel):
     cv_url: str
@@ -418,18 +405,3 @@ class CVAnalysisBundleResponse(BaseModel):
     error_analysis: Optional[str] = None
     error_suggestions: Optional[str] = None
     error_draft: Optional[str] = None
-
-
-# ---------- Document Session ----------
-
-class CreateSessionRequest(BaseModel):
-    cv_url: str
-
-class DocumentSessionResponse(BaseModel):
-    session_id: str
-    source_type: DocumentSourceType
-    preview_url: str                          # always the original file URL
-    editable_url: Optional[str] = None       # editable DOCX URL (after conversion for PDF)
-    requires_conversion: bool                 # PDF needs explicit conversion
-    conversion_status: DocumentConversionStatus
-    cv_name: str = ""

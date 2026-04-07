@@ -50,22 +50,17 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
     loadingSuggestions,
     errorSuggestions,
     draftText,
-    draftHtml,
     loadingDraft,
     downloadingDraft,
     suggestionActions,
     analyzed,
     updateDraft,
-    updateDraftHtml,
     resetDraft,
     acceptSuggestion,
     undoAcceptSuggestion,
     rejectSuggestion,
     resetSuggestion,
     downloadDraft,
-    documentSession,
-    loadingSession,
-    errorSession,
     cvData,
     updateCvData,
     resetCvData,
@@ -211,11 +206,11 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
                   size="sm"
                   className="flex-1 gap-2"
                   onClick={openWorkspace}
-                  disabled={loadingSession}
+                  disabled={loadingParse}
                 >
                   <PencilLine className="size-3.5" />
                   <span className="text-xs">
-                    {loadingSession ? "Opening…" : "Edit CV"}
+                    {loadingParse ? "Parsing…" : "Edit CV"}
                   </span>
                 </Button>
               )}
@@ -257,12 +252,6 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
         onOpenChange={(open) => { if (!open) closeWorkspace(); }}
         cvName={selectedCV?.name ?? ""}
         cvUrl={selectedCV?.url ?? ""}
-        draftHtml={draftHtml}
-        loading={loadingDraft}
-        downloading={downloadingDraft}
-        onDraftHtmlChange={updateDraftHtml}
-        onReset={resetDraft}
-        onDownload={downloadDraft}
         suggestions={suggestions}
         loadingSuggestions={loadingSuggestions}
         suggestionActions={suggestionActions}
@@ -270,9 +259,6 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
         onUndoAcceptSuggestion={undoAcceptSuggestion}
         onRejectSuggestion={rejectSuggestion}
         onResetSuggestion={resetSuggestion}
-        documentSession={documentSession}
-        loadingSession={loadingSession}
-        errorSession={errorSession}
         cvData={cvData}
         onCvDataChange={updateCvData}
         onCvDataReset={resetCvData}

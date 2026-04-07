@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -16,23 +16,11 @@ import {
   RotateCcw,
   PenLine,
   Eye,
-  FileType,
+  Sparkles,
 } from "lucide-react";
-import type { CVData, CVSuggestion, CVSuggestionsResponse, DocumentSession } from "@/types";
-import { API_BASE_URL } from "@/lib/endpoints";
+import type { CVData, CVSuggestion, CVSuggestionsResponse } from "@/types";
 import WorkspaceSuggestions from "./WorkspaceSuggestions";
 import CVStructuredEditor from "./CVStructuredEditor";
-
-/* ── Shared editor/preview styling ── */
-const CV_EDITOR_CLASSES = [
-  "outline-none min-h-96 px-10 py-8 text-slate-900",
-  "[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-0.5",
-  "[&_img]:max-w-full [&_a]:underline",
-  "[&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mb-2 [&_h1]:mt-0",
-  "[&_h2]:text-lg [&_h2]:font-bold [&_h2]:mb-1.5 [&_h2]:mt-4 [&_h2]:text-slate-800",
-  "[&_h2]:border-b [&_h2]:border-slate-200 [&_h2]:pb-1",
-  "[&_p]:mb-0.5 [&_ul]:mb-2 [&_ol]:mb-2",
-].join(" ");
 
 /* ── Props ── */
 
@@ -41,12 +29,6 @@ interface CVWorkspaceDialogProps {
   onOpenChange: (open: boolean) => void;
   cvName: string;
   cvUrl: string;
-  draftHtml: string;
-  loading: boolean;
-  downloading: boolean;
-  onDraftHtmlChange: (html: string) => void;
-  onReset: () => void;
-  onDownload: () => void | Promise<void>;
   suggestions: CVSuggestionsResponse | null;
   loadingSuggestions: boolean;
   suggestionActions: Record<number, "accepted" | "rejected">;
@@ -54,10 +36,7 @@ interface CVWorkspaceDialogProps {
   onUndoAcceptSuggestion: (index: number) => void;
   onRejectSuggestion: (index: number) => void;
   onResetSuggestion: (index: number) => void;
-  documentSession: DocumentSession | null;
-  loadingSession: boolean;
-  errorSession: string | null;
-  // Structured CV data (for PDFs)
+  // Structured CV data
   cvData: CVData | null;
   onCvDataChange: (data: CVData) => void;
   onCvDataReset: () => void;
@@ -73,12 +52,6 @@ export default function CVWorkspaceDialog({
   onOpenChange,
   cvName,
   cvUrl,
-  draftHtml,
-  loading,
-  downloading,
-  onDraftHtmlChange,
-  onReset,
-  onDownload,
   suggestions,
   loadingSuggestions,
   suggestionActions,
@@ -86,9 +59,6 @@ export default function CVWorkspaceDialog({
   onUndoAcceptSuggestion,
   onRejectSuggestion,
   onResetSuggestion,
-  documentSession,
-  loadingSession,
-  errorSession,
   cvData,
   onCvDataChange,
   onCvDataReset,
@@ -98,34 +68,26 @@ export default function CVWorkspaceDialog({
 }: CVWorkspaceDialogProps) {
   const fileType = inferCVFileType(cvUrl);
   const isPdf = fileType === "pdf";
-  const isDocx = fileType === "docx";
-  // PDF with structured data uses the section editor
-  const pdfStructured = isPdf && !!cvData;
-  // Fallback: PDF with HTML text (no structured data yet)
-  const pdfEditable = isPdf && !cvData && !!draftHtml;
+  const hasStructuredData = !!cvData;
 
   const [viewMode, setViewMode] = useState<"edit" | "preview">("edit");
+  const [highlightSection, setHighlightSection] = useState<string | null>(null);
   const [prevOpen, setPrevOpen] = useState(open);
   if (prevOpen !== open) {
     setPrevOpen(open);
-    if (!open) setViewMode("edit");
+    if (!open) { setViewMode("edit"); setHighlightSection(null); }
   }
 
-  function handleDownload() {
-    if (pdfStructured) {
-      onGeneratePdf();
-    } else {
-      onDownload();
-    }
-  }
+  const handleAppliedScrollTarget = useCallback((sectionId: string) => {
+    // Ensure we're in edit mode so the editor is visible
+    setViewMode("edit");
+    // Use a small delay to let React re-render if switching from preview
+    setTimeout(() => setHighlightSection(sectionId), 50);
+  }, []);
 
-  function handleReset() {
-    if (pdfStructured) {
-      onCvDataReset();
-    } else {
-      onReset();
-    }
-  }
+  const handleHighlightDone = useCallback(() => {
+    setHighlightSection(null);
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -147,29 +109,57 @@ export default function CVWorkspaceDialog({
 
           <div className="flex items-center gap-2 shrink-0 pr-8">
             <Badge variant="outline" className="text-[10px] font-medium hidden sm:inline-flex">
-              {isPdf ? "PDF" : isDocx ? "DOCX" : "External"}
+              {isPdf ? "PDF" : fileType === "docx" ? "DOCX" : "External"}
             </Badge>
 
-            {(isDocx || pdfEditable || pdfStructured) && <ViewToggle value={viewMode} onChange={setViewMode} previewLabel={isPdf ? "View PDF" : "Preview original"} />}
+            {hasStructuredData && (
+              <ViewToggle value={viewMode} onChange={setViewMode} previewLabel={isPdf ? "View PDF" : "Preview"} />
+            )}
 
             <div className="h-4 w-px bg-border/40 hidden sm:block" />
-            {(isDocx || pdfEditable || pdfStructured) && (
-              <Button type="button" size="sm" variant="outline" className="gap-1.5" onClick={handleReset} disabled={loading}>
+            {hasStructuredData && (
+              <Button type="button" size="sm" variant="outline" className="gap-1.5" onClick={onCvDataReset}>
                 <RotateCcw className="size-3.5" /><span className="hidden sm:inline">Reset</span>
               </Button>
             )}
-            <Button type="button" size="sm" className="gap-1.5" onClick={handleDownload}
-              disabled={loading || downloading || generatingPdf}>
+            <Button type="button" size="sm" className="gap-1.5" onClick={() => onGeneratePdf()}
+              disabled={!hasStructuredData || generatingPdf}>
               <Download className="size-3.5" />
-              {generatingPdf ? "Generating…" : downloading ? "Preparing…" : "Download"}
+              {generatingPdf ? "Generating…" : "Download PDF"}
             </Button>
           </div>
         </header>
 
+        {/* ── ATS info banner ── */}
+        {hasStructuredData && viewMode === "edit" && (
+          <div className="flex items-start gap-3 px-5 py-3 bg-primary/5 border-b border-primary/10 shrink-0">
+            <Sparkles className="size-4 text-primary shrink-0 mt-0.5" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-foreground mb-1.5">
+                Your CV is parsed — here's what you can do:
+              </p>
+              <div className="flex flex-wrap gap-x-5 gap-y-1">
+                {[
+                  { num: "1", text: "Edit fields below → Download a clean ATS-friendly PDF" },
+                  { num: "2", text: "Copy any suggestion → Paste into your own CV file" },
+                  { num: "3", text: "Read the reasoning → Rewrite your CV in your own words" },
+                ].map(({ num, text }) => (
+                  <div key={num} className="flex items-center gap-1.5">
+                    <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[9px] font-bold text-primary">
+                      {num}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">{text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Body ── */}
         <div className="flex-1 min-h-0 overflow-hidden flex">
 
-          {/* Suggestions */}
+          {/* Suggestions sidebar */}
           <WorkspaceSuggestions
             suggestions={suggestions}
             loading={loadingSuggestions}
@@ -178,58 +168,38 @@ export default function CVWorkspaceDialog({
             onUndo={onUndoAcceptSuggestion}
             onReject={onRejectSuggestion}
             onReset={onResetSuggestion}
+            onAppliedScrollTarget={handleAppliedScrollTarget}
           />
 
           {/* Document area */}
-          <div className="flex-1 min-w-0 overflow-hidden flex flex-col bg-slate-100">
-            {/* PDF: before parse completes, show iframe */}
-            {isPdf && !pdfStructured && !pdfEditable && (
-              loadingParse
-                ? <Spinner label="Parsing CV structure…" />
-                : <PdfFlow cvUrl={cvUrl} />
+          <div className="flex-1 min-w-0 overflow-hidden flex flex-col bg-muted/40">
+            {/* Loading: parsing CV structure */}
+            {loadingParse && !hasStructuredData && (
+              <Spinner label="Parsing CV structure…" />
             )}
 
-            {/* PDF structured editor (section-based) */}
-            {pdfStructured && viewMode === "edit" && (
-              <CVStructuredEditor data={cvData!} onChange={onCvDataChange} />
-            )}
-
-            {/* PDF fallback: raw HTML editor (if structured parse failed) */}
-            {pdfEditable && viewMode === "edit" && (
-              <DocxEditor
-                draftHtml={draftHtml}
-                loading={loading}
-                loadingSession={loadingSession}
-                error={errorSession}
-                onDraftHtmlChange={onDraftHtmlChange}
+            {/* Structured editor */}
+            {hasStructuredData && viewMode === "edit" && (
+              <CVStructuredEditor
+                data={cvData!}
+                onChange={onCvDataChange}
+                highlightSection={highlightSection}
+                onHighlightDone={handleHighlightDone}
               />
             )}
 
-            {/* DOCX editor */}
-            {isDocx && viewMode === "edit" && (
-              <DocxEditor
-                draftHtml={draftHtml}
-                loading={loading}
-                loadingSession={loadingSession}
-                error={errorSession}
-                onDraftHtmlChange={onDraftHtmlChange}
-              />
-            )}
-
-            {/* Preview: DOCX shows read-only HTML, PDF shows native iframe */}
-            {isDocx && viewMode === "preview" && (
-              <DocxPreview draftHtml={draftHtml} />
-            )}
-            {(pdfStructured || pdfEditable) && viewMode === "preview" && (
+            {/* PDF preview */}
+            {hasStructuredData && viewMode === "preview" && (
               <div className="flex-1 overflow-hidden">
                 <iframe src={resolveCVUrl(cvUrl)} className="w-full h-full border-0" title="CV Preview" />
               </div>
             )}
 
-            {fileType === "link" && (
+            {/* No data and not loading */}
+            {!hasStructuredData && !loadingParse && (
               <div className="flex-1 flex flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
                 <FileText className="size-10 opacity-30" />
-                <p>Preview is not available for externally linked CVs.</p>
+                <p>Could not parse CV structure. Try re-uploading.</p>
               </div>
             )}
           </div>
@@ -243,7 +213,7 @@ export default function CVWorkspaceDialog({
    Sub-components
    ══════════════════════════════════════════════════════════════════════════════ */
 
-function ViewToggle({ value, onChange, previewLabel = "Preview original" }: { value: "edit" | "preview"; onChange: (v: "edit" | "preview") => void; previewLabel?: string }) {
+function ViewToggle({ value, onChange, previewLabel = "Preview" }: { value: "edit" | "preview"; onChange: (v: "edit" | "preview") => void; previewLabel?: string }) {
   return (
     <div className="flex items-center rounded-lg border border-border/50 bg-muted/30 p-0.5 gap-0.5">
       {([
@@ -260,148 +230,11 @@ function ViewToggle({ value, onChange, previewLabel = "Preview original" }: { va
   );
 }
 
-/* ── PDF flow (shown before analysis extracts text) ── */
-
-function PdfFlow({ cvUrl }: { cvUrl: string }) {
-  return (
-    <div className="flex-1 overflow-hidden flex flex-col">
-      <div className="px-4 py-2.5 flex items-center gap-3 text-xs shrink-0 bg-amber-50 border-b border-amber-100">
-        <FileType className="size-3.5 text-amber-600 shrink-0" />
-        <span className="text-amber-800">Run CV analysis from the sidebar to enable editing.</span>
-      </div>
-      <div className="flex-1 overflow-hidden">
-        <iframe src={resolveCVUrl(cvUrl)} className="w-full h-full border-0" title="CV Preview" />
-      </div>
-    </div>
-  );
-}
-
-/* ── DOCX editor (contentEditable HTML) ── */
-
-function DocxEditor({
-  draftHtml, loading, loadingSession, error, onDraftHtmlChange,
-}: {
-  draftHtml: string;
-  loading: boolean;
-  loadingSession: boolean;
-  error: string | null;
-  onDraftHtmlChange: (html: string) => void;
-}) {
-  const editorRef = useRef<HTMLDivElement>(null);
-  const lastExternalHtml = useRef(draftHtml);
-
-  // When draftHtml changes externally (e.g. suggestion accepted), patch the DOM
-  // without remounting so the cursor isn't destroyed during normal typing.
-  useEffect(() => {
-    if (!editorRef.current) return;
-    if (draftHtml !== lastExternalHtml.current) {
-      // Only overwrite DOM if the change didn't come from user input
-      if (editorRef.current.innerHTML !== draftHtml) {
-        editorRef.current.innerHTML = draftHtml || "";
-      }
-      lastExternalHtml.current = draftHtml;
-    }
-  }, [draftHtml]);
-
-  // Set initial HTML on mount
-  useEffect(() => {
-    if (editorRef.current && draftHtml) {
-      editorRef.current.innerHTML = draftHtml;
-      lastExternalHtml.current = draftHtml;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function handleInput() {
-    const html = editorRef.current?.innerHTML ?? "";
-    lastExternalHtml.current = html;
-    onDraftHtmlChange(html);
-  }
-
-  if (loadingSession) return <Spinner label="Opening editor…" />;
-
-  return (
-    <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-      <div className="flex-1 overflow-y-auto">
-        {loading ? (
-          <Spinner label="Loading editor…" />
-        ) : (
-          <div className="px-6 py-8">
-            <div className="mx-auto max-w-225 mb-3"><FallbackToolbar /></div>
-            <div className="mx-auto max-w-225 bg-white shadow-[0_2px_16px_rgba(0,0,0,0.09)] overflow-hidden">
-              <div
-                ref={editorRef}
-                contentEditable
-                suppressContentEditableWarning
-                onInput={handleInput}
-                className={CV_EDITOR_CLASSES}
-                style={{ fontSize: "11pt", lineHeight: "1.5", color: "#111827" }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-      {error && (
-        <div className="px-4 py-2 text-xs text-red-600 bg-red-50 border-t border-red-100 shrink-0">{error}</div>
-      )}
-    </div>
-  );
-}
-
-/* ── DOCX preview (read-only HTML render) ── */
-
-function DocxPreview({ draftHtml }: { draftHtml: string }) {
-  return (
-    <div className="flex-1 overflow-auto">
-      <div className="px-6 py-8 min-h-full">
-        <div className="mx-auto max-w-225 bg-white shadow-[0_2px_16px_rgba(0,0,0,0.09)] overflow-hidden">
-          <div
-            className={CV_EDITOR_CLASSES}
-            style={{ fontSize: "11pt", lineHeight: "1.5", color: "#111827" }}
-            dangerouslySetInnerHTML={{ __html: draftHtml || "" }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Shared ── */
-
 function Spinner({ label = "Loading…" }: { label?: string }) {
   return (
     <div className="flex-1 flex items-center justify-center h-full gap-2 text-sm text-muted-foreground">
       <div className="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
       {label}
-    </div>
-  );
-}
-
-function FallbackToolbar() {
-  return (
-    <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 shadow-sm w-fit">
-      {[
-        { label: "B", cmd: "bold", style: "font-bold" },
-        { label: "I", cmd: "italic", style: "italic" },
-        { label: "U", cmd: "underline", style: "underline" },
-      ].map(({ label, cmd, style }) => (
-        <button key={cmd} type="button"
-          onMouseDown={(e) => { e.preventDefault(); document.execCommand(cmd); }}
-          className={`w-7 h-7 rounded text-xs border border-slate-200 hover:bg-slate-100 text-slate-600 flex items-center justify-center ${style}`}>
-          {label}
-        </button>
-      ))}
-      <div className="w-px h-4 bg-slate-200 mx-1" />
-      {[
-        { label: "• List", cmd: "insertUnorderedList" },
-        { label: "1. List", cmd: "insertOrderedList" },
-      ].map(({ label, cmd }) => (
-        <button key={cmd} type="button"
-          onMouseDown={(e) => { e.preventDefault(); document.execCommand(cmd); }}
-          className="px-2 h-7 rounded text-xs border border-slate-200 hover:bg-slate-100 text-slate-600">
-          {label}
-        </button>
-      ))}
     </div>
   );
 }

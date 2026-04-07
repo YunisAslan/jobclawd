@@ -4,15 +4,16 @@ from io import BytesIO
 import html as _html
 import re
 from pathlib import Path
+from typing import Optional
 
 from services.cv_extractor import extract_cv_text
 
 
-def extract_cv_draft(cv_url: str) -> str | None:
+def extract_cv_draft(cv_url: str) -> Optional[str]:
     return extract_cv_text(cv_url)
 
 
-def build_cv_export(content: str, source_name: str | None = None) -> tuple[BytesIO, str, str]:
+def build_cv_export(content: str, source_name: Optional[str] = None) -> tuple[BytesIO, str, str]:
     if _is_html_content(content):
         return _build_word_html_export_from_html(content, source_name)
 
@@ -43,12 +44,12 @@ def infer_cv_filename(cv_url: str) -> str:
     return _slugify(raw_name)
 
 
-def _build_filename(source_name: str | None) -> str:
+def _build_filename(source_name: Optional[str]) -> str:
     base = _slugify(source_name or "updated-cv")
     return f"{base}.docx"
 
 
-def _build_word_html_export(content: str, source_name: str | None = None) -> tuple[BytesIO, str, str]:
+def _build_word_html_export(content: str, source_name: Optional[str] = None) -> tuple[BytesIO, str, str]:
     base = _slugify(source_name or "updated-cv")
     body_parts = []
 
@@ -92,7 +93,7 @@ def _is_html_content(content: str) -> bool:
     return any(tag in stripped for tag in ("<p>", "<ul>", "<h", "<li>"))
 
 
-def _build_word_html_export_from_html(html_content: str, source_name: str | None = None) -> tuple[BytesIO, str, str]:
+def _build_word_html_export_from_html(html_content: str, source_name: Optional[str] = None) -> tuple[BytesIO, str, str]:
     """Wrap rich HTML content in a Word-compatible HTML document.
 
     The HTML content already has inline styles preserving fonts, colors, and

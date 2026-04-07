@@ -5,7 +5,7 @@ import { savedVacanciesService } from "@/services/saved-vacancies.service";
 import { profileService } from "@/services/profile.service";
 import { jobsService } from "@/services/jobs.service";
 import { useCVMatch } from "@/hooks/use-cv-match";
-import type { JobListing, CVLink, DocumentSession } from "@/types";
+import type { JobListing, CVLink } from "@/types";
 
 export type VacancyTab = "overview" | "improve";
 
@@ -50,27 +50,21 @@ export function useVacancyPanel(job: JobListing | null) {
     cvMatch.analyze(job.url, selectedCV.url);
   }, [job?.url, selectedCV?.url]);
 
-  // Open workspace: create document session then open dialog
+  // Open workspace: parse CV into structured JSON, then open dialog
   const openWorkspace = useCallback(async () => {
     if (!selectedCV?.url) return;
     setWorkspaceOpen(true);
-    // Create a new session if none exists or if the CV changed
-    const existingSession = cvMatch.documentSession;
-    if (!existingSession || existingSession.preview_url !== selectedCV.url) {
-      await cvMatch.openDocumentSession(selectedCV.url);
-    }
-    // Auto-parse PDF into structured data for the section editor
-    const isPdf = selectedCV.url.toLowerCase().endsWith(".pdf");
-    if (isPdf && !cvMatch.cvData && !cvMatch.loadingParse) {
+    // Auto-parse into structured data for the section editor
+    if (!cvMatch.cvData && !cvMatch.loadingParse) {
       cvMatch.parseCv(selectedCV.url);
     }
-  }, [selectedCV?.url, cvMatch.documentSession, cvMatch.openDocumentSession, cvMatch.cvData, cvMatch.loadingParse, cvMatch.parseCv]);
+  }, [selectedCV?.url, cvMatch.cvData, cvMatch.loadingParse, cvMatch.parseCv]);
 
   const closeWorkspace = useCallback(() => {
     setWorkspaceOpen(false);
   }, []);
 
-  // When user changes CV, reset analysis + clear session
+  // When user changes CV, reset analysis
   const handleCVChange = useCallback((cv: CVLink | null) => {
     setSelectedCV(cv);
     cvMatch.reset();
@@ -139,7 +133,6 @@ export function useVacancyPanel(job: JobListing | null) {
     errorSuggestions: cvMatch.errorSuggestions,
     draftText: cvMatch.draftText,
     originalDraftText: cvMatch.originalDraftText,
-    draftHtml: cvMatch.draftHtml,
     loadingDraft: cvMatch.loadingDraft,
     errorDraft: cvMatch.errorDraft,
     downloadingDraft: cvMatch.downloadingDraft,
@@ -147,21 +140,13 @@ export function useVacancyPanel(job: JobListing | null) {
     suggestionActions: cvMatch.suggestionActions,
     analyzed: cvMatch.analyzed,
     updateDraft: cvMatch.updateDraft,
-    updateDraftHtml: cvMatch.updateDraftHtml,
     resetDraft: cvMatch.resetDraft,
     acceptSuggestion: cvMatch.acceptSuggestion,
     undoAcceptSuggestion: cvMatch.undoAcceptSuggestion,
     rejectSuggestion: cvMatch.rejectSuggestion,
     resetSuggestion: cvMatch.resetSuggestion,
     downloadDraft: () => (selectedCV?.url ? cvMatch.downloadDraft(selectedCV.url) : Promise.resolve()),
-    // Document session
-    documentSession: cvMatch.documentSession,
-    loadingSession: cvMatch.loadingSession,
-    convertingToDocs: cvMatch.convertingToDocs,
-    errorSession: cvMatch.errorSession,
-    convertSessionToDocx: cvMatch.convertSessionToDocx,
-    onSessionUpdated: cvMatch.refreshDocumentSession,
-    // Structured CV data (for PDFs)
+    // Structured CV data
     cvData: cvMatch.cvData,
     updateCvData: cvMatch.updateCvData,
     resetCvData: cvMatch.resetCvData,
