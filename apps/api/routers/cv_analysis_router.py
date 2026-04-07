@@ -9,12 +9,14 @@ from models.schemas import (
     CVExportRequest,
     CVMatchRequest,
     CVMatchResponse,
+    CVMatchTextRequest,
     CVSuggestionRequest,
     CVSuggestionsResponse,
 )
 from services.cv_analysis_bundle_service import analyze_cv_bundle
+from services.cv_analysis_shared import gather_job_context
 from services.cv_document_service import build_cv_export, extract_cv_draft, infer_cv_filename
-from services.cv_match_service import compute_cv_match
+from services.cv_match_service import compute_cv_match, compute_cv_match_from_data
 from services.cv_suggestions_service import generate_cv_suggestions
 from utils.auth_utils import get_current_email
 
@@ -27,6 +29,18 @@ async def cv_match(
     email: str = Depends(get_current_email),
 ):
     result = await compute_cv_match(request.job_url, request.cv_url)
+    return result
+
+
+@router.post("/cv-match/preview", response_model=CVMatchResponse)
+async def cv_match_preview(
+    request: CVMatchTextRequest,
+    email: str = Depends(get_current_email),
+):
+    job_context = await gather_job_context(request.job_url)
+    if not job_context:
+        raise HTTPException(status_code=400, detail="Could not fetch job details.")
+    result = await compute_cv_match_from_data(job_context, request.cv_text, deterministic=True)
     return result
 
 

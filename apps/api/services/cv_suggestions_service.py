@@ -38,7 +38,7 @@ For each suggestion provide:
 - specific_text: the current text from the CV that should change (null if adding new content)
 - suggested_text: the recommended replacement or addition
 
-Return 5-10 suggestions, sorted by priority (high first).
+Return 10-15 suggestions, sorted by priority (high first). Be thorough — cover keywords, bullet rewrites, headline, and experience gaps.
 
 Return JSON only:
 {

@@ -25,6 +25,10 @@ interface CVMatchState {
   originalCvData: CVData | null;
   loadingParse: boolean;
   generatingPdf: boolean;
+  // ── ATS Preview ──
+  atsPreview: CVMatchAnalysis | null;
+  atsPreviewBaseline: number | null;
+  loadingAtsPreview: boolean;
 }
 
 export function useCVMatch() {
@@ -49,6 +53,9 @@ export function useCVMatch() {
     originalCvData: null,
     loadingParse: false,
     generatingPdf: false,
+    atsPreview: null,
+    atsPreviewBaseline: null,
+    loadingAtsPreview: false,
   });
 
   async function analyze(jobUrl: string, cvUrl: string) {
@@ -119,6 +126,31 @@ export function useCVMatch() {
 
   function resetCvData() {
     setState((s) => ({ ...s, cvData: s.originalCvData }));
+  }
+
+  async function previewAtsScore(jobUrl: string) {
+    if (!state.cvData || !state.originalCvData) return;
+    const originalText = cvDataToText(state.originalCvData);
+    const editedText = cvDataToText(state.cvData);
+    setState((s) => ({ ...s, loadingAtsPreview: true, atsPreview: null, atsPreviewBaseline: null }));
+    try {
+      const [baselineResult, previewResult] = await Promise.all([
+        cvMatchService.matchFromText(jobUrl, originalText),
+        cvMatchService.matchFromText(jobUrl, editedText),
+      ]);
+      setState((s) => ({
+        ...s,
+        atsPreviewBaseline: baselineResult.overall_score,
+        atsPreview: previewResult,
+        loadingAtsPreview: false,
+      }));
+    } catch {
+      setState((s) => ({ ...s, loadingAtsPreview: false }));
+    }
+  }
+
+  function dismissAtsPreview() {
+    setState((s) => ({ ...s, atsPreview: null, atsPreviewBaseline: null }));
   }
 
   async function generateAndDownloadPdf(fileName?: string) {
@@ -238,6 +270,9 @@ export function useCVMatch() {
       originalCvData: null,
       loadingParse: false,
       generatingPdf: false,
+      atsPreview: null,
+      atsPreviewBaseline: null,
+      loadingAtsPreview: false,
     });
   }
 
@@ -255,8 +290,63 @@ export function useCVMatch() {
     updateCvData,
     resetCvData,
     generateAndDownloadPdf,
+    previewAtsScore,
+    dismissAtsPreview,
     reset,
   };
+}
+
+// ── CVData → plain text (for ATS re-analysis) ───────────────────────────────
+
+function cvDataToText(data: CVData): string {
+  const lines: string[] = [];
+  const pi = data.personal_info;
+  if (pi.full_name) lines.push(pi.full_name);
+  if (pi.summary) lines.push(`\nSummary\n${pi.summary}`);
+
+  if (data.experience.length > 0) {
+    lines.push("\nExperience");
+    for (const e of data.experience) {
+      lines.push(`${e.title} at ${e.company} (${e.start_date} – ${e.end_date || "Present"})`);
+      for (const b of e.bullets) lines.push(`- ${b}`);
+    }
+  }
+
+  if (data.education.length > 0) {
+    lines.push("\nEducation");
+    for (const e of data.education) {
+      const field = e.field_of_study ? ` in ${e.field_of_study}` : "";
+      lines.push(`${e.degree}${field} at ${e.institution}`);
+    }
+  }
+
+  if (data.skills.length > 0) {
+    lines.push("\nSkills");
+    for (const g of data.skills) {
+      lines.push(`${g.category}: ${g.items.join(", ")}`);
+    }
+  }
+
+  if (data.languages.length > 0) {
+    lines.push("\nLanguages");
+    lines.push(data.languages.map((l) => `${l.language} (${l.level})`).join(", "));
+  }
+
+  if (data.certifications.length > 0) {
+    lines.push("\nCertifications");
+    for (const c of data.certifications) {
+      lines.push(`${c.name} — ${c.issuer}${c.date ? ` (${c.date})` : ""}`);
+    }
+  }
+
+  for (const [section, items] of Object.entries(data.additional_sections ?? {})) {
+    if (items.length > 0) {
+      lines.push(`\n${section}`);
+      for (const item of items) lines.push(`- ${item}`);
+    }
+  }
+
+  return lines.join("\n");
 }
 
 // ── Section-aware suggestion application ────────────────────────────────────

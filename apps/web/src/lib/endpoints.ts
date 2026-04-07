@@ -39,6 +39,7 @@ export const ENDPOINTS = {
   // CV Analysis
   CV_ANALYSIS_BUNDLE: "/api/cv-analysis-bundle",
   CV_MATCH: "/api/cv-match",
+  CV_MATCH_PREVIEW: "/api/cv-match/preview",
   CV_SUGGESTIONS: "/api/cv-suggestions",
   CV_DRAFT: "/api/cv-draft",
   CV_EXPORT: "/api/cv-export",

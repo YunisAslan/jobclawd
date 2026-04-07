@@ -4,10 +4,18 @@ import { useProfile } from "@/contexts/ProfileContext";
 import { savedVacanciesService } from "@/services/saved-vacancies.service";
 import { profileService } from "@/services/profile.service";
 import { jobsService } from "@/services/jobs.service";
+import { cvMatchService } from "@/services/cv-match.service";
 import { useCVMatch } from "@/hooks/use-cv-match";
-import type { JobListing, CVLink } from "@/types";
+import type { JobListing, CVLink, CVMatchAnalysis } from "@/types";
 
 export type VacancyTab = "overview" | "improve";
+
+export interface MultiCVEntry {
+  cv: CVLink;
+  analysis: CVMatchAnalysis | null;
+  loading: boolean;
+  error: string | null;
+}
 
 export function useVacancyPanel(job: JobListing | null) {
   const { profile, setProfile } = useProfile();
@@ -17,6 +25,7 @@ export function useVacancyPanel(job: JobListing | null) {
   const [activeTab, setActiveTab] = useState<VacancyTab>("overview");
   const [uploading, setUploading] = useState(false);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [multiCVResults, setMultiCVResults] = useState<MultiCVEntry[]>([]);
 
   const cvMatch = useCVMatch();
 
@@ -28,11 +37,13 @@ export function useVacancyPanel(job: JobListing | null) {
       setSelectedCV(firstCV);
       cvMatch.reset();
       setWorkspaceOpen(false);
+      setMultiCVResults([]);
     } else {
       setSelectedCV(null);
       setActiveTab("overview");
       cvMatch.reset();
       setWorkspaceOpen(false);
+      setMultiCVResults([]);
     }
   }, [job?.url]);
 
@@ -59,6 +70,45 @@ export function useVacancyPanel(job: JobListing | null) {
       cvMatch.parseCv(selectedCV.url);
     }
   }, [selectedCV?.url, cvMatch.cvData, cvMatch.loadingParse, cvMatch.parseCv]);
+
+  // Single-click: trigger analysis + open workspace simultaneously (optional CV override for multi-CV list)
+  const analyzeAndOpen = useCallback((cvOverride?: CVLink) => {
+    const cv = cvOverride ?? selectedCV;
+    if (!job?.url || !cv?.url) return;
+    if (cvOverride) setSelectedCV(cvOverride);
+    cvMatch.analyze(job.url, cv.url);
+    setWorkspaceOpen(true);
+    cvMatch.parseCv(cv.url);
+  }, [job?.url, selectedCV, cvMatch.analyze, cvMatch.parseCv]);
+
+  // Multi-CV: analyze a CV and add result to comparison list
+  const addCVToCompare = useCallback(async (cv: CVLink) => {
+    if (!job?.url) return;
+    setMultiCVResults((prev) => {
+      const existing = prev.findIndex((e) => e.cv.url === cv.url);
+      const entry: MultiCVEntry = { cv, analysis: null, loading: true, error: null };
+      if (existing >= 0) {
+        const next = [...prev];
+        next[existing] = entry;
+        return next;
+      }
+      return [...prev, entry];
+    });
+    try {
+      const analysis = await cvMatchService.getAnalysis(job.url, cv.url);
+      setMultiCVResults((prev) =>
+        prev.map((e) => (e.cv.url === cv.url ? { ...e, loading: false, analysis } : e))
+      );
+    } catch {
+      setMultiCVResults((prev) =>
+        prev.map((e) => (e.cv.url === cv.url ? { ...e, loading: false, error: "Analysis failed. Try again." } : e))
+      );
+    }
+  }, [job?.url]);
+
+  const removeCVFromCompare = useCallback((cvUrl: string) => {
+    setMultiCVResults((prev) => prev.filter((e) => e.cv.url !== cvUrl));
+  }, []);
 
   const closeWorkspace = useCallback(() => {
     setWorkspaceOpen(false);
@@ -148,15 +198,27 @@ export function useVacancyPanel(job: JobListing | null) {
     downloadDraft: () => (selectedCV?.url ? cvMatch.downloadDraft(selectedCV.url) : Promise.resolve()),
     // Structured CV data
     cvData: cvMatch.cvData,
+    originalCvData: cvMatch.originalCvData,
     updateCvData: cvMatch.updateCvData,
     resetCvData: cvMatch.resetCvData,
     generateAndDownloadPdf: cvMatch.generateAndDownloadPdf,
     loadingParse: cvMatch.loadingParse,
     generatingPdf: cvMatch.generatingPdf,
     parseCv: cvMatch.parseCv,
+    // ATS Preview
+    atsPreview: cvMatch.atsPreview,
+    atsPreviewBaseline: cvMatch.atsPreviewBaseline,
+    loadingAtsPreview: cvMatch.loadingAtsPreview,
+    previewAtsScore: () => (job?.url ? cvMatch.previewAtsScore(job.url) : Promise.resolve()),
+    dismissAtsPreview: cvMatch.dismissAtsPreview,
+    // Multi-CV comparison
+    multiCVResults,
+    addCVToCompare,
+    removeCVFromCompare,
     // Workspace dialog control
     workspaceOpen,
     openWorkspace,
+    analyzeAndOpen,
     closeWorkspace,
     isSaved,
     toggleSave,

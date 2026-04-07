@@ -352,6 +352,10 @@ class CVMatchRequest(BaseModel):
     job_url: str
     cv_url: str
 
+class CVMatchTextRequest(BaseModel):
+    job_url: str
+    cv_text: str
+
 class MatchCategoryScore(BaseModel):
     category: str               # "skills", "experience", "education", "keywords"
     score: int                  # 0-100

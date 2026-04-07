@@ -62,7 +62,7 @@ async def compute_cv_match(job_url: str, cv_url: str) -> dict:
     return await compute_cv_match_from_data(job_context, cv_text)
 
 
-async def compute_cv_match_from_data(job_context: dict, cv_text: str) -> dict:
+async def compute_cv_match_from_data(job_context: dict, cv_text: str, deterministic: bool = False) -> dict:
     """Analyze CV match using already prepared job context and CV text."""
 
     if not _OPENAI_API_KEY:
@@ -85,6 +85,8 @@ async def compute_cv_match_from_data(job_context: dict, cv_text: str) -> dict:
             {"role": "user", "content": user_message},
         ],
     }
+    if deterministic:
+        payload["temperature"] = 0
 
     async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
         resp = None

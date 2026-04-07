@@ -9,20 +9,17 @@ import {
   SheetFooter,
 } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
 import { ScrollArea } from "@/components/ui/ScrollArea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { cn } from "@/lib/utils";
-import { ExternalLink, Eye, Sparkles, PencilLine } from "lucide-react";
+import { ExternalLink, Eye, Sparkles, PencilLine, Plus, X, TrendingUp, RefreshCw } from "lucide-react";
 import SourceBadge from "@/components/ui/SourceBadge";
 import SaveToggleButton from "@/components/ui/SaveToggleButton";
 import VacancySummary from "./VacancySummary";
 import MatchScoreBreakdown from "./MatchScoreBreakdown";
 import CVSelector from "./CVSelector";
-import CVMatchResults from "./CVMatchResults";
-import SuggestionsList from "./SuggestionsList";
 import CVWorkspaceDialog from "./CVWorkspaceDialog";
-import { useVacancyPanel, type VacancyTab } from "@/hooks/use-vacancy-panel";
+import { useVacancyPanel, type VacancyTab, type MultiCVEntry } from "@/hooks/use-vacancy-panel";
 import type { JobListing } from "@/types";
 import Link from "next/link";
 
@@ -42,33 +39,35 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
     uploading,
     activeTab,
     setActiveTab,
-    analyzeCV,
     cvAnalysis,
     loadingAnalysis,
     errorAnalysis,
     suggestions,
     loadingSuggestions,
-    errorSuggestions,
-    draftText,
-    loadingDraft,
-    downloadingDraft,
     suggestionActions,
     analyzed,
-    updateDraft,
-    resetDraft,
     acceptSuggestion,
     undoAcceptSuggestion,
     rejectSuggestion,
     resetSuggestion,
-    downloadDraft,
     cvData,
+    originalCvData,
     updateCvData,
     resetCvData,
     generateAndDownloadPdf,
     loadingParse,
     generatingPdf,
+    atsPreview,
+    atsPreviewBaseline,
+    loadingAtsPreview,
+    previewAtsScore,
+    dismissAtsPreview,
+    multiCVResults,
+    addCVToCompare,
+    removeCVFromCompare,
     workspaceOpen,
     openWorkspace,
+    analyzeAndOpen,
     closeWorkspace,
     isSaved,
     toggleSave,
@@ -79,9 +78,6 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
 
   const isHigh = job.match_level === "high";
   const hasCV = !!selectedCV;
-  const suggestionCount = suggestions?.suggestions?.length ?? 0;
-  const showSuggestionsSection = analyzed && suggestionCount > 0;
-  const canOpenWorkspace = analyzed && hasCV;
 
   return (
     <>
@@ -147,85 +143,60 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
                 </TabsContent>
 
                 <TabsContent value="improve" className="mt-0 space-y-4">
-                  <CVSelector
-                    cvLinks={profile.cv_links ?? []}
-                    selectedCV={selectedCV}
-                    onChange={setSelectedCV}
-                    onUpload={uploadCV}
-                    uploading={uploading}
-                  />
+                  {/* CV selector + add to compare */}
+                  <div className="space-y-2">
+                    <CVSelector
+                      cvLinks={profile.cv_links ?? []}
+                      selectedCV={selectedCV}
+                      onChange={setSelectedCV}
+                      onUpload={uploadCV}
+                      uploading={uploading}
+                    />
+                    {hasCV && (
+                      <Button
+                        onClick={() => addCVToCompare(selectedCV!)}
+                        className="w-full gap-2"
+                        disabled={multiCVResults.some((e) => e.cv.url === selectedCV?.url && e.loading)}
+                      >
+                        <Plus className="size-4" />
+                        Analyze CV
+                      </Button>
+                    )}
+                    {!hasCV && (
+                      <p className="text-center text-xs text-muted-foreground py-4">
+                        Select or upload a CV above to get started.
+                      </p>
+                    )}
+                  </div>
 
-                  <CVMatchResults
-                    analysis={cvAnalysis}
-                    loading={loadingAnalysis}
-                    error={errorAnalysis}
-                    analyzed={analyzed}
-                    hasCV={hasCV}
-                    onAnalyze={analyzeCV}
-                  />
-
-                  {showSuggestionsSection && (
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-px bg-border/50" />
-                      <div className="flex items-center gap-1.5">
+                  {/* Multi-CV results list */}
+                  {multiCVResults.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="size-3 text-muted-foreground" />
                         <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-                          Suggestions
+                          Results · {multiCVResults.length} CV{multiCVResults.length !== 1 ? "s" : ""}
                         </span>
-                        <Badge variant="outline" className="text-[10px] font-semibold px-1.5 py-0 h-4">
-                          {suggestionCount}
-                        </Badge>
                       </div>
-                      <div className="flex-1 h-px bg-border/50" />
+
+                      {[...multiCVResults]
+                        .sort((a, b) => (b.analysis?.overall_score ?? -1) - (a.analysis?.overall_score ?? -1))
+                        .map((entry, rank) => (
+                          <MultiCVRow
+                            key={entry.cv.url}
+                            entry={entry}
+                            rank={rank + 1}
+                            onEdit={() => analyzeAndOpen(entry.cv)}
+                            onRemove={() => removeCVFromCompare(entry.cv.url)}
+                            onReanalyze={() => addCVToCompare(entry.cv)}
+                          />
+                        ))}
                     </div>
                   )}
-
-                  <SuggestionsList
-                    data={suggestions}
-                    loading={loadingSuggestions}
-                    error={errorSuggestions}
-                    analyzed={analyzed}
-                    hasCV={hasCV}
-                    onAnalyze={analyzeCV}
-                    suggestionActions={suggestionActions}
-                    onAcceptSuggestion={acceptSuggestion}
-                    onUndoAcceptSuggestion={undoAcceptSuggestion}
-                    onRejectSuggestion={rejectSuggestion}
-                    onResetSuggestion={resetSuggestion}
-                  />
                 </TabsContent>
               </div>
             </ScrollArea>
           </Tabs>
-
-          {/* Sticky action bar */}
-          {activeTab === "improve" && analyzed && (
-            <div className="px-5 py-3 border-t border-border/40 bg-background shrink-0 flex gap-2">
-              {canOpenWorkspace && (
-                <Button
-                  type="button"
-                  size="sm"
-                  className="flex-1 gap-2"
-                  onClick={openWorkspace}
-                  disabled={loadingParse}
-                >
-                  <PencilLine className="size-3.5" />
-                  <span className="text-xs">
-                    {loadingParse ? "Parsing…" : "Edit CV"}
-                  </span>
-                </Button>
-              )}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1.5 shrink-0"
-                onClick={analyzeCV}
-                disabled={loadingAnalysis || !hasCV}
-              >
-                <span className="text-xs">Re-analyze</span>
-              </Button>
-            </div>
-          )}
 
           {/* Footer */}
           <SheetFooter className="px-5 py-4 border-t border-border/50 gap-2">
@@ -260,12 +231,126 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
         onRejectSuggestion={rejectSuggestion}
         onResetSuggestion={resetSuggestion}
         cvData={cvData}
+        originalCvData={originalCvData}
         onCvDataChange={updateCvData}
         onCvDataReset={resetCvData}
         onGeneratePdf={generateAndDownloadPdf}
         loadingParse={loadingParse}
         generatingPdf={generatingPdf}
+        cvAnalysis={cvAnalysis}
+        loadingAnalysis={loadingAnalysis}
+        atsPreview={atsPreview}
+        atsPreviewBaseline={atsPreviewBaseline}
+        loadingAtsPreview={loadingAtsPreview}
+        onAtsPreview={previewAtsScore}
+        onDismissAtsPreview={dismissAtsPreview}
       />
     </>
+  );
+}
+
+/* ── Multi-CV comparison row ─────────────────────────────────────────────── */
+
+function MultiCVRow({
+  entry,
+  rank,
+  onEdit,
+  onRemove,
+  onReanalyze,
+}: {
+  entry: MultiCVEntry;
+  rank: number;
+  onEdit: () => void;
+  onRemove: () => void;
+  onReanalyze: () => void;
+}) {
+  const score = entry.analysis?.overall_score ?? null;
+  const isHigh = score !== null && score >= 75;
+  const isMid = score !== null && score >= 45 && score < 75;
+
+  return (
+    <div className={cn(
+      "relative rounded-xl border bg-card p-3 space-y-2 transition-all",
+      entry.loading && "opacity-70",
+      score !== null && isHigh && "border-match-high/20",
+      score !== null && isMid && "border-match-review/20",
+      score !== null && !isHigh && !isMid && "border-destructive/15",
+      !score && !entry.loading && !entry.error && "border-border/50",
+    )}>
+      {/* Remove button */}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="absolute top-2 right-2 p-0.5 rounded text-muted-foreground/50 hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
+        aria-label="Remove"
+      >
+        <X className="size-3" />
+      </button>
+
+      {/* Header: rank + name + score */}
+      <div className="flex items-center gap-2.5 pr-4">
+        <span className="text-[10px] font-bold text-muted-foreground/60 tabular-nums w-4 shrink-0">
+          #{rank}
+        </span>
+
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium text-foreground truncate">{entry.cv.name}</p>
+        </div>
+
+        {entry.loading && (
+          <div className="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+        )}
+        {score !== null && (
+          <div className={cn(
+            "flex items-baseline gap-0.5 shrink-0 px-2 py-0.5 rounded-lg border",
+            isHigh ? "bg-match-high/10 border-match-high/20" : isMid ? "bg-match-review/10 border-match-review/20" : "bg-destructive/10 border-destructive/20",
+          )}>
+            <span className={cn(
+              "text-sm font-bold tabular-nums leading-none",
+              isHigh ? "text-match-high" : isMid ? "text-match-review" : "text-destructive",
+            )}>
+              {score}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Score bar */}
+      {score !== null && (
+        <div className="h-1 w-full rounded-full bg-border/30 overflow-hidden">
+          <div
+            className={cn(
+              "h-full rounded-full transition-all duration-500",
+              isHigh ? "bg-match-high" : isMid ? "bg-match-review" : "bg-destructive",
+            )}
+            style={{ width: `${Math.min(100, score)}%` }}
+          />
+        </div>
+      )}
+
+      {/* Summary */}
+      {entry.analysis?.summary && (
+        <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
+          {entry.analysis.summary}
+        </p>
+      )}
+
+      {/* Error */}
+      {entry.error && (
+        <p className="text-[11px] text-destructive">{entry.error}</p>
+      )}
+
+      {/* Actions */}
+      {!entry.loading && (
+        <div className="flex items-center gap-1.5 pt-0.5">
+          <Button size="sm" className="flex-1 gap-1.5 h-7 text-[11px]" onClick={onEdit}>
+            <PencilLine className="size-3" /> Edit CV
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1 h-7 text-[11px] px-2" onClick={onReanalyze} title="Re-analyze">
+            <RefreshCw className="size-3" />
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

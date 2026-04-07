@@ -64,6 +64,15 @@ class CVMatchService extends APIService {
     );
     return res.data;
   }
+
+  async matchFromText(job_url: string, cv_text: string): Promise<CVMatchAnalysis> {
+    const res = await this.post(
+      ENDPOINTS.CV_MATCH_PREVIEW,
+      { job_url, cv_text },
+      { headers: getAuthHeader(), timeout: 60000 },
+    );
+    return res.data;
+  }
 }
 
 export const cvMatchService = new CVMatchService();

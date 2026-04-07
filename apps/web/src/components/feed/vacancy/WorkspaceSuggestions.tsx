@@ -13,6 +13,9 @@ import {
   ArrowRight,
   Copy,
   ClipboardCheck,
+  Wand2,
+  PenLine,
+  ChevronsRight,
 } from "lucide-react";
 import type { CVSuggestion, CVSuggestionsResponse, SuggestionCategory } from "@/types";
 
@@ -50,24 +53,6 @@ function extractQuotedValue(text: string): string {
   return match ? (match[1] || match[2] || "") : "";
 }
 
-function buildCopyText(suggestion: CVSuggestion, editedText: string): string {
-  const parts: string[] = [];
-
-  parts.push(`💡 ${suggestion.title}`);
-  parts.push(`Why: ${suggestion.description}`);
-
-  if (suggestion.specific_text) {
-    parts.push(`\nReplace:\n"${suggestion.specific_text}"`);
-  }
-
-  const replacement = editedText || suggestion.suggested_text || "";
-  if (replacement) {
-    parts.push(suggestion.specific_text ? `With:\n"${replacement}"` : `Add:\n"${replacement}"`);
-  }
-
-  return parts.join("\n");
-}
-
 export default function WorkspaceSuggestions({
   suggestions,
   loading,
@@ -96,10 +81,28 @@ export default function WorkspaceSuggestions({
 
   const appliedCount  = Object.values(suggestionActions).filter((v) => v === "accepted").length;
   const declinedCount = Object.values(suggestionActions).filter((v) => v === "rejected").length;
+  const pendingCount  = list.filter((_, i) => !suggestionActions[i]).length;
 
   function handleAccept(index: number, suggestion: CVSuggestion, overrideText?: string) {
     onAccept(index, suggestion, overrideText);
     onAppliedScrollTarget?.(getTargetSectionId(suggestion.category));
+  }
+
+  function handleApplyAll() {
+    list.forEach((suggestion, index) => {
+      if (!suggestionActions[index]) {
+        onAccept(index, suggestion, edited[index] || suggestion.suggested_text || "");
+      }
+    });
+  }
+
+  function handleUndoAll() {
+    // Undo in reverse application order so each snapshot correctly unwinds the previous
+    list
+      .map((_, i) => i)
+      .filter((i) => suggestionActions[i] === "accepted")
+      .reverse()
+      .forEach((i) => onUndo(i));
   }
 
   return (
@@ -108,35 +111,66 @@ export default function WorkspaceSuggestions({
       {/* Header */}
       <div className="px-4 pt-3.5 pb-3 border-b border-border/40 shrink-0 space-y-2.5">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-semibold text-foreground">AI Suggestions</p>
           <div className="flex items-center gap-1.5">
-            {appliedCount > 0 && (
-              <Badge className="text-[10px] font-medium bg-success/10 text-success border-success/20 border">
-                {appliedCount} applied
-              </Badge>
-            )}
+            <p className="text-xs font-semibold text-foreground">AI Suggestions</p>
             {list.length > 0 && (
               <Badge variant="outline" className="text-[10px] font-medium">{list.length}</Badge>
             )}
           </div>
+          {appliedCount > 0 && (
+            <Badge className="text-[10px] font-medium bg-success/10 text-success border-success/20 border">
+              {appliedCount} applied
+            </Badge>
+          )}
         </div>
 
-        {/* How-to tip */}
+        {/* Apply All / Undo All */}
+        {!readOnly && !loading && list.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            {pendingCount > 0 && (
+              <Button
+                type="button"
+                size="sm"
+                className="gap-1.5 h-7 text-[11px] px-2.5 cursor-pointer flex-1"
+                onClick={handleApplyAll}
+              >
+                <Wand2 className="size-3" />
+                Apply all ({pendingCount})
+              </Button>
+            )}
+            {appliedCount > 0 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="gap-1.5 h-7 text-[11px] px-2.5 cursor-pointer flex-1"
+                onClick={handleUndoAll}
+              >
+                <Undo2 className="size-3" />
+                Undo all ({appliedCount})
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* How-to guide */}
         {!loading && list.length > 0 && (
-          <div className="rounded-lg bg-primary/5 border border-primary/10 px-3 py-2 space-y-1.5">
-            <p className="text-[10px] font-semibold text-primary">Three ways to use these:</p>
-            <ul className="space-y-1">
-              {[
-                { icon: "✦", text: 'Click "Apply" to update your ATS CV automatically' },
-                { icon: "⎘", text: 'Click "Copy" and paste into your own CV' },
-                { icon: "→", text: "Read the reasoning and rewrite it your own way" },
-              ].map(({ icon, text }) => (
-                <li key={text} className="flex items-start gap-1.5 text-[10px] text-muted-foreground leading-relaxed">
-                  <span className="text-primary shrink-0 mt-px">{icon}</span>
-                  <span>{text}</span>
-                </li>
-              ))}
-            </ul>
+          <div className="rounded-lg border border-border/50 overflow-hidden divide-y divide-border/40">
+            {([
+              { Icon: Wand2,   color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", title: "Apply",   desc: "Rewrites your CV field automatically" },
+              { Icon: Copy,    color: "text-blue-600 dark:text-blue-400",        bg: "bg-blue-500/10",   title: "Copy",    desc: "Paste the text into your own document" },
+              { Icon: PenLine, color: "text-amber-600 dark:text-amber-400",      bg: "bg-amber-500/10",  title: "Rewrite", desc: "Read the reasoning, write it yourself" },
+            ] as const).map(({ Icon, color, bg, title, desc }) => (
+              <div key={title} className="flex items-center gap-2.5 px-2.5 py-2 bg-background">
+                <div className={cn("flex size-6 shrink-0 items-center justify-center rounded-md", bg)}>
+                  <Icon className={cn("size-3", color)} />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[11px] font-semibold text-foreground">{title}</span>
+                  <span className="text-[10px] text-muted-foreground"> — {desc}</span>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -212,11 +246,8 @@ function SuggestionCard({
   const isAddType = !suggestion.specific_text;
   const target    = CATEGORY_TARGET[suggestion.category];
 
-  const hasCopyableText =
-    !!(editedText || suggestion.suggested_text || suggestion.specific_text);
-
-  function handleCopy() {
-    const text = buildCopyText(suggestion, editedText);
+  function handleCopyPlusText(text: string) {
+    if (!text) return;
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -231,36 +262,17 @@ function SuggestionCard({
       !isAccepted && !isDeclined && "border-border/50",
     )}>
 
-      {/* Title + copy */}
+      {/* Title row */}
       <div className="flex items-start gap-1.5">
         <span className={cn("mt-1.5 size-1.5 rounded-full shrink-0", priorityDot)} />
         <p className="text-xs font-semibold text-foreground leading-snug flex-1 min-w-0">
           {suggestion.title}
         </p>
-        <div className="flex items-center gap-1 shrink-0">
-          {isAccepted && (
-            <Badge className="text-[9px] font-semibold px-1.5 py-0 bg-success/10 text-success border border-success/20">
-              Applied
-            </Badge>
-          )}
-          {hasCopyableText && (
-            <button
-              type="button"
-              onClick={handleCopy}
-              title="Copy suggestion to clipboard"
-              className={cn(
-                "p-1 rounded-md transition-colors cursor-pointer",
-                copied
-                  ? "text-success bg-success/10"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted",
-              )}
-            >
-              {copied
-                ? <ClipboardCheck className="size-3" />
-                : <Copy className="size-3" />}
-            </button>
-          )}
-        </div>
+        {isAccepted && (
+          <Badge className="text-[9px] font-semibold px-1.5 py-0 bg-success/10 text-success border border-success/20 shrink-0">
+            Applied
+          </Badge>
+        )}
       </div>
 
       {/* Target section */}
@@ -305,20 +317,50 @@ function SuggestionCard({
               </span>
             </div>
           )}
-          <div className="flex items-center gap-1.5 px-2 py-1.5 bg-success/5">
+          <div className="flex items-center gap-1 px-2 py-1.5 bg-success/5">
             <span className="text-success font-bold shrink-0">+</span>
             {isAddType ? (
-              <input
-                type="text"
-                value={editedText}
-                onChange={(e) => onEditChange(e.target.value)}
-                placeholder="Type text to add…"
-                className="flex-1 bg-transparent outline-none text-success placeholder:text-success/40 text-[10px] leading-4"
-              />
+              <>
+                <input
+                  type="text"
+                  value={editedText}
+                  onChange={(e) => onEditChange(e.target.value)}
+                  placeholder="Type text to add…"
+                  className="flex-1 bg-transparent outline-none text-success placeholder:text-success/40 text-[10px] leading-4 min-w-0"
+                />
+                {editedText && (
+                  <button
+                    type="button"
+                    onClick={() => handleCopyPlusText(editedText)}
+                    title="Copy to clipboard"
+                    className={cn(
+                      "shrink-0 p-0.5 rounded transition-colors cursor-pointer",
+                      copied ? "text-success" : "text-success/40 hover:text-success",
+                    )}
+                  >
+                    {copied ? <ClipboardCheck className="size-3" /> : <Copy className="size-3" />}
+                  </button>
+                )}
+              </>
             ) : (
-              <span className="text-success/80 wrap-break-word leading-4">
-                {suggestion.suggested_text}
-              </span>
+              <>
+                <span className="text-success/80 wrap-break-word leading-4 flex-1 min-w-0">
+                  {suggestion.suggested_text}
+                </span>
+                {suggestion.suggested_text && (
+                  <button
+                    type="button"
+                    onClick={() => handleCopyPlusText(suggestion.suggested_text ?? "")}
+                    title="Copy to clipboard"
+                    className={cn(
+                      "shrink-0 p-0.5 rounded transition-colors cursor-pointer ml-1",
+                      copied ? "text-success" : "text-success/40 hover:text-success",
+                    )}
+                  >
+                    {copied ? <ClipboardCheck className="size-3" /> : <Copy className="size-3" />}
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
