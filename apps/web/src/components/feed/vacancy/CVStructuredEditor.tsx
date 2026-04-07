@@ -608,12 +608,31 @@ function EducationCard({ entry, onChange, onRemove, handle }: {
 
 /* ── Skill group card ── */
 
+/** Short skill keywords → pill tag. Long sentences → full-width input row. */
+function isKeywordItem(item: string): boolean {
+  const words = item.trim().split(/\s+/);
+  return words.length <= 5 && item.length <= 40;
+}
+
 function SkillGroupCard({ group, onChange, onRemove, handle }: {
   group: CVSkillGroup;
   onChange: (g: CVSkillGroup) => void;
   onRemove: () => void;
   handle: React.ReactNode;
 }) {
+  const pillItems     = group.items.map((item, i) => ({ item, i })).filter(({ item }) =>  isKeywordItem(item));
+  const sentenceItems = group.items.map((item, i) => ({ item, i })).filter(({ item }) => !isKeywordItem(item));
+
+  function updateItem(i: number, value: string) {
+    const next = [...group.items];
+    next[i] = value;
+    onChange({ ...group, items: next });
+  }
+
+  function removeItem(i: number) {
+    onChange({ ...group, items: group.items.filter((_, j) => j !== i) });
+  }
+
   return (
     <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
       <div className="flex items-center gap-2">
@@ -633,39 +652,69 @@ function SkillGroupCard({ group, onChange, onRemove, handle }: {
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {group.items.map((item, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-lg bg-background border border-border text-xs text-foreground"
+      {/* Short keywords → pill tags */}
+      {(pillItems.length > 0 || sentenceItems.length === 0) && (
+        <div className="flex flex-wrap gap-1.5">
+          {pillItems.map(({ item, i }) => (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-lg bg-background border border-border text-xs text-foreground"
+            >
+              <input
+                value={item}
+                onChange={(e) => updateItem(i, e.target.value)}
+                className="bg-transparent outline-none min-w-[3ch] text-foreground"
+                style={{ width: `${Math.max(3, Math.min(item.length, 30))}ch` }}
+              />
+              <button
+                type="button"
+                onClick={() => removeItem(i)}
+                className="flex items-center justify-center size-4 rounded text-muted-foreground hover:text-destructive transition-colors cursor-pointer shrink-0"
+              >
+                <X className="size-3" />
+              </button>
+            </span>
+          ))}
+          <button
+            type="button"
+            onClick={() => onChange({ ...group, items: [...group.items, ""] })}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
           >
-            <input
-              value={item}
-              onChange={(e) => {
-                const next = [...group.items];
-                next[i] = e.target.value;
-                onChange({ ...group, items: next });
-              }}
-              className="bg-transparent outline-none min-w-[3ch] text-foreground"
-              style={{ width: `${Math.max(3, item.length)}ch` }}
-            />
+            <Plus className="size-3" /> Add skill
+          </button>
+        </div>
+      )}
+
+      {/* Long sentences → full-width input rows */}
+      {sentenceItems.length > 0 && (
+        <div className="space-y-1.5">
+          {sentenceItems.map(({ item, i }) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <input
+                value={item}
+                onChange={(e) => updateItem(i, e.target.value)}
+                className="flex-1 min-w-0 bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground outline-none focus:ring-1 focus:ring-primary/40"
+              />
+              <button
+                type="button"
+                onClick={() => removeItem(i)}
+                className="flex items-center justify-center size-6 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          ))}
+          {pillItems.length === 0 && (
             <button
               type="button"
-              onClick={() => onChange({ ...group, items: group.items.filter((_, j) => j !== i) })}
-              className="flex items-center justify-center size-4 rounded text-muted-foreground hover:text-destructive transition-colors cursor-pointer shrink-0"
+              onClick={() => onChange({ ...group, items: [...group.items, ""] })}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
             >
-              <X className="size-3" />
+              <Plus className="size-3" /> Add skill
             </button>
-          </span>
-        ))}
-        <button
-          type="button"
-          onClick={() => onChange({ ...group, items: [...group.items, ""] })}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
-        >
-          <Plus className="size-3" /> Add skill
-        </button>
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -735,7 +784,7 @@ function BulletList({ items, onChange, placeholder }: {
               setDragFrom(null); setDragOver(null);
             }}
             className={cn(
-              "flex items-start gap-2 transition-all duration-150",
+              "flex items-center gap-2 transition-all duration-150",
               isDragging && "opacity-40",
               isDragOver && "ring-2 ring-primary/50 rounded-lg",
             )}
@@ -745,7 +794,7 @@ function BulletList({ items, onChange, placeholder }: {
               onDragStart={(e) => { e.stopPropagation(); setDragFrom(i); e.dataTransfer.effectAllowed = "move"; }}
               onDragEnd={() => { setDragFrom(null); setDragOver(null); }}
               onClick={(e) => e.stopPropagation()}
-              className="mt-2.5 cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors shrink-0"
+              className="cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors shrink-0"
             >
               <GripVertical className="size-3.5" />
             </div>
@@ -763,7 +812,7 @@ function BulletList({ items, onChange, placeholder }: {
             <button
               type="button"
               onClick={() => onChange(items.filter((_, j) => j !== i))}
-              className="mt-1.5 p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer shrink-0"
             >
               <Trash2 className="size-3.5" />
             </button>

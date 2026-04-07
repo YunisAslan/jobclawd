@@ -182,7 +182,11 @@ export function useCVMatch() {
 
   function acceptSuggestion(index: number, suggestion: CVSuggestion, overrideText?: string) {
     setState((s) => {
-      const suggestedText = overrideText ?? suggestion.suggested_text ?? "";
+      // Clean AI instruction prefixes only when using the original suggestion text,
+      // not when the user has manually edited the field.
+      const suggestedText = overrideText != null
+        ? overrideText
+        : cleanSuggestionText(suggestion.suggested_text ?? "");
       const nextDraft = applySuggestionToDraft(s.draftText, suggestion, suggestedText);
       const nextCvData = s.cvData ? applySuggestionToCvData(s.cvData, suggestion, suggestedText) : s.cvData;
       return {
@@ -349,6 +353,32 @@ function cvDataToText(data: CVData): string {
   return lines.join("\n");
 }
 
+// ── Suggestion text sanitisation ────────────────────────────────────────────
+
+/**
+ * Strip AI instruction prefixes that the backend sometimes includes in
+ * suggestion text verbatim.
+ *
+ * Examples:
+ *   "Add to skills: React"              → "React"
+ *   "Add the following skills: Agile"   → "Agile"
+ *   "Include: Next.js"                  → "Next.js"
+ *   "Consider adding: Docker"           → "Docker"
+ *   "Add to experience: Led a team…"    → "Led a team…"
+ */
+function cleanSuggestionText(text: string): string {
+  return text
+    // "Add to <section>: ..."
+    .replace(/^add\s+to\s+\w[\w\s]*\s*:\s*/i, "")
+    // "Add [the] [following] skills/keywords/items: ..."
+    .replace(/^(?:add|include|consider\s+adding)\s+(?:the\s+)?(?:following\s+)?(?:skills?|keywords?|items?|bullet[s]?)\s*:\s*/i, "")
+    // "Include: ..."
+    .replace(/^include\s*:\s*/i, "")
+    // "Consider adding: ..."
+    .replace(/^consider\s+adding\s*:\s*/i, "")
+    .trim();
+}
+
 // ── Section-aware suggestion application ────────────────────────────────────
 
 const SECTION_GROUPS: [string[], string[]][] = [
@@ -380,7 +410,18 @@ function applySuggestionToDraft(draft: string, suggestion: CVSuggestion, suggest
   }
   if (!replacement) return current;
 
-  const hint = `${suggestion.title} ${suggestion.description}`;
+  // For experience-targeting categories, if the text is headline-like,
+  // route it to the Summary section in the draft instead.
+  const cat = suggestion.category;
+  let hint = `${suggestion.title} ${suggestion.description}`;
+  if (
+    (cat === "elevate_experience" || cat === "address_requirements") &&
+    isHeadlineLike(replacement) &&
+    !isExperienceBullet(replacement)
+  ) {
+    hint = "summary profile";
+  }
+
   const sectionHeadings = findTargetSectionHeadings(hint);
   for (const heading of sectionHeadings) {
     const lines = current.split("\n");
@@ -405,6 +446,35 @@ function isPlainTextHeadingLine(line: string): boolean {
 
 // ── Apply suggestion to structured CVData ─────────────────────────────────
 
+/**
+ * Detect whether a piece of suggested text reads like a professional
+ * summary/headline rather than an experience bullet point.
+ *
+ * Examples that return true:
+ *   "Frontend Developer with 2.5 years of experience…"
+ *   "A passionate software engineer skilled in…"
+ *   "5+ years of experience building…"
+ */
+function isHeadlineLike(text: string): boolean {
+  const t = text.trim();
+  // Contains "X years of experience"
+  if (/\d+\.?\d*\+?\s+years?\s+of\s+experience/i.test(t)) return true;
+  // Starts with a job title
+  if (/^(frontend|back-?end|full[- ]stack|senior|junior|lead|principal|staff|software|web)\s+(developer|engineer|designer|architect)/i.test(t)) return true;
+  // Starts with self-description phrases
+  if (/^(i am|i'm|a dedicated|an experienced|a passionate|a skilled|a results?-driven|a motivated)/i.test(t.toLowerCase())) return true;
+  return false;
+}
+
+/**
+ * Detect whether text is a genuine experience bullet:
+ * starts with a strong action verb and describes a concrete achievement.
+ */
+function isExperienceBullet(text: string): boolean {
+  const actionVerbs = /^(designed|developed|built|created|implemented|led|managed|architected|delivered|optimized|improved|reduced|increased|launched|migrated|refactored|automated|integrated|established|drove|owned|scaled|shipped)/i;
+  return actionVerbs.test(text.trim());
+}
+
 function applySuggestionToCvData(data: CVData, suggestion: CVSuggestion, suggestedText: string): CVData {
   const text = suggestedText.trim();
   if (!text) return data;
@@ -415,14 +485,14 @@ function applySuggestionToCvData(data: CVData, suggestion: CVSuggestion, suggest
 
   // add_keywords → add skills to the most relevant skill group (or create "General")
   if (cat === "add_keywords") {
-    const newItems = text.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+    // Split by comma/semicolon, strip any per-item instruction prefix,
+    // then discard sentence-like fragments (> 5 words) which are descriptions, not keywords.
+    const rawItems = text.split(/[,;]/).map((s) => cleanSuggestionText(s.trim())).filter(Boolean);
+    const newItems = rawItems.filter((s) => s.split(/\s+/).length <= 5 && s.length <= 50);
     if (newItems.length === 0) return data;
     const skills = [...data.skills];
     if (skills.length > 0) {
-      // Add to the first group (usually "General" or the broadest)
-      const bestIdx = skills.findIndex((g) =>
-        hint.includes(g.category.toLowerCase())
-      );
+      const bestIdx = skills.findIndex((g) => hint.includes(g.category.toLowerCase()));
       const idx = bestIdx >= 0 ? bestIdx : 0;
       skills[idx] = { ...skills[idx], items: [...skills[idx].items, ...newItems] };
     } else {
@@ -443,33 +513,33 @@ function applySuggestionToCvData(data: CVData, suggestion: CVSuggestion, suggest
     return { ...data, experience };
   }
 
-  // improve_headline → update summary
+  // improve_headline → always update summary
   if (cat === "improve_headline") {
-    return {
-      ...data,
-      personal_info: { ...data.personal_info, summary: text },
-    };
+    return { ...data, personal_info: { ...data.personal_info, summary: text } };
   }
 
-  // address_requirements → add as a bullet to the most recent experience entry
+  // address_requirements → add as a bullet to the most recent experience entry.
+  // If the text reads like a headline/summary (not an action-verb bullet),
+  // route it to the summary field instead.
   if (cat === "address_requirements") {
+    if (isHeadlineLike(text) && !isExperienceBullet(text)) {
+      return { ...data, personal_info: { ...data.personal_info, summary: text } };
+    }
     if (data.experience.length === 0) return data;
     const experience = [...data.experience];
-    experience[0] = {
-      ...experience[0],
-      bullets: [...experience[0].bullets, text],
-    };
+    experience[0] = { ...experience[0], bullets: [...experience[0].bullets, text] };
     return { ...data, experience };
   }
 
-  // elevate_experience → add as a bullet to first experience entry
+  // elevate_experience → prepend a bullet to first experience entry.
+  // Route headline-style text to summary instead of polluting experience bullets.
   if (cat === "elevate_experience") {
+    if (isHeadlineLike(text) && !isExperienceBullet(text)) {
+      return { ...data, personal_info: { ...data.personal_info, summary: text } };
+    }
     if (data.experience.length === 0) return data;
     const experience = [...data.experience];
-    experience[0] = {
-      ...experience[0],
-      bullets: [text, ...experience[0].bullets],
-    };
+    experience[0] = { ...experience[0], bullets: [text, ...experience[0].bullets] };
     return { ...data, experience };
   }
 
@@ -482,10 +552,16 @@ function applySuggestionToCvData(data: CVData, suggestion: CVSuggestion, suggest
     return { ...data, experience };
   }
 
-  // Fallback: if hint mentions skills → add to skills, otherwise add as experience bullet
+  // Fallback: route by content shape
+  if (isHeadlineLike(text)) {
+    return { ...data, personal_info: { ...data.personal_info, summary: text } };
+  }
+
   if (hint.includes("skill") || hint.includes("keyword") || hint.includes("technolog")) {
     const skills = [...data.skills];
-    const newItems = text.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+    const newItems = text.split(/[,;]/).map((s) => cleanSuggestionText(s.trim())).filter(Boolean)
+      .filter((s) => s.split(/\s+/).length <= 5 && s.length <= 50);
+    if (newItems.length === 0) return data;
     if (skills.length > 0) {
       skills[0] = { ...skills[0], items: [...skills[0].items, ...newItems] };
     } else {

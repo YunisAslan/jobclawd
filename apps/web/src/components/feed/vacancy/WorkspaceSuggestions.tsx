@@ -53,6 +53,16 @@ function extractQuotedValue(text: string): string {
   return match ? (match[1] || match[2] || "") : "";
 }
 
+/** Strip AI instruction prefixes that sometimes appear verbatim in suggestion text. */
+function cleanSuggestionText(text: string): string {
+  return text
+    .replace(/^add\s+to\s+\w[\w\s]*\s*:\s*/i, "")
+    .replace(/^(?:add|include|consider\s+adding)\s+(?:the\s+)?(?:following\s+)?(?:skills?|keywords?|items?|bullet[s]?)\s*:\s*/i, "")
+    .replace(/^include\s*:\s*/i, "")
+    .replace(/^consider\s+adding\s*:\s*/i, "")
+    .trim();
+}
+
 export default function WorkspaceSuggestions({
   suggestions,
   loading,
@@ -72,9 +82,10 @@ export default function WorkspaceSuggestions({
     setSyncedSuggestions(suggestions);
     const next: Record<number, string> = {};
     for (const [i, s] of list.entries()) {
+      const raw = s.suggested_text ?? "";
       next[i] = s.specific_text
-        ? (s.suggested_text ?? "")
-        : extractQuotedValue(s.suggested_text ?? "");
+        ? cleanSuggestionText(raw)
+        : cleanSuggestionText(extractQuotedValue(raw) || raw);
     }
     setEdited(next);
   }

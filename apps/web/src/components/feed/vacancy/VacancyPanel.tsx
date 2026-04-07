@@ -12,7 +12,16 @@ import { Button } from "@/components/ui/Button";
 import { ScrollArea } from "@/components/ui/ScrollArea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { cn } from "@/lib/utils";
-import { ExternalLink, Eye, Sparkles, PencilLine, Plus, X, TrendingUp, RefreshCw } from "lucide-react";
+import {
+  ExternalLink,
+  Eye,
+  Sparkles,
+  PencilLine,
+  Plus,
+  X,
+  TrendingUp,
+  RefreshCw,
+} from "lucide-react";
 import SourceBadge from "@/components/ui/SourceBadge";
 import SaveToggleButton from "@/components/ui/SaveToggleButton";
 import VacancySummary from "./VacancySummary";
@@ -100,16 +109,20 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {job.match_score > 0 && (
-                  <div className={cn(
-                    "flex flex-col items-center justify-center rounded-lg px-2.5 py-1.5",
-                    isHigh
-                      ? "bg-match-high/10 border border-match-high/20"
-                      : "bg-match-review/10 border border-match-review/20",
-                  )}>
-                    <span className={cn(
-                      "text-base font-bold leading-none tabular-nums",
-                      isHigh ? "text-match-high" : "text-match-review",
-                    )}>
+                  <div
+                    className={cn(
+                      "flex flex-col items-center justify-center rounded-lg px-2.5 py-1.5",
+                      isHigh
+                        ? "bg-match-high/10 border border-match-high/20"
+                        : "bg-match-review/10 border border-match-review/20",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "text-base font-bold leading-none tabular-nums",
+                        isHigh ? "text-match-high" : "text-match-review",
+                      )}
+                    >
                       {job.match_score}
                     </span>
                   </div>
@@ -156,7 +169,9 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
                       <Button
                         onClick={() => addCVToCompare(selectedCV!)}
                         className="w-full gap-2"
-                        disabled={multiCVResults.some((e) => e.cv.url === selectedCV?.url && e.loading)}
+                        disabled={multiCVResults.some(
+                          (e) => e.cv.url === selectedCV?.url && e.loading,
+                        )}
                       >
                         <Plus className="size-4" />
                         Analyze CV
@@ -175,12 +190,16 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
                       <div className="flex items-center gap-2">
                         <TrendingUp className="size-3 text-muted-foreground" />
                         <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-                          Results · {multiCVResults.length} CV{multiCVResults.length !== 1 ? "s" : ""}
+                          Results · {multiCVResults.length} CV
+                          {multiCVResults.length !== 1 ? "s" : ""}
                         </span>
                       </div>
 
                       {[...multiCVResults]
-                        .sort((a, b) => (b.analysis?.overall_score ?? -1) - (a.analysis?.overall_score ?? -1))
+                        .sort(
+                          (a, b) =>
+                            (b.analysis?.overall_score ?? -1) - (a.analysis?.overall_score ?? -1),
+                        )
                         .map((entry, rank) => (
                           <MultiCVRow
                             key={entry.cv.url}
@@ -220,7 +239,9 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
       {/* CV Workspace Dialog */}
       <CVWorkspaceDialog
         open={workspaceOpen}
-        onOpenChange={(open) => { if (!open) closeWorkspace(); }}
+        onOpenChange={(open) => {
+          if (!open) closeWorkspace();
+        }}
         cvName={selectedCV?.name ?? ""}
         cvUrl={selectedCV?.url ?? ""}
         suggestions={suggestions}
@@ -269,19 +290,24 @@ function MultiCVRow({
   const isMid = score !== null && score >= 45 && score < 75;
 
   return (
-    <div className={cn(
-      "relative rounded-xl border bg-card p-3 space-y-2 transition-all",
-      entry.loading && "opacity-70",
-      score !== null && isHigh && "border-match-high/20",
-      score !== null && isMid && "border-match-review/20",
-      score !== null && !isHigh && !isMid && "border-destructive/15",
-      !score && !entry.loading && !entry.error && "border-border/50",
-    )}>
+    <div
+      className={cn(
+        "relative rounded-xl border bg-card p-3 space-y-2 transition-all",
+        entry.loading && "opacity-70",
+        score !== null && isHigh && "border-match-high/20",
+        score !== null && isMid && "border-match-review/20",
+        score !== null && !isHigh && !isMid && "border-destructive/15",
+        !score && !entry.loading && !entry.error && "border-border/50",
+      )}
+    >
       {/* Remove button */}
       <button
         type="button"
         onClick={onRemove}
-        className="absolute top-2 right-2 p-0.5 rounded text-muted-foreground/50 hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
+        className={cn(
+          "absolute top-1/2 right-2 -translate-y-1/2 p-0.5 rounded text-muted-foreground/50 hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer",
+          score ? "top-2 translate-0": ""
+        )}
         aria-label="Remove"
       >
         <X className="size-3" />
@@ -301,14 +327,22 @@ function MultiCVRow({
           <div className="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
         )}
         {score !== null && (
-          <div className={cn(
-            "flex items-baseline gap-0.5 shrink-0 px-2 py-0.5 rounded-lg border",
-            isHigh ? "bg-match-high/10 border-match-high/20" : isMid ? "bg-match-review/10 border-match-review/20" : "bg-destructive/10 border-destructive/20",
-          )}>
-            <span className={cn(
-              "text-sm font-bold tabular-nums leading-none",
-              isHigh ? "text-match-high" : isMid ? "text-match-review" : "text-destructive",
-            )}>
+          <div
+            className={cn(
+              "flex items-baseline gap-0.5 shrink-0 px-2 py-0.5 rounded-lg border",
+              isHigh
+                ? "bg-match-high/10 border-match-high/20"
+                : isMid
+                  ? "bg-match-review/10 border-match-review/20"
+                  : "bg-destructive/10 border-destructive/20",
+            )}
+          >
+            <span
+              className={cn(
+                "text-sm font-bold tabular-nums leading-none",
+                isHigh ? "text-match-high" : isMid ? "text-match-review" : "text-destructive",
+              )}
+            >
               {score}
             </span>
           </div>
@@ -336,9 +370,7 @@ function MultiCVRow({
       )}
 
       {/* Error */}
-      {entry.error && (
-        <p className="text-[11px] text-destructive">{entry.error}</p>
-      )}
+      {entry.error && <p className="text-[11px] text-destructive">{entry.error}</p>}
 
       {/* Actions */}
       {!entry.loading && (
@@ -346,7 +378,13 @@ function MultiCVRow({
           <Button size="sm" className="flex-1 gap-1.5 h-7 text-[11px]" onClick={onEdit}>
             <PencilLine className="size-3" /> Edit CV
           </Button>
-          <Button size="sm" variant="outline" className="gap-1 h-7 text-[11px] px-2" onClick={onReanalyze} title="Re-analyze">
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1 h-7 text-[11px] px-2"
+            onClick={onReanalyze}
+            title="Re-analyze"
+          >
             <RefreshCw className="size-3" />
           </Button>
         </div>
