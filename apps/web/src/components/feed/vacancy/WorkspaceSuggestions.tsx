@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
 import {
   Check,
@@ -78,6 +79,19 @@ export default function WorkspaceSuggestions({
 
   const [syncedSuggestions, setSyncedSuggestions] = useState(suggestions);
   const [edited, setEdited] = useState<Record<number, string>>({});
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [hasScrollBelow, setHasScrollBelow] = useState(false);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const check = () => setHasScrollBelow(el.scrollTop + el.clientHeight < el.scrollHeight - 4);
+    check();
+    el.addEventListener("scroll", check, { passive: true });
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => { el.removeEventListener("scroll", check); ro.disconnect(); };
+  }, [list.length]);
   if (syncedSuggestions !== suggestions) {
     setSyncedSuggestions(suggestions);
     const next: Record<number, string> = {};
@@ -117,10 +131,10 @@ export default function WorkspaceSuggestions({
   }
 
   return (
-    <aside className="w-80 flex-none border-r border-border/50 flex flex-col overflow-hidden bg-background">
+    <aside className="w-80 flex-none border-r border-border/50 flex flex-col overflow-hidden bg-muted/20">
 
-      {/* Header */}
-      <div className="px-4 pt-3.5 pb-3 border-b border-border/40 shrink-0 space-y-2.5">
+      {/* Header — fixed, slightly elevated */}
+      <div className="px-4 pt-3.5 pb-3 border-b border-border/40 shrink-0 space-y-2.5 bg-background">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <p className="text-xs font-semibold text-foreground">AI Suggestions</p>
@@ -164,62 +178,69 @@ export default function WorkspaceSuggestions({
           </div>
         )}
 
-        {/* How-to guide */}
+        {/* How-to guide — always visible, compact inline pills */}
         {!loading && list.length > 0 && (
-          <div className="rounded-lg border border-border/50 overflow-hidden divide-y divide-border/40">
+          <div className="flex items-center gap-1.5 flex-wrap">
             {([
-              { Icon: Wand2,   color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", title: "Apply",   desc: "Rewrites your CV field automatically" },
-              { Icon: Copy,    color: "text-blue-600 dark:text-blue-400",        bg: "bg-blue-500/10",   title: "Copy",    desc: "Paste the text into your own document" },
-              { Icon: PenLine, color: "text-amber-600 dark:text-amber-400",      bg: "bg-amber-500/10",  title: "Rewrite", desc: "Read the reasoning, write it yourself" },
-            ] as const).map(({ Icon, color, bg, title, desc }) => (
-              <div key={title} className="flex items-center gap-2.5 px-2.5 py-2 bg-background">
-                <div className={cn("flex size-6 shrink-0 items-center justify-center rounded-md", bg)}>
-                  <Icon className={cn("size-3", color)} />
-                </div>
-                <div className="min-w-0">
-                  <span className="text-[11px] font-semibold text-foreground">{title}</span>
-                  <span className="text-[10px] text-muted-foreground"> — {desc}</span>
-                </div>
+              { Icon: Wand2,   color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", title: "Apply" },
+              { Icon: Copy,    color: "text-blue-600 dark:text-blue-400",        bg: "bg-blue-500/10 border-blue-500/20",       title: "Copy"  },
+              { Icon: PenLine, color: "text-amber-600 dark:text-amber-400",      bg: "bg-amber-500/10 border-amber-500/20",     title: "Rewrite" },
+            ] as const).map(({ Icon, color, bg, title }) => (
+              <div key={title} className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium", bg, color)}>
+                <Icon className="size-2.5" />
+                {title}
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto min-h-0 p-3 space-y-2">
-        {loading && (
-          <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
-            <div className="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
-            Generating suggestions…
-          </div>
-        )}
-        {!loading && list.length === 0 && (
-          <div className="text-center py-10 px-4 text-xs text-muted-foreground">
-            Run CV analysis from the panel to see suggestions here.
-          </div>
-        )}
+      {/* Scroll label */}
+      {list.length > 0 && !loading && (
+        <div className="px-4 py-1.5 shrink-0 flex items-center justify-between">
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+            {pendingCount} pending · {appliedCount} applied · {declinedCount} declined
+          </span>
+          {hasScrollBelow && (
+            <span className="text-[10px] text-muted-foreground animate-pulse">↓ scroll</span>
+          )}
+        </div>
+      )}
 
-        {list.map((suggestion, index) => (
-          <SuggestionCard
-            key={index}
-            index={index}
-            suggestion={suggestion}
-            action={suggestionActions[index]}
-            editedText={edited[index] ?? ""}
-            onEditChange={(v) => setEdited((prev) => ({ ...prev, [index]: v }))}
-            onAccept={handleAccept}
-            onUndo={onUndo}
-            onReject={onReject}
-            onReset={onReset}
-            readOnly={readOnly}
-          />
-        ))}
-      </div>
+      {/* List — distinct background so it reads as a scrollable region */}
+      <div className="flex-1 min-h-0 relative">
+        {hasScrollBelow && (
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 z-10 bg-linear-to-t from-muted/40 to-transparent" />
+        )}
+        <div ref={scrollRef} className="h-full overflow-y-auto px-3 pt-1 pb-3 space-y-2">
+          {loading && (
+            <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
+              <div className="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+              Generating suggestions…
+            </div>
+          )}
+          {!loading && list.length === 0 && (
+            <div className="text-center py-10 px-4 text-xs text-muted-foreground">
+              Run CV analysis from the panel to see suggestions here.
+            </div>
+          )}
 
-      {/* Footer */}
-      <div className="px-4 py-2.5 border-t border-border/40 shrink-0">
-        <p className="text-[11px] text-muted-foreground">{appliedCount} applied · {declinedCount} declined</p>
+          {list.map((suggestion, index) => (
+            <SuggestionCard
+              key={index}
+              index={index}
+              suggestion={suggestion}
+              action={suggestionActions[index]}
+              editedText={edited[index] ?? ""}
+              onEditChange={(v) => setEdited((prev) => ({ ...prev, [index]: v }))}
+              onAccept={handleAccept}
+              onUndo={onUndo}
+              onReject={onReject}
+              onReset={onReset}
+              readOnly={readOnly}
+            />
+          ))}
+        </div>
       </div>
     </aside>
   );
@@ -305,15 +326,17 @@ function SuggestionCard({
           {suggestion.description}
         </p>
         {suggestion.description.length > 100 && (
-          <button
+          <Button
             type="button"
+            variant="link"
+            size="sm"
             onClick={() => setExpanded(!expanded)}
-            className="inline-flex items-center gap-0.5 text-[10px] text-primary font-medium mt-0.5 hover:underline cursor-pointer"
+            className="h-auto p-0 text-[10px] text-primary font-medium mt-0.5 gap-0.5"
           >
             {expanded
               ? <><ChevronUp className="size-3" /> Less</>
               : <><ChevronDown className="size-3" /> Read more</>}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -332,25 +355,24 @@ function SuggestionCard({
             <span className="text-success font-bold shrink-0">+</span>
             {isAddType ? (
               <>
-                <input
+                <Input
                   type="text"
                   value={editedText}
                   onChange={(e) => onEditChange(e.target.value)}
                   placeholder="Type text to add…"
-                  className="flex-1 bg-transparent outline-none text-success placeholder:text-success/40 text-[10px] leading-4 min-w-0"
+                  className="flex-1 bg-transparent border-0 shadow-none p-0 h-auto text-success placeholder:text-success/40 text-[10px] leading-4 min-w-0 focus-visible:ring-0"
                 />
                 {editedText && (
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={() => handleCopyPlusText(editedText)}
                     title="Copy to clipboard"
-                    className={cn(
-                      "shrink-0 p-0.5 rounded transition-colors cursor-pointer",
-                      copied ? "text-success" : "text-success/40 hover:text-success",
-                    )}
+                    className={cn("size-5 shrink-0", copied ? "text-success" : "text-success/40 hover:text-success")}
                   >
                     {copied ? <ClipboardCheck className="size-3" /> : <Copy className="size-3" />}
-                  </button>
+                  </Button>
                 )}
               </>
             ) : (
@@ -359,17 +381,16 @@ function SuggestionCard({
                   {suggestion.suggested_text}
                 </span>
                 {suggestion.suggested_text && (
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={() => handleCopyPlusText(suggestion.suggested_text ?? "")}
                     title="Copy to clipboard"
-                    className={cn(
-                      "shrink-0 p-0.5 rounded transition-colors cursor-pointer ml-1",
-                      copied ? "text-success" : "text-success/40 hover:text-success",
-                    )}
+                    className={cn("size-5 shrink-0 ml-1", copied ? "text-success" : "text-success/40 hover:text-success")}
                   >
                     {copied ? <ClipboardCheck className="size-3" /> : <Copy className="size-3" />}
-                  </button>
+                  </Button>
                 )}
               </>
             )}

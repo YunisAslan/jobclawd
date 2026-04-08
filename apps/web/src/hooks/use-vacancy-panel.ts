@@ -76,10 +76,17 @@ export function useVacancyPanel(job: JobListing | null) {
     const cv = cvOverride ?? selectedCV;
     if (!job?.url || !cv?.url) return;
     if (cvOverride) setSelectedCV(cvOverride);
-    cvMatch.analyze(job.url, cv.url);
     setWorkspaceOpen(true);
     cvMatch.parseCv(cv.url);
-  }, [job?.url, selectedCV, cvMatch.analyze, cvMatch.parseCv]);
+    // Reuse existing sidebar score if already computed — avoids a redundant API call
+    // and guarantees the workspace shows the same score as the comparison list.
+    const existingEntry = multiCVResults.find((e) => e.cv.url === cv.url && e.analysis && !e.loading);
+    if (existingEntry?.analysis) {
+      cvMatch.analyzeWithSeededResult(job.url, cv.url, existingEntry.analysis);
+    } else {
+      cvMatch.analyze(job.url, cv.url);
+    }
+  }, [job?.url, selectedCV, multiCVResults, cvMatch.analyze, cvMatch.analyzeWithSeededResult, cvMatch.parseCv]);
 
   // Multi-CV: analyze a CV and add result to comparison list
   const addCVToCompare = useCallback(async (cv: CVLink) => {

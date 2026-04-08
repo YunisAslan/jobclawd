@@ -348,6 +348,7 @@ export interface CVPersonalInfo {
   linkedin: string;
   portfolio: string;
   summary: string;
+  photo?: string; // base64 data URL, e.g. "data:image/jpeg;base64,..."
 }
 
 export interface CVExperienceEntry {

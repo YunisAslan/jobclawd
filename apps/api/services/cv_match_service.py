@@ -59,7 +59,7 @@ async def compute_cv_match(job_url: str, cv_url: str) -> dict:
     if error or not cv_text or not job_context:
         return _empty_result(error or "Could not prepare analysis inputs.")
 
-    return await compute_cv_match_from_data(job_context, cv_text)
+    return await compute_cv_match_from_data(job_context, cv_text, deterministic=True)
 
 
 async def compute_cv_match_from_data(job_context: dict, cv_text: str, deterministic: bool = False) -> dict:

@@ -18,6 +18,7 @@ class PersonalInfo(BaseModel):
     linkedin: str = ""
     portfolio: str = ""
     summary: str = ""
+    photo: Optional[str] = None  # base64 data URL
 
 
 class ExperienceEntry(BaseModel):

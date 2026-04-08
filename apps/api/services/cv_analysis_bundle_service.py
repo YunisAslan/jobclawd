@@ -26,7 +26,7 @@ async def analyze_cv_bundle(job_url: str, cv_url: str) -> dict:
         }
 
     analysis, suggestions = await asyncio.gather(
-        compute_cv_match_from_data(job_context, cv_text),
+        compute_cv_match_from_data(job_context, cv_text, deterministic=True),
         generate_cv_suggestions_from_data(job_context, cv_text),
     )
 

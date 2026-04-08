@@ -102,6 +102,45 @@ export function useCVMatch() {
     }));
   }
 
+  /**
+   * Use a pre-computed analysis (e.g. from the sidebar comparison list) and only
+   * fetch suggestions + draft text — avoids a redundant scoring API call.
+   */
+  async function analyzeWithSeededResult(jobUrl: string, cvUrl: string, seededAnalysis: CVMatchAnalysis) {
+    setState((s) => ({
+      ...s,
+      analysis: seededAnalysis,
+      loadingAnalysis: false,
+      loadingSuggestions: true,
+      loadingDraft: true,
+      errorAnalysis: null,
+      errorSuggestions: null,
+      errorDraft: null,
+      analyzed: true,
+      suggestionActions: {},
+    }));
+
+    const [suggestionsResult, draftResult] = await Promise.allSettled([
+      cvMatchService.getSuggestions(jobUrl, cvUrl),
+      cvMatchService.getDraft(cvUrl),
+    ]);
+
+    setState((s) => ({
+      ...s,
+      suggestions: suggestionsResult.status === "fulfilled" ? suggestionsResult.value : null,
+      loadingSuggestions: false,
+      errorSuggestions:
+        suggestionsResult.status === "rejected"
+          ? "Failed to generate suggestions. Please try again."
+          : null,
+      draftText: draftResult.status === "fulfilled" ? draftResult.value.text : "",
+      originalDraftText: draftResult.status === "fulfilled" ? draftResult.value.text : "",
+      draftFileName: draftResult.status === "fulfilled" ? draftResult.value.file_name : "",
+      loadingDraft: false,
+      errorDraft: draftResult.status === "rejected" ? "Could not load the CV draft for editing." : null,
+    }));
+  }
+
   // ── Structured CV parsing & generation ──────────────────────────────────
 
   async function parseCv(cvUrl: string) {
@@ -125,23 +164,57 @@ export function useCVMatch() {
   }
 
   function resetCvData() {
-    setState((s) => ({ ...s, cvData: s.originalCvData }));
+    setState((s) => ({
+      ...s,
+      cvData: s.originalCvData
+        ? { ...s.originalCvData, personal_info: { ...s.originalCvData.personal_info, photo: s.cvData?.personal_info.photo } }
+        : s.cvData,
+    }));
   }
 
   async function previewAtsScore(jobUrl: string) {
-    if (!state.cvData || !state.originalCvData) return;
-    const originalText = cvDataToText(state.originalCvData);
+    if (!state.cvData || !state.analysis) return;
     const editedText = cvDataToText(state.cvData);
+    // Determine which CV match categories were actually touched by accepted suggestions
+    const touchedMatchCategories = new Set<string>();
+    for (const [idx, action] of Object.entries(state.suggestionActions)) {
+      if (action !== "accepted") continue;
+      const suggestion = state.suggestions?.suggestions[Number(idx)];
+      if (!suggestion) continue;
+      switch (suggestion.category) {
+        case "add_keywords":
+          touchedMatchCategories.add("keywords");
+          touchedMatchCategories.add("skills");
+          break;
+        case "rewrite_bullets":
+        case "elevate_experience":
+        case "reduce_irrelevant":
+        case "address_requirements":
+          touchedMatchCategories.add("experience");
+          break;
+        case "improve_headline":
+          touchedMatchCategories.add("skills");
+          break;
+      }
+    }
     setState((s) => ({ ...s, loadingAtsPreview: true, atsPreview: null, atsPreviewBaseline: null }));
     try {
-      const [baselineResult, previewResult] = await Promise.all([
-        cvMatchService.matchFromText(jobUrl, originalText),
-        cvMatchService.matchFromText(jobUrl, editedText),
-      ]);
+      const previewResult = await cvMatchService.matchFromText(jobUrl, editedText);
+      // Pin untouched categories to the baseline to prevent spurious drift
+      const baselineCategories = state.analysis.categories;
+      const correctedCategories = previewResult.categories.map((cat) => {
+        if (touchedMatchCategories.has(cat.category)) return cat;
+        const baseline = baselineCategories.find((b) => b.category === cat.category);
+        return baseline ? { ...cat, score: baseline.score } : cat;
+      });
+      // Recompute overall as average of corrected category scores (same weight as backend)
+      const correctedOverall = correctedCategories.length > 0
+        ? Math.round(correctedCategories.reduce((sum, c) => sum + c.score, 0) / correctedCategories.length)
+        : previewResult.overall_score;
       setState((s) => ({
         ...s,
-        atsPreviewBaseline: baselineResult.overall_score,
-        atsPreview: previewResult,
+        atsPreviewBaseline: s.analysis!.overall_score,
+        atsPreview: { ...previewResult, categories: correctedCategories, overall_score: correctedOverall },
         loadingAtsPreview: false,
       }));
     } catch {
@@ -170,14 +243,19 @@ export function useCVMatch() {
   }
 
   function resetDraft() {
-    setState((s) => ({
-      ...s,
-      draftText: s.originalDraftText,
-      cvData: s.originalCvData,
-      suggestionActions: {},
-      preAcceptSnapshots: {},
-      preAcceptCvSnapshots: {},
-    }));
+    setState((s) => {
+      const currentPhoto = s.cvData?.personal_info.photo;
+      return {
+        ...s,
+        draftText: s.originalDraftText,
+        cvData: s.originalCvData
+          ? { ...s.originalCvData, personal_info: { ...s.originalCvData.personal_info, photo: currentPhoto } }
+          : s.cvData,
+        suggestionActions: {},
+        preAcceptSnapshots: {},
+        preAcceptCvSnapshots: {},
+      };
+    });
   }
 
   function acceptSuggestion(index: number, suggestion: CVSuggestion, overrideText?: string) {
@@ -211,10 +289,15 @@ export function useCVMatch() {
       delete nextCvSnapshots[index];
       const nextActions = { ...s.suggestionActions };
       delete nextActions[index];
+      // Preserve the current photo across undo — photo is never part of suggestions
+      const currentPhoto = s.cvData?.personal_info.photo;
+      const restoredCv = cvSnapshot
+        ? { ...cvSnapshot, personal_info: { ...cvSnapshot.personal_info, photo: currentPhoto } }
+        : s.cvData;
       return {
         ...s,
         draftText: snapshot,
-        cvData: cvSnapshot ?? s.cvData,
+        cvData: restoredCv,
         suggestionActions: nextActions,
         preAcceptSnapshots: nextSnapshots,
         preAcceptCvSnapshots: nextCvSnapshots,
@@ -283,6 +366,7 @@ export function useCVMatch() {
   return {
     ...state,
     analyze,
+    analyzeWithSeededResult,
     updateDraft,
     resetDraft,
     acceptSuggestion,

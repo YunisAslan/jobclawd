@@ -50,11 +50,9 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
     setActiveTab,
     cvAnalysis,
     loadingAnalysis,
-    errorAnalysis,
     suggestions,
     loadingSuggestions,
     suggestionActions,
-    analyzed,
     acceptSuggestion,
     undoAcceptSuggestion,
     rejectSuggestion,
@@ -75,7 +73,6 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
     addCVToCompare,
     removeCVFromCompare,
     workspaceOpen,
-    openWorkspace,
     analyzeAndOpen,
     closeWorkspace,
     isSaved,
@@ -96,38 +93,38 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
           className="w-full sm:max-w-125 p-0 flex flex-col gap-0 overflow-hidden"
         >
           {/* Header */}
-          <SheetHeader className="px-5 pt-5 pb-4 border-b border-border/50 space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="flex-1 min-w-0">
-                <SheetTitle className="text-sm leading-snug line-clamp-2 pr-6">
-                  {job.title}
-                </SheetTitle>
-                <SheetDescription className="text-xs mt-1 flex items-center gap-2">
-                  {job.company}
-                  <SourceBadge source={job.source} />
-                </SheetDescription>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {job.match_score > 0 && (
-                  <div
+          <SheetHeader className="px-5 pt-5 pb-4 border-b border-border/50">
+            {/* pr-8 keeps title away from the sheet's built-in close button */}
+            <SheetTitle className="text-sm leading-snug line-clamp-2 pr-8">
+              {job.title}
+            </SheetTitle>
+            <div className="flex items-center gap-2 mt-1">
+              <SheetDescription className="text-xs flex items-center gap-2 flex-1 min-w-0">
+                <span className="truncate">{job.company}</span>
+                <SourceBadge source={job.source} />
+              </SheetDescription>
+              {job.match_score > 0 && (
+                <div
+                  className={cn(
+                    "flex items-center gap-1 rounded-lg px-2 py-0.5 shrink-0",
+                    isHigh
+                      ? "bg-match-high/10 border border-match-high/20"
+                      : "bg-match-review/10 border border-match-review/20",
+                  )}
+                >
+                  <span
                     className={cn(
-                      "flex flex-col items-center justify-center rounded-lg px-2.5 py-1.5",
-                      isHigh
-                        ? "bg-match-high/10 border border-match-high/20"
-                        : "bg-match-review/10 border border-match-review/20",
+                      "text-xs font-bold tabular-nums leading-none",
+                      isHigh ? "text-match-high" : "text-match-review",
                     )}
                   >
-                    <span
-                      className={cn(
-                        "text-base font-bold leading-none tabular-nums",
-                        isHigh ? "text-match-high" : "text-match-review",
-                      )}
-                    >
-                      {job.match_score}
-                    </span>
-                  </div>
-                )}
-              </div>
+                    {job.match_score}
+                  </span>
+                  <span className={cn("text-[9px] font-medium opacity-70", isHigh ? "text-match-high" : "text-match-review")}>
+                    match
+                  </span>
+                </div>
+              )}
             </div>
           </SheetHeader>
 
@@ -301,17 +298,19 @@ function MultiCVRow({
       )}
     >
       {/* Remove button */}
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon"
         onClick={onRemove}
         className={cn(
-          "absolute top-1/2 right-2 -translate-y-1/2 p-0.5 rounded text-muted-foreground/50 hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer",
-          score ? "top-2 translate-0": ""
+          "absolute top-1/2 right-2 -translate-y-1/2 size-6 text-muted-foreground/50 hover:text-foreground",
+          score ? "top-2 translate-y-0" : ""
         )}
         aria-label="Remove"
       >
         <X className="size-3" />
-      </button>
+      </Button>
 
       {/* Header: rank + name + score */}
       <div className="flex items-center gap-2.5 pr-4">

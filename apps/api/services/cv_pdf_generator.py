@@ -4,6 +4,7 @@ Takes a CVData object and produces a clean, professional, ATS-friendly
 single-column PDF layout.
 """
 
+import base64
 from io import BytesIO
 
 from reportlab.lib import colors
@@ -13,6 +14,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch, mm
 from reportlab.platypus import (
     HRFlowable,
+    Image,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -42,12 +44,12 @@ def _build_styles() -> dict[str, ParagraphStyle]:
         "name": ParagraphStyle(
             "CVName", parent=base["Normal"],
             fontName=_FONT_BOLD, fontSize=18, leading=22,
-            alignment=TA_CENTER, textColor=_COLOR_TEXT, spaceAfter=2,
+            alignment=TA_LEFT, textColor=_COLOR_TEXT, spaceAfter=2,
         ),
         "contact": ParagraphStyle(
             "CVContact", parent=base["Normal"],
             fontName=_FONT, fontSize=9, leading=12,
-            alignment=TA_CENTER, textColor=_COLOR_MUTED, spaceAfter=6,
+            alignment=TA_LEFT, textColor=_COLOR_MUTED, spaceAfter=6,
         ),
         "summary": ParagraphStyle(
             "CVSummary", parent=base["Normal"],
@@ -181,23 +183,53 @@ def generate_cv_pdf(data: CVData) -> BytesIO:
 def _render_header(story: list, data: CVData, styles: dict):
     info = data.personal_info
 
-    if info.full_name:
-        story.append(Paragraph(_esc(info.full_name), styles["name"]))
-
     contact_parts: list[str] = []
-    if info.phone:
-        contact_parts.append(info.phone)
-    if info.email:
-        contact_parts.append(info.email)
-    if info.location:
-        contact_parts.append(info.location)
-    if info.linkedin:
-        contact_parts.append(info.linkedin)
-    if info.portfolio:
-        contact_parts.append(info.portfolio)
+    for val in [info.phone, info.email, info.location, info.linkedin, info.portfolio]:
+        if val:
+            contact_parts.append(val)
 
-    if contact_parts:
-        story.append(Paragraph("  |  ".join(_esc(p) for p in contact_parts), styles["contact"]))
+    name_para = Paragraph(_esc(info.full_name), styles["name"]) if info.full_name else None
+    contact_para = Paragraph("  |  ".join(_esc(p) for p in contact_parts), styles["contact"]) if contact_parts else None
+
+    if info.photo:
+        try:
+            raw = info.photo
+            if "," in raw:
+                raw = raw.split(",", 1)[1]
+            img_bytes = BytesIO(base64.b64decode(raw))
+            photo_img = Image(img_bytes, width=0.75 * inch, height=0.75 * inch)
+
+            # Two-column layout: text left, photo right
+            text_cells = []
+            if name_para:
+                text_cells.append(name_para)
+            if contact_para:
+                text_cells.append(contact_para)
+
+            from reportlab.platypus import KeepTogether
+            text_col = text_cells if text_cells else [Spacer(1, 1)]
+
+            t = Table([[text_col, photo_img]], colWidths=["82%", "18%"])
+            t.setStyle(TableStyle([
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ]))
+            story.append(t)
+        except Exception:
+            # Fallback to no-photo layout
+            if name_para:
+                story.append(name_para)
+            if contact_para:
+                story.append(contact_para)
+    else:
+        if name_para:
+            story.append(name_para)
+        if contact_para:
+            story.append(contact_para)
 
     story.append(Spacer(1, 2))
     story.append(HRFlowable(width="100%", thickness=0.5, color=_COLOR_LINE))
@@ -277,8 +309,11 @@ def _render_education_entry(story: list, entry, styles: dict):
         story.append(Paragraph(f"<b>{_esc(title)}</b>", styles["entry_title"]))
 
     if entry.degree and entry.institution:
-        story.append(Paragraph(_esc(entry.degree), styles["entry_subtitle"]))
-    if entry.field_of_study:
+        subtitle_parts = [_esc(entry.degree)]
+        if entry.field_of_study:
+            subtitle_parts.append(_esc(entry.field_of_study))
+        story.append(Paragraph(" · ".join(subtitle_parts), styles["entry_subtitle"]))
+    elif entry.field_of_study:
         story.append(Paragraph(_esc(entry.field_of_study), styles["entry_subtitle"]))
 
     for detail in entry.details:

@@ -115,11 +115,12 @@ export default function ProfileIdentityCard({
                   }
                 }}
               />
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="size-15 rounded-2xl overflow-hidden relative cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="size-15 p-0 rounded-2xl overflow-hidden relative"
               >
                 {avatarSrc ? (
                   <Image
@@ -143,7 +144,7 @@ export default function ProfileIdentityCard({
                     <Camera className="size-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                   )}
                 </div>
-              </button>
+              </Button>
               {pct === 100 && (
                 <div className="absolute -bottom-1 -right-1 size-4.5 rounded-full bg-success flex items-center justify-center shadow">
                   <Check className="size-2.5 text-white" strokeWidth={3} />
