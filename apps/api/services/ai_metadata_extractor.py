@@ -15,7 +15,7 @@ from utils.job_meta_extractor import (
 )
 
 _OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
-_OPENAI_MODEL = os.getenv("OPENAI_METADATA_MODEL", "gpt-4.1-mini").strip()
+_OPENAI_MODEL = os.getenv("OPENAI_METADATA_MODEL", "gpt-5.4-nano").strip()
 _OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 
 _AI_METADATA_DEBUG = os.getenv("AI_METADATA_DEBUG", "").strip().lower() in {"1", "true", "yes", "on"}
@@ -26,6 +26,10 @@ _BATCH_SIZE = 20
 # Per-million-token pricing for known models
 _MODEL_PRICING: dict[str, tuple[float, float]] = {
     # (input_per_1M, output_per_1M)
+    "gpt-5.4-nano":  (0.20, 1.25),
+    "gpt-5.4-mini":  (0.75, 4.50),
+    "gpt-5-nano":    (0.05, 0.40),
+    "gpt-5-mini":    (0.25, 2.00),
     "gpt-4.1-mini":  (0.40, 1.60),
     "gpt-4.1-nano":  (0.10, 0.40),
     "gpt-4.1":       (2.00, 8.00),

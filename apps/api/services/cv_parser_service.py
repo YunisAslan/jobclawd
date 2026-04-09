@@ -29,7 +29,7 @@ from models.cv_schema import (
 # ── LLM config (reuses the same env vars as other AI services) ──────────────
 
 _OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
-_OPENAI_MODEL = os.getenv("OPENAI_METADATA_MODEL", "gpt-4.1-mini").strip()
+_OPENAI_MODEL = os.getenv("OPENAI_METADATA_MODEL", "gpt-5.4-nano").strip()
 _OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 _TIMEOUT = 60.0
 

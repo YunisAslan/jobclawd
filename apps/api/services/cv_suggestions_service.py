@@ -13,7 +13,7 @@ import httpx
 from services.cv_analysis_shared import prepare_cv_analysis_inputs
 
 _OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
-_OPENAI_MODEL = os.getenv("OPENAI_METADATA_MODEL", "gpt-4.1-mini").strip()
+_OPENAI_MODEL = os.getenv("OPENAI_METADATA_MODEL", "gpt-5.4-nano").strip()
 _OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 _TIMEOUT = 45.0
 

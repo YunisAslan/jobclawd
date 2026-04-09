@@ -1,18 +1,4 @@
 services:
-  onlyoffice:
-    image: onlyoffice/documentserver:latest
-    restart: unless-stopped
-    ports:
-      - "8080:80"
-    environment:
-      - JWT_ENABLED=true
-      - JWT_SECRET=${ONLYOFFICE_JWT_SECRET:-onlyoffice_dev_secret}
-      - JWT_HEADER=Authorization
-      - JWT_PREFIX=Bearer
-    volumes:
-      - onlyoffice_data:/var/www/onlyoffice/Data
-      - onlyoffice_logs:/var/log/onlyoffice
-
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -39,7 +25,6 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-jobclawd}:${POSTGRES_PASSWORD:-jobclawd}@postgres:5432/${POSTGRES_DB:-jobclawd}
-      - ONLYOFFICE_API_INTERNAL_URL=http://api:8000
     volumes:
       - ./apps/api:/app
       - /app/venv
@@ -70,5 +55,3 @@ services:
 
 volumes:
   postgres_data:
-  onlyoffice_data:
-  onlyoffice_logs:
