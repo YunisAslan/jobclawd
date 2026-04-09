@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,6 +8,7 @@ import {
   DialogDescription,
 } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
 import {
@@ -53,7 +54,7 @@ interface CVWorkspaceDialogProps {
   originalCvData?: CVData | null;
   onCvDataChange: (data: CVData) => void;
   onCvDataReset: () => void;
-  onGeneratePdf: () => void;
+  onGeneratePdf: (name?: string) => void;
   loadingParse: boolean;
   generatingPdf: boolean;
   cvAnalysis?: CVMatchAnalysis | null;
@@ -103,6 +104,8 @@ export default function CVWorkspaceDialog({
   const [miniPreviewOpen, setMiniPreviewOpen] = useState(true);
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
   const [lensPos, setLensPos] = useState<{ x: number; y: number } | null>(null);
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
+  const [downloadName, setDownloadName] = useState("");
   const cvPreviewInnerRef = useRef<HTMLDivElement>(null);
   const [scaledPreviewHeight, setScaledPreviewHeight] = useState(640);
 
@@ -128,6 +131,16 @@ export default function CVWorkspaceDialog({
     }
   }, [atsPreview, atsPreviewBaseline]);
 
+  const handleOpenDownload = useCallback(() => {
+    setDownloadName(cvName.replace(/\.[^.]+$/, ""));
+    setDownloadDialogOpen(true);
+  }, [cvName]);
+
+  const handleConfirmDownload = useCallback((name: string) => {
+    setDownloadDialogOpen(false);
+    onGeneratePdf(name.trim() || cvName);
+  }, [onGeneratePdf, cvName]);
+
   const handleAppliedScrollTarget = useCallback((sectionId: string) => {
     setViewMode("edit");
     setTimeout(() => setHighlightSection(sectionId), 50);
@@ -141,6 +154,17 @@ export default function CVWorkspaceDialog({
   }, [onDismissAtsPreview]);
 
   const appliedCount = Object.values(suggestionActions).filter((v) => v === "accepted").length;
+
+  const hasChanges = useMemo(() => {
+    if (!cvData || !originalCvData) return false;
+    const strip = (d: typeof cvData) => {
+      const { photo: _p, ...pi } = d.personal_info;
+      return { ...d, personal_info: pi };
+    };
+    return JSON.stringify(strip(cvData)) !== JSON.stringify(strip(originalCvData));
+  }, [cvData, originalCvData]);
+
+  const canCheckImpact = appliedCount > 0 || hasChanges;
 
   return (
     <>
@@ -204,8 +228,8 @@ export default function CVWorkspaceDialog({
                   variant="outline"
                   className="gap-1.5 border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   onClick={onAtsPreview}
-                  disabled={loadingAtsPreview || appliedCount === 0}
-                  title={appliedCount === 0 ? "Apply suggestions first to check impact" : undefined}
+                  disabled={loadingAtsPreview || !canCheckImpact}
+                  title={!canCheckImpact ? "Edit your CV first to check impact" : undefined}
                 >
                   {loadingAtsPreview ? (
                     <>
@@ -225,7 +249,7 @@ export default function CVWorkspaceDialog({
                 type="button"
                 size="sm"
                 className="gap-1.5 cursor-pointer"
-                onClick={() => onGeneratePdf()}
+                onClick={handleOpenDownload}
                 disabled={!hasStructuredData || generatingPdf}
               >
                 <Download className="size-3.5" />
@@ -375,10 +399,19 @@ export default function CVWorkspaceDialog({
           baselineAnalysis={cvAnalysis ?? undefined}
           result={atsPreview}
           onClose={handleDismissScoreModal}
-          onDownload={onGeneratePdf}
+          onDownload={handleOpenDownload}
           generatingPdf={generatingPdf}
         />
       )}
+
+      <DownloadNameDialog
+        open={downloadDialogOpen}
+        name={downloadName}
+        generatingPdf={generatingPdf}
+        onNameChange={setDownloadName}
+        onConfirm={handleConfirmDownload}
+        onCancel={() => setDownloadDialogOpen(false)}
+      />
     </>
   );
 }
@@ -524,6 +557,86 @@ function inferCVFileType(cvUrl: string): "pdf" | "docx" | "link" {
   if (path.endsWith(".pdf")) return "pdf";
   if (path.endsWith(".docx")) return "docx";
   return "link";
+}
+
+function DownloadNameDialog({
+  open,
+  name,
+  generatingPdf,
+  onNameChange,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  name: string;
+  generatingPdf: boolean;
+  onNameChange: (v: string) => void;
+  onConfirm: (name: string) => void;
+  onCancel: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) setTimeout(() => { inputRef.current?.select(); }, 60);
+  }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onCancel(); }}>
+      <DialogContent className="sm:max-w-sm p-0 gap-0 overflow-hidden rounded-2xl">
+        <div className="px-6 pt-6 pb-4 border-b border-border/50">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+              <Download className="size-4 text-primary" />
+            </div>
+            <div>
+              <DialogTitle className="text-sm font-semibold leading-none">Download PDF</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mt-1">
+                Choose a name for your downloaded file.
+              </DialogDescription>
+            </div>
+          </div>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">File name</label>
+            <Input
+              ref={inputRef}
+              value={name}
+              onChange={(e) => onNameChange(e.target.value)}
+              placeholder="e.g. Senior Frontend Engineer CV"
+              className="h-10"
+              disabled={generatingPdf}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onConfirm(name);
+                if (e.key === "Escape") onCancel();
+              }}
+            />
+            <p className="text-[11px] text-muted-foreground/60">
+              The .pdf extension will be added automatically.
+            </p>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button type="button" variant="outline" className="flex-1" onClick={onCancel} disabled={generatingPdf}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="flex-1 gap-1.5"
+              onClick={() => onConfirm(name)}
+              disabled={generatingPdf || !name.trim()}
+            >
+              {generatingPdf ? (
+                <div className="size-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Download className="size-3.5" />
+              )}
+              {generatingPdf ? "Generating…" : "Download"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function resolveCVUrl(cvUrl: string): string {

@@ -33,6 +33,7 @@ export default function CVLinkManager({ cvLinks, onChange }: CVLinkManagerProps)
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (fileInputRef.current) fileInputRef.current.value = "";
     setUploading(true);
     setUploadError(null);
     try {
@@ -42,7 +43,6 @@ export default function CVLinkManager({ cvLinks, onChange }: CVLinkManagerProps)
       setUploadError("Upload failed. Please try again.");
     } finally {
       setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 

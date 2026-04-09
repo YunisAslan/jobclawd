@@ -19,6 +19,10 @@ class PersonalInfo(BaseModel):
     portfolio: str = ""
     summary: str = ""
     photo: Optional[str] = None  # base64 data URL
+    email_link: str = ""
+    phone_link: str = ""
+    linkedin_link: str = ""
+    portfolio_link: str = ""
 
 
 class ExperienceEntry(BaseModel):

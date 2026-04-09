@@ -342,17 +342,17 @@ function SuggestionCard({
 
       {/* Diff block */}
       {!isDeclined && (suggestion.specific_text || suggestion.suggested_text) && (
-        <div className="rounded border border-border overflow-hidden text-[10px] font-mono ml-3">
+        <div className="rounded border border-border overflow-hidden text-[11px] font-mono ml-3">
           {suggestion.specific_text && (
             <div className="flex gap-1.5 px-2 py-1.5 bg-destructive/5 border-b border-destructive/10">
               <span className="text-destructive/60 font-bold shrink-0">−</span>
-              <span className="text-destructive/50 line-through wrap-break-word leading-4">
+              <span className="text-destructive/50 line-through wrap-break-word leading-normal flex-1 min-w-0">
                 {suggestion.specific_text}
               </span>
             </div>
           )}
-          <div className="flex items-center gap-1 px-2 py-1.5 bg-success/5">
-            <span className="text-success font-bold shrink-0">+</span>
+          <div className="flex items-start gap-1 px-2 py-1.5 bg-success/5">
+            <span className="text-success font-bold shrink-0 mt-px">+</span>
             {isAddType ? (
               <>
                 <Input
@@ -360,7 +360,7 @@ function SuggestionCard({
                   value={editedText}
                   onChange={(e) => onEditChange(e.target.value)}
                   placeholder="Type text to add…"
-                  className="flex-1 bg-transparent border-0 shadow-none p-0 h-auto text-success placeholder:text-success/40 text-[10px] leading-4 min-w-0 focus-visible:ring-0"
+                  className="flex-1 bg-transparent border-0 shadow-none p-0 h-auto text-success placeholder:text-success/40 text-[11px] leading-normal min-w-0 focus-visible:ring-0"
                 />
                 {editedText && (
                   <Button
@@ -377,7 +377,7 @@ function SuggestionCard({
               </>
             ) : (
               <>
-                <span className="text-success/80 wrap-break-word leading-4 flex-1 min-w-0">
+                <span className="text-success/80 wrap-break-word leading-normal flex-1 min-w-0">
                   {suggestion.suggested_text}
                 </span>
                 {suggestion.suggested_text && (

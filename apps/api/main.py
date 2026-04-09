@@ -34,15 +34,19 @@ async def _cache_cleanup_loop() -> None:
             from repositories.cache_repo import delete_expired_cache
             from repositories.metadata_repo import delete_expired_metadata
             from repositories.saved_vacancies_repo import delete_expired_saved_vacancies
+            from repositories.cv_analysis_cache_repo import delete_expired_cv_analysis
             deleted = delete_expired_cache()
             deleted_meta = delete_expired_metadata()
             deleted_saved = delete_expired_saved_vacancies()
+            deleted_cv = delete_expired_cv_analysis()
             if deleted:
                 print(f"[Cache] Cleaned up {deleted} expired entries")
             if deleted_meta:
                 print(f"[Metadata] Cleaned up {deleted_meta} expired entries")
             if deleted_saved:
                 print(f"[SavedVacancies] Cleaned up {deleted_saved} expired entries")
+            if deleted_cv:
+                print(f"[CVAnalysisCache] Cleaned up {deleted_cv} expired entries")
         except Exception as exc:
             print(f"[Cache] Cleanup error: {exc}")
 

@@ -11,6 +11,8 @@ import {
   GripVertical,
   ChevronDown,
   ChevronUp,
+  Link2,
+  ArrowUpRight,
 } from "lucide-react";
 
 /* ── Utility ── */
@@ -186,6 +188,69 @@ export function Field({
         placeholder={placeholder || label}
         className="text-sm h-9"
       />
+    </div>
+  );
+}
+
+/* ── LinkedField (display text + separate link URL row) ── */
+
+export function LinkedField({
+  label,
+  value,
+  onChange,
+  link,
+  onLinkChange,
+  linkPlaceholder,
+  className,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  link: string;
+  onLinkChange: (v: string) => void;
+  linkPlaceholder?: string;
+  className?: string;
+  placeholder?: string;
+}) {
+  const canOpen = !!link.trim();
+
+  return (
+    <div className={className}>
+      <FieldLabel>{label}</FieldLabel>
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder || label}
+        className="text-sm h-9"
+      />
+      <div className="flex items-center gap-1.5 mt-1">
+        <Link2 className="size-3.5 text-muted-foreground/30 shrink-0" />
+        <div className="relative flex-1">
+          <Input
+            value={link}
+            onChange={(e) => onLinkChange(e.target.value)}
+            placeholder={linkPlaceholder || "https://"}
+            className={cn(
+              "h-7 text-[11px] border-border/40 bg-muted/30 placeholder:text-muted-foreground/40",
+              canOpen && "pr-7",
+            )}
+          />
+          {canOpen && (
+            <a
+              href={link}
+              target="_blank"
+              rel="noopener noreferrer"
+              tabIndex={-1}
+              onClick={(e) => e.stopPropagation()}
+              title="Open link"
+              className="absolute right-0 top-0 h-7 w-7 flex items-center justify-center text-muted-foreground/40 hover:text-primary transition-colors"
+            >
+              <ArrowUpRight className="size-3.5" />
+            </a>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

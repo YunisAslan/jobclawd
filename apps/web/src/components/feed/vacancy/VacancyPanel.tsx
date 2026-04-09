@@ -170,7 +170,6 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
                           (e) => e.cv.url === selectedCV?.url && e.loading,
                         )}
                       >
-                        <Plus className="size-4" />
                         Analyze CV
                       </Button>
                     )}
@@ -323,12 +322,12 @@ function MultiCVRow({
         </div>
 
         {entry.loading && (
-          <div className="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+          <div className="mr-3 size-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
         )}
         {score !== null && (
           <div
             className={cn(
-              "flex items-baseline gap-0.5 shrink-0 px-2 py-0.5 rounded-lg border",
+              "flex items-baseline gap-0.5 shrink-0 px-2 py-0.5 rounded-lg border mr-2",
               isHigh
                 ? "bg-match-high/10 border-match-high/20"
                 : isMid

@@ -136,3 +136,31 @@ CREATE INDEX IF NOT EXISTS idx_saved_vacancies_user_email
 
 CREATE INDEX IF NOT EXISTS idx_saved_vacancies_expires
   ON saved_vacancies (expires_at);
+
+-- CV analysis results cache: (user, cv, job) → match + suggestions, 7-day TTL
+CREATE TABLE IF NOT EXISTS cv_analysis_cache (
+  id               SERIAL PRIMARY KEY,
+  email            TEXT NOT NULL,
+  cv_url           TEXT NOT NULL,
+  job_url          TEXT NOT NULL,
+  analysis_json    JSONB NOT NULL,
+  suggestions_json JSONB NOT NULL,
+  cv_name          TEXT NOT NULL DEFAULT '',
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at       TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '7 days',
+  CONSTRAINT cv_analysis_cache_unique UNIQUE (email, cv_url, job_url)
+);
+
+CREATE INDEX IF NOT EXISTS idx_cv_analysis_cache_email
+  ON cv_analysis_cache (email);
+
+CREATE INDEX IF NOT EXISTS idx_cv_analysis_cache_expires
+  ON cv_analysis_cache (expires_at);
+
+-- CV parse cache: cv_url → structured CVData JSON (permanent, URL contains UUID)
+CREATE TABLE IF NOT EXISTS cv_parse_cache (
+  cv_url      TEXT PRIMARY KEY,
+  parsed_json JSONB NOT NULL,
+  cv_name     TEXT NOT NULL DEFAULT '',
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

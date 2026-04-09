@@ -20,6 +20,7 @@ import {
   Section,
   SortableList,
   Field,
+  LinkedField,
   FieldLabel,
   EmptyState,
   RemoveButton,
@@ -106,7 +107,18 @@ export default function CVStructuredEditor({ data, onChange, highlightSection, o
                       const file = (e.target as HTMLInputElement).files?.[0];
                       if (!file) return;
                       const reader = new FileReader();
-                      reader.onload = () => update({ personal_info: { ...data.personal_info, photo: reader.result as string } });
+                      reader.onload = () => {
+                        const img = new window.Image();
+                        img.onload = () => {
+                          const canvas = document.createElement("canvas");
+                          canvas.width = img.width;
+                          canvas.height = img.height;
+                          canvas.getContext("2d")!.drawImage(img, 0, 0);
+                          const jpeg = canvas.toDataURL("image/jpeg", 0.92);
+                          update({ personal_info: { ...data.personal_info, photo: jpeg } });
+                        };
+                        img.src = reader.result as string;
+                      };
                       reader.readAsDataURL(file);
                     };
                     input.click();
@@ -141,16 +153,40 @@ export default function CVStructuredEditor({ data, onChange, highlightSection, o
               <div className="flex-1 grid grid-cols-2 gap-3">
                 <Field label="Full Name" value={data.personal_info.full_name}
                   onChange={(v) => update({ personal_info: { ...data.personal_info, full_name: v } })} />
-                <Field label="Email" value={data.personal_info.email}
-                  onChange={(v) => update({ personal_info: { ...data.personal_info, email: v } })} />
-                <Field label="Phone" value={data.personal_info.phone}
-                  onChange={(v) => update({ personal_info: { ...data.personal_info, phone: v } })} />
                 <Field label="Location" value={data.personal_info.location}
                   onChange={(v) => update({ personal_info: { ...data.personal_info, location: v } })} />
-                <Field label="LinkedIn" value={data.personal_info.linkedin}
-                  onChange={(v) => update({ personal_info: { ...data.personal_info, linkedin: v } })} />
-                <Field label="Portfolio" value={data.personal_info.portfolio}
-                  onChange={(v) => update({ personal_info: { ...data.personal_info, portfolio: v } })} />
+                <LinkedField
+                  label="Email"
+                  value={data.personal_info.email}
+                  onChange={(v) => update({ personal_info: { ...data.personal_info, email: v } })}
+                  link={data.personal_info.email_link ?? ""}
+                  onLinkChange={(v) => update({ personal_info: { ...data.personal_info, email_link: v } })}
+                  linkPlaceholder="mailto:you@example.com"
+                />
+                <LinkedField
+                  label="Phone"
+                  value={data.personal_info.phone}
+                  onChange={(v) => update({ personal_info: { ...data.personal_info, phone: v } })}
+                  link={data.personal_info.phone_link ?? ""}
+                  onLinkChange={(v) => update({ personal_info: { ...data.personal_info, phone_link: v } })}
+                  linkPlaceholder="tel:+1234567890"
+                />
+                <LinkedField
+                  label="LinkedIn"
+                  value={data.personal_info.linkedin}
+                  onChange={(v) => update({ personal_info: { ...data.personal_info, linkedin: v } })}
+                  link={data.personal_info.linkedin_link ?? ""}
+                  onLinkChange={(v) => update({ personal_info: { ...data.personal_info, linkedin_link: v } })}
+                  linkPlaceholder="https://linkedin.com/in/username"
+                />
+                <LinkedField
+                  label="Portfolio"
+                  value={data.personal_info.portfolio}
+                  onChange={(v) => update({ personal_info: { ...data.personal_info, portfolio: v } })}
+                  link={data.personal_info.portfolio_link ?? ""}
+                  onLinkChange={(v) => update({ personal_info: { ...data.personal_info, portfolio_link: v } })}
+                  linkPlaceholder="https://yoursite.com"
+                />
               </div>
             </div>
             <div className="mt-1">
@@ -429,3 +465,18 @@ function emptyEducation(): CVEducationEntry {
 function emptyCertification() {
   return { id: uid(), name: "", issuer: "", date: "" };
 }
+
+function resolveLinkedIn(value: string): string {
+  const v = value.trim();
+  if (v.startsWith("http://") || v.startsWith("https://")) return v;
+  if (v.startsWith("linkedin.com")) return `https://${v}`;
+  return `https://linkedin.com/in/${v.replace(/^in\//, "")}`;
+}
+
+function resolvePortfolio(value: string): string {
+  const v = value.trim();
+  if (v.startsWith("http://") || v.startsWith("https://")) return v;
+  if (v.includes(".")) return `https://${v}`;
+  return "";
+}
+

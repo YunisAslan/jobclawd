@@ -2,6 +2,42 @@
 
 import type { CVData } from "@/types";
 
+/* ── Contact field URL resolution ── */
+
+type ContactField = { label: string; href: string | null };
+
+function resolveLinkedIn(value: string): string {
+  if (!value) return "";
+  const v = value.trim();
+  if (v.startsWith("http://") || v.startsWith("https://")) return v;
+  if (v.startsWith("linkedin.com")) return `https://${v}`;
+  // Handle: "in/handle", "yunis-aslanov", etc.
+  const handle = v.replace(/^in\//, "");
+  return `https://linkedin.com/in/${handle}`;
+}
+
+function resolvePortfolio(value: string): string {
+  if (!value) return "";
+  const v = value.trim();
+  if (v.startsWith("http://") || v.startsWith("https://")) return v;
+  // Looks like a domain if it has a dot
+  if (v.includes(".")) return `https://${v}`;
+  return "";
+}
+
+function buildContactFields(pi: CVData["personal_info"]): ContactField[] {
+  const fields: ContactField[] = [];
+  if (pi.phone) fields.push({ label: pi.phone, href: pi.phone_link?.trim() || `tel:${pi.phone.replace(/\s/g, "")}` });
+  if (pi.email) fields.push({ label: pi.email, href: pi.email_link?.trim() || `mailto:${pi.email}` });
+  if (pi.location) fields.push({ label: pi.location, href: null });
+  if (pi.linkedin) fields.push({ label: pi.linkedin, href: pi.linkedin_link?.trim() || resolveLinkedIn(pi.linkedin) });
+  if (pi.portfolio) {
+    const href = pi.portfolio_link?.trim() || resolvePortfolio(pi.portfolio);
+    fields.push({ label: pi.portfolio, href: href || null });
+  }
+  return fields;
+}
+
 /* Compute which text strings are new/changed vs original CV */
 function computeChangedTexts(original: CVData, current: CVData): Set<string> {
   const changed = new Set<string>();
@@ -75,9 +111,27 @@ export default function CVMiniPreview({ data, originalData }: CVMiniPreviewProps
           <div style={{ fontSize: "18px", fontWeight: 700, color: "#1a1a1a" }}>
             {pi.full_name || "Your Name"}
           </div>
-          {[pi.phone, pi.email, pi.location, pi.linkedin, pi.portfolio].filter(Boolean).length > 0 && (
-            <div style={{ fontSize: "9px", color: "#555555", marginTop: "3px" }}>
-              {[pi.phone, pi.email, pi.location, pi.linkedin, pi.portfolio].filter(Boolean).join("  |  ")}
+          {buildContactFields(pi).length > 0 && (
+            <div style={{ fontSize: "9px", color: "#555555", marginTop: "3px", display: "flex", flexWrap: "wrap", gap: "0 6px", alignItems: "center" }}>
+              {buildContactFields(pi).map((field, i) => (
+                <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                  {i > 0 && <span style={{ color: "#aaa", userSelect: "none" }}>|</span>}
+                  {field.href ? (
+                    <a
+                      href={field.href}
+                      target={field.href.startsWith("mailto") || field.href.startsWith("tel") ? undefined : "_blank"}
+                      rel="noopener noreferrer"
+                      style={{ color: "#555555", textDecoration: "none" }}
+                      onMouseEnter={(e) => { (e.target as HTMLAnchorElement).style.textDecoration = "underline"; }}
+                      onMouseLeave={(e) => { (e.target as HTMLAnchorElement).style.textDecoration = "none"; }}
+                    >
+                      {field.label}
+                    </a>
+                  ) : (
+                    <span>{field.label}</span>
+                  )}
+                </span>
+              ))}
             </div>
           )}
         </div>

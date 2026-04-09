@@ -7,12 +7,15 @@ single-column PDF layout.
 import base64
 from io import BytesIO
 
+from PIL import Image as PILImage
+
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch, mm
 from reportlab.platypus import (
+    Flowable,
     HRFlowable,
     Image,
     Paragraph,
@@ -23,6 +26,31 @@ from reportlab.platypus import (
 )
 
 from models.cv_schema import CVData
+
+
+# ── Circular photo flowable ───────────────────────────────────────────────────
+
+class CircularPhoto(Flowable):
+    """Renders an image clipped to a circle of the given diameter."""
+
+    def __init__(self, img_buf: BytesIO, diameter: float):
+        super().__init__()
+        self._buf = img_buf
+        self.width = diameter
+        self.height = diameter
+        self._r = diameter / 2
+
+    def draw(self):
+        from reportlab.lib.utils import ImageReader
+        self._buf.seek(0)
+        reader = ImageReader(self._buf)
+        c = self.canv
+        c.saveState()
+        p = c.beginPath()
+        p.circle(self._r, self._r, self._r)
+        c.clipPath(p, stroke=0, fill=0)
+        c.drawImage(reader, 0, 0, width=self.width, height=self.height, mask="auto")
+        c.restoreState()
 
 
 # ── Styles ───────────────────────────────────────────────────────────────────
@@ -180,24 +208,77 @@ def generate_cv_pdf(data: CVData) -> BytesIO:
 
 # ── Render helpers ───────────────────────────────────────────────────────────
 
+def _resolve_linkedin(value: str) -> str:
+    v = value.strip()
+    if v.startswith("http://") or v.startswith("https://"):
+        return v
+    if v.startswith("linkedin.com"):
+        return f"https://{v}"
+    handle = v.removeprefix("in/")
+    return f"https://linkedin.com/in/{handle}"
+
+
+def _resolve_portfolio(value: str) -> str:
+    v = value.strip()
+    if v.startswith("http://") or v.startswith("https://"):
+        return v
+    if "." in v:
+        return f"https://{v}"
+    return ""
+
+
+def _contact_fragment(label: str, href: str | None) -> str:
+    """Return a ReportLab XML fragment — linked if href provided."""
+    esc_label = _esc(label)
+    if href:
+        esc_href = href.replace("&", "&amp;").replace('"', "&quot;")
+        return f'<a href="{esc_href}" color="#2563eb">{esc_label}</a>'
+    return esc_label
+
+
 def _render_header(story: list, data: CVData, styles: dict):
     info = data.personal_info
 
-    contact_parts: list[str] = []
-    for val in [info.phone, info.email, info.location, info.linkedin, info.portfolio]:
-        if val:
-            contact_parts.append(val)
+    # Build contact fragments — use explicit link if set, otherwise auto-resolve
+    fragments: list[str] = []
+    if info.phone:
+        href = info.phone_link.strip() if info.phone_link else f"tel:{info.phone.replace(' ', '')}"
+        fragments.append(_contact_fragment(info.phone, href))
+    if info.email:
+        href = info.email_link.strip() if info.email_link else f"mailto:{info.email}"
+        fragments.append(_contact_fragment(info.email, href))
+    if info.location:
+        fragments.append(_contact_fragment(info.location, None))
+    if info.linkedin:
+        href = info.linkedin_link.strip() if info.linkedin_link else _resolve_linkedin(info.linkedin)
+        fragments.append(_contact_fragment(info.linkedin, href))
+    if info.portfolio:
+        href = info.portfolio_link.strip() if info.portfolio_link else _resolve_portfolio(info.portfolio)
+        fragments.append(_contact_fragment(info.portfolio, href or None))
+
+    contact_parts = fragments  # kept for length check below
 
     name_para = Paragraph(_esc(info.full_name), styles["name"]) if info.full_name else None
-    contact_para = Paragraph("  |  ".join(_esc(p) for p in contact_parts), styles["contact"]) if contact_parts else None
+    contact_para = (
+        Paragraph("  |  ".join(contact_parts), styles["contact"]) if contact_parts else None
+    )
 
     if info.photo:
         try:
             raw = info.photo
             if "," in raw:
                 raw = raw.split(",", 1)[1]
-            img_bytes = BytesIO(base64.b64decode(raw))
-            photo_img = Image(img_bytes, width=0.75 * inch, height=0.75 * inch)
+            decoded = base64.b64decode(raw)
+
+            # Use Pillow to normalise any format → JPEG for ReportLab
+            pil_img = PILImage.open(BytesIO(decoded))
+            if pil_img.mode not in ("RGB", "L"):
+                pil_img = pil_img.convert("RGB")
+            jpeg_buf = BytesIO()
+            pil_img.save(jpeg_buf, format="JPEG", quality=90)
+            jpeg_buf.seek(0)
+
+            photo_img = CircularPhoto(jpeg_buf, diameter=0.75 * inch)
 
             # Two-column layout: text left, photo right
             text_cells = []

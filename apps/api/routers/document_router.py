@@ -44,6 +44,7 @@ async def parse_cv_endpoint(
 ):
     """Parse a PDF/DOCX CV into structured CVData JSON using LLM extraction."""
     from services.cv_parser_service import parse_cv
+    from repositories.cv_parse_cache_repo import get_cv_parse, set_cv_parse
 
     cv_url = request.cv_url
     filename = cv_url.rstrip("/").split("/")[-1]
@@ -52,12 +53,30 @@ async def parse_cv_endpoint(
     if not filepath.exists():
         raise HTTPException(status_code=404, detail="CV file not found.")
 
+    cv_name = filepath.stem.replace("-", " ").replace("_", " ").strip()
+
+    # ── Cache lookup ──────────────────────────────────────────────────────────
+    try:
+        cached = get_cv_parse(cv_url)
+        if cached:
+            return {"data": cached["data"], "cv_name": cached["cv_name"] or cv_name}
+    except Exception:
+        pass
+
+    # ── Parse ─────────────────────────────────────────────────────────────────
     data = await parse_cv(filepath)
     if not data:
         raise HTTPException(status_code=400, detail="Could not parse CV content.")
 
-    cv_name = filepath.stem.replace("-", " ").replace("_", " ").strip()
-    return {"data": data.model_dump(), "cv_name": cv_name}
+    parsed = data.model_dump()
+
+    # ── Cache write ───────────────────────────────────────────────────────────
+    try:
+        set_cv_parse(cv_url, parsed, cv_name)
+    except Exception:
+        pass
+
+    return {"data": parsed, "cv_name": cv_name}
 
 
 # -- PDF generation from structured data ---------------------------------------

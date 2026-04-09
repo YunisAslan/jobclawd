@@ -49,7 +49,7 @@ async def cv_analysis_bundle(
     request: CVMatchRequest,
     email: str = Depends(get_current_email),
 ):
-    return await analyze_cv_bundle(request.job_url, request.cv_url)
+    return await analyze_cv_bundle(request.job_url, request.cv_url, email=email)
 
 
 @router.post("/cv-suggestions", response_model=CVSuggestionsResponse)
