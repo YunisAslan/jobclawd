@@ -6,7 +6,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
-import { BarChart3, Mail, Send } from "lucide-react";
+import { BarChart3, FileText, Mail, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Label } from "@/components/ui/Label";
@@ -18,18 +18,18 @@ import { API_BASE_URL } from "@/lib/endpoints";
 const FEATURES = [
   {
     icon: <BarChart3 className="size-3.5 text-primary" />,
-    title: "Smart vacancy scoring",
-    desc: "Every job ranked against your profile in seconds",
+    title: "Multi-platform job search",
+    desc: "Search LinkedIn, Indeed, and Jobsearch.az from one workflow",
   },
   {
-    icon: <Mail className="size-3.5 text-primary" />,
-    title: "HR email extraction",
-    desc: "Find direct hiring manager contacts automatically",
+    icon: <FileText className="size-3.5 text-primary" />,
+    title: "CV matching workspace",
+    desc: "Upload your resume and compare it against real vacancies",
   },
   {
-    icon: <Send className="size-3.5 text-primary" />,
-    title: "Autopilot applications",
-    desc: "AI-drafted cover letters sent while you sleep",
+    icon: <Sparkles className="size-3.5 text-primary" />,
+    title: "Actionable CV suggestions",
+    desc: "Get practical improvements before you send an application",
   },
 ];
 
@@ -90,8 +90,8 @@ function LoginForm() {
             job, faster.
           </h2>
           <p className="text-muted-foreground text-sm leading-relaxed mb-12 max-w-68">
-            JobClawd scans job boards, scores every vacancy against your profile, and helps you
-            focus on the best-fit opportunities.
+            JobClawd brings major job platforms into one search flow, helps you understand each
+            vacancy faster, and improves the CV you want to send.
           </p>
           <div className="space-y-5">
             {FEATURES.map((f) => (
@@ -113,8 +113,8 @@ function LoginForm() {
         <div className="relative z-10 border-t border-sidebar-border pt-7 grid grid-cols-3 gap-4">
           {[
             { label: "Job boards", value: "3+" },
-            { label: "Matched jobs", value: "100s" },
-            { label: "Time saved", value: "10h/wk" },
+            { label: "Search flow", value: "1" },
+            { label: "CV upgrade", value: "Built-in" },
           ].map((s) => (
             <div key={s.label}>
               <p className="text-white dark:text-foreground font-bold text-2xl leading-none mb-1">
@@ -205,7 +205,7 @@ function LoginForm() {
                 <Input
                   id="email-input"
                   type="email"
-                  placeholder="you@domain.com"
+                  placeholder="you@gmail.com"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);

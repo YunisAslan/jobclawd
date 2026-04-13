@@ -26,7 +26,7 @@ CV_DIR.mkdir(parents=True, exist_ok=True)
 AVATAR_DIR = Path(__file__).resolve().parent.parent / "uploads" / "avatar"
 AVATAR_DIR.mkdir(parents=True, exist_ok=True)
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx"}
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc"}
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
@@ -61,7 +61,7 @@ async def upload_cv(
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail="Unsupported file type. Allowed: PDF, DOCX.",
+            detail="Unsupported file type. Allowed: PDF, DOCX, DOC.",
         )
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:

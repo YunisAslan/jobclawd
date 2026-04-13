@@ -16,20 +16,11 @@ export const DEFAULT_PROFILE: UserProfile = {
   relocation: false,
   blacklist: [],
   cv_links: [],
-  phone: "",
-  linkedin_url: "",
-  portfolio_url: "",
-  github_url: "",
   headline: "",
-  desired_titles: [],
   job_types: [],
   preferred_location: undefined,
   salary_min: "",
   salary_period: "annual",
-  years_of_experience: null,
-  education: [],
-  skills: [],
-  language_levels: [],
 };
 
 interface ProfileContextValue {

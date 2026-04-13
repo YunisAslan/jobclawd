@@ -19,19 +19,6 @@ export interface CVLink {
   url: string;
 }
 
-export interface EducationEntry {
-  institution: string;
-  degree: string;
-  field_of_study: string;
-  start_year?: number | null;
-  end_year?: number | null;
-}
-
-export interface LanguageEntry {
-  language: string;
-  level: string;
-}
-
 export interface LocationValue {
   type?: LocationType;
   value?: string;
@@ -47,21 +34,12 @@ export interface UserProfile {
   relocation?: boolean;
   blacklist: string[];
   cv_links: CVLink[];
-  phone?: string;
-  linkedin_url?: string;
-  portfolio_url?: string;
-  github_url?: string;
   headline?: string;
   avatar_url?: string;
-  desired_titles?: string[];
   job_types?: string[];
   preferred_location?: LocationValue;
   salary_min?: string;
   salary_period?: SalaryPeriod;
-  years_of_experience?: number | null;
-  education?: EducationEntry[];
-  skills?: string[];
-  language_levels?: LanguageEntry[];
 }
 
 // ── Feed / Search ──
@@ -401,4 +379,3 @@ export interface CVData {
   certifications: CVCertificationEntry[];
   additional_sections: Record<string, string[]>;
 }
-

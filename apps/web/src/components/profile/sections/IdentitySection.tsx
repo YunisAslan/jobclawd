@@ -67,51 +67,6 @@ export default function IdentitySection({ control, email }: Props) {
                 )}
               />
             </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Phone</Label>
-              <Controller
-                name="phone"
-                control={control}
-                render={({ field }) => (
-                  <Input placeholder="+994 50 123 4567" {...field} value={field.value ?? ""} />
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">LinkedIn URL</Label>
-                <Controller
-                  name="linkedin_url"
-                  control={control}
-                  render={({ field }) => (
-                    <Input placeholder="linkedin.com/in/you" {...field} value={field.value ?? ""} />
-                  )}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Portfolio URL</Label>
-                <Controller
-                  name="portfolio_url"
-                  control={control}
-                  render={({ field }) => (
-                    <Input placeholder="yoursite.com" {...field} value={field.value ?? ""} />
-                  )}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">GitHub URL</Label>
-              <Controller
-                name="github_url"
-                control={control}
-                render={({ field }) => (
-                  <Input placeholder="github.com/you" {...field} value={field.value ?? ""} />
-                )}
-              />
-            </div>
           </div>
         </div>
       </div>

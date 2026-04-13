@@ -13,8 +13,6 @@ export type {
   ApplyDrawerProps,
   ApplyFormValues,
   ReadinessField,
-  EducationEntry,
-  LanguageEntry,
   ApplyReadinessResponse,
   MissingFieldInfo,
   // New product model types

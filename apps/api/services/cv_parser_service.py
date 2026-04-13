@@ -11,6 +11,9 @@ LLM extraction that handles any layout, language, or formatting.
 import json
 import os
 import re
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -149,6 +152,8 @@ def _extract_text(filepath: Path) -> Optional[str]:
         return _extract_pdf_text(filepath)
     elif ext == ".docx":
         return _extract_docx_text(filepath)
+    elif ext == ".doc":
+        return _extract_doc_text(filepath)
     return None
 
 
@@ -184,6 +189,54 @@ def _extract_docx_text(filepath: Path) -> Optional[str]:
         return "\n".join(parts) if parts else None
     except Exception:
         return None
+
+
+def _extract_doc_text(filepath: Path) -> Optional[str]:
+    extractors = (
+        ["antiword", str(filepath)],
+        ["catdoc", str(filepath)],
+        ["textutil", "-convert", "txt", "-stdout", str(filepath)],
+    )
+
+    for cmd in extractors:
+        if not shutil.which(cmd[0]):
+            continue
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout.strip()
+        except Exception:
+            continue
+
+    office_cmd = shutil.which("soffice") or shutil.which("lowriter")
+    if office_cmd:
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                result = subprocess.run(
+                    [
+                        office_cmd,
+                        "--headless",
+                        "--convert-to",
+                        "txt:Text",
+                        "--outdir",
+                        temp_dir,
+                        str(filepath),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    check=False,
+                )
+                if result.returncode == 0:
+                    txt_path = Path(temp_dir) / f"{filepath.stem}.txt"
+                    if txt_path.exists():
+                        text = txt_path.read_text(errors="ignore").strip()
+                        if text:
+                            return text
+        except Exception:
+            pass
+
+    return None
 
 
 # ── LLM extraction ───────────────────────────────────────────────────────────

@@ -48,7 +48,7 @@ export default function LandingPage() {
       <main className="flex-1 flex flex-col items-center justify-center pt-20 px-6 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-8 border border-secondary/25 bg-secondary/10 text-muted-foreground">
           <span className="size-1.5 rounded-full inline-block bg-muted-foreground" />
-          AI-powered job search intelligence
+          Search jobs across top platforms and improve the right CV
         </div>
 
         <h1 className="text-5xl sm:text-6xl font-bold tracking-tight leading-tight mb-5 max-w-2xl text-foreground">
@@ -56,8 +56,8 @@ export default function LandingPage() {
         </h1>
 
         <p className="text-lg max-w-xl leading-relaxed mb-10 text-muted-foreground">
-          JobClawd searches job boards, scores vacancies against your profile, and helps you focus
-          on the roles you are most ready for.
+          JobClawd searches major job platforms like LinkedIn, Indeed, and Jobsearch.az, then helps
+          you focus on relevant roles and improve the CV you want to send.
         </p>
 
         <div className="flex items-center gap-4 flex-wrap justify-center">
@@ -78,18 +78,18 @@ export default function LandingPage() {
           {[
             {
               step: "01",
-              title: "Set your profile",
-              desc: "Tell us your title, experience level, preferred work mode, and paste in your CV link.",
+              title: "Set your search preferences",
+              desc: "Choose your preferred role, work mode, location, and filters so your search starts from the right baseline.",
             },
             {
               step: "02",
               title: "Search & score",
-              desc: "We scan Jobsearch.az, LinkedIn, and Indeed and rank every vacancy against your profile.",
+              desc: "We scan Jobsearch.az, LinkedIn, and Indeed, then rank openings using your search preferences and the vacancy details we extract.",
             },
             {
               step: "03",
-              title: "Prioritize & prepare",
-              desc: "See how ready you are for each role and choose the best CV before you apply.",
+              title: "Improve the right CV",
+              desc: "Upload your CV, compare it against a vacancy, and get concrete suggestions to improve and tailor it before you apply.",
             },
           ].map((item) => (
             <div key={item.step} className="rounded-xl p-6 border border-border bg-card">

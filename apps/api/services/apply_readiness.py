@@ -10,24 +10,15 @@ from models.schemas import UserProfile, JobListing, JobDetailResponse
 
 # ── Readiness field groups ────────────────────────────────────────
 
-_CORE_FIELDS = ["name", "email", "cv", "phone"]
-_PROFILE_FIELDS = ["linkedin_url", "portfolio_url", "skills", "experience"]
-_COMPETITIVE_FIELDS = ["salary_expectation", "education", "languages"]
+_CORE_FIELDS = ["name", "email", "cv"]
+_PROFILE_FIELDS: list[str] = []
+_COMPETITIVE_FIELDS: list[str] = []
 
 # Human-readable labels
 _FIELD_LABELS: dict[str, str] = {
     "name": "Full name",
     "email": "Email address",
     "cv": "Resume / CV",
-    "phone": "Phone number",
-    "linkedin_url": "LinkedIn URL",
-    "portfolio_url": "Portfolio URL",
-    "github_url": "GitHub URL",
-    "salary_expectation": "Salary expectation",
-    "education": "Education",
-    "skills": "Skills",
-    "languages": "Language levels",
-    "experience": "Years of experience",
 }
 
 
@@ -39,15 +30,6 @@ def _check_field(profile: Optional[UserProfile], field: str) -> bool:
         "name": bool((profile.name or "").strip()),
         "email": bool((profile.email or "").strip()),
         "cv": len(profile.cv_links) > 0,
-        "phone": bool((profile.phone or "").strip()),
-        "linkedin_url": bool((profile.linkedin_url or "").strip()),
-        "portfolio_url": bool((profile.portfolio_url or "").strip()),
-        "github_url": bool((profile.github_url or "").strip()),
-        "salary_expectation": bool((profile.salary_min or "").strip()),
-        "education": len(profile.education) > 0,
-        "skills": len(profile.skills) > 0,
-        "languages": len(profile.language_levels) > 0,
-        "experience": profile.years_of_experience is not None,
     }
     return checks.get(field, False)
 

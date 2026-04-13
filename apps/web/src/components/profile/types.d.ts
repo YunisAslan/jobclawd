@@ -4,6 +4,4 @@ export type {
   LocationValue,
   CVLink,
   UserProfile,
-  EducationEntry,
-  LanguageEntry,
 } from "@jobclawd/shared";

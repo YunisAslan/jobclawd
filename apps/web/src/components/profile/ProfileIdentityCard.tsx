@@ -15,8 +15,10 @@ import {
   GraduationCap,
   Briefcase,
   DollarSign,
+  FileText,
   Loader2,
   Camera,
+  MapPin,
 } from "lucide-react";
 import { API_BASE_URL } from "@/lib/endpoints";
 
@@ -26,6 +28,37 @@ interface ProfileIdentityCardProps {
   saving: boolean;
   saved: boolean;
   isDirty: boolean;
+}
+
+function getPreferredLocationLabel(
+  value: UserProfile["preferred_location"],
+  countries: NonNullable<ReturnType<typeof useMetaFilters>["data"]>["countries"] | undefined,
+): string | null {
+  if (!value?.value && !value?.values?.length) return null;
+
+  if (value.values?.length) {
+    const allCities = (countries || []).flatMap((country) => country.cities);
+    return value.values
+      .map((entry) => {
+        const city = allCities.find((item) => item.value === entry);
+        if (city) return city.label;
+        const country = (countries || []).find((item) => item.value === entry);
+        if (country) return country.label;
+        return entry;
+      })
+      .join(", ");
+  }
+
+  if (!value.value) return null;
+  if (value.value === "worldwide") return "Worldwide";
+
+  for (const country of countries || []) {
+    if (country.value === value.value) return country.label;
+    const city = country.cities.find((item) => item.value === value.value);
+    if (city) return `${city.label}, ${country.label}`;
+  }
+
+  return value.value;
 }
 
 export default function ProfileIdentityCard({
@@ -41,6 +74,7 @@ export default function ProfileIdentityCard({
 
   const name = useWatch({ control, name: "name" }) ?? "";
   const surname = useWatch({ control, name: "surname" }) ?? "";
+  const email = useWatch({ control, name: "email" }) ?? "";
   const avatarUrl = useWatch({ control, name: "avatar_url" }) ?? "";
   const headline = useWatch({ control, name: "headline" }) ?? "";
   const workModes = useWatch({ control, name: "work_modes" }) ?? [];
@@ -48,38 +82,18 @@ export default function ProfileIdentityCard({
   const jobTypes = useWatch({ control, name: "job_types" }) ?? [];
   const salaryMin = useWatch({ control, name: "salary_min" }) ?? "";
   const preferredLocation = useWatch({ control, name: "preferred_location" });
-  const years = useWatch({ control, name: "years_of_experience" });
-  const desiredTitles = useWatch({ control, name: "desired_titles" }) ?? [];
   const cvLinks = useWatch({ control, name: "cv_links" }) ?? [];
-  const blacklist = useWatch({ control, name: "blacklist" }) ?? [];
-  const skills = useWatch({ control, name: "skills" }) ?? [];
-  const education = useWatch({ control, name: "education" }) ?? [];
-  const languages = useWatch({ control, name: "language_levels" }) ?? [];
+  const preferredLocationLabel = getPreferredLocationLabel(preferredLocation, meta?.countries);
 
-  // One check per section: Identity, Targeting, Preferences, Experience, Skills, Education, Languages, CVs & Documents, Blocklist
-  const completionChecks = [
-    name.length > 0, // Identity
-    desiredTitles.length > 0, // Targeting
-    workModes.length > 0 ||
-      expLevel.length > 0 ||
-      salaryMin.length > 0 ||
-      !!(preferredLocation?.value || (preferredLocation?.values?.length ?? 0) > 0), // Preferences
-    years != null && years > 0, // Experience
-    skills.length > 0, // Skills
-    education.length > 0, // Education
-    languages.length > 0, // Languages
-    cvLinks.length > 0, // CVs & Documents
-    blacklist.length > 0, // Blocklist
-  ];
-  const filled = completionChecks.filter(Boolean).length;
-  const total = completionChecks.length;
-  const pct = Math.round((filled / total) * 100);
-
+  const emailHandle = (email || "").split("@")[0]?.trim() || "";
   const initials =
     [name, surname]
       .filter(Boolean)
       .map((s) => s[0].toUpperCase())
-      .join("") || "–";
+      .join("") ||
+    emailHandle.charAt(0).toUpperCase() ||
+    "J";
+  const displayName = name || surname ? `${name} ${surname}`.trim() : emailHandle || "Your account";
   const avatarSrc = avatarUrl
     ? avatarUrl.startsWith("http")
       ? avatarUrl
@@ -145,41 +159,13 @@ export default function ProfileIdentityCard({
                   )}
                 </div>
               </Button>
-              {pct === 100 && (
-                <div className="absolute -bottom-1 -right-1 size-4.5 rounded-full bg-success flex items-center justify-center shadow">
-                  <Check className="size-2.5 text-white" strokeWidth={3} />
-                </div>
-              )}
             </div>
             <div className="space-y-0.5 min-w-0 w-full">
-              <p className="font-semibold text-sm leading-tight truncate">
-                {name || surname ? `${name} ${surname}`.trim() : "Your Name"}
-              </p>
+              <p className="font-semibold text-sm leading-tight truncate">{displayName}</p>
               <p className="text-[11px] text-muted-foreground leading-snug truncate px-2">
                 {headline || "Add a professional headline"}
               </p>
             </div>
-          </div>
-
-          <Separator className="opacity-20" />
-
-          {/* Completion bar */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
-                Profile
-              </span>
-              <span className="text-xs font-semibold text-primary">{pct}%</span>
-            </div>
-            <div className="h-[3px] rounded-full bg-border overflow-hidden">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-700 ease-out"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            <p className="text-[10px] text-muted-foreground">
-              {filled}/{total} sections filled
-            </p>
           </div>
 
           <Separator className="opacity-50" />
@@ -190,92 +176,75 @@ export default function ProfileIdentityCard({
               Preferences
             </span>
 
-            {workModes.length > 0 ? (
-              <div className="flex flex-wrap gap-1">
-                {workModes.map((m) => (
-                  <Badge
-                    key={m}
-                    variant="outline"
-                    className="text-[10px] gap-1 border-border px-1.5 py-0 font-normal h-5"
-                  >
-                    <Monitor className="size-2.5 text-primary" />
-                    {m}
-                  </Badge>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[11px] text-muted-foreground italic">No preferences set</p>
-            )}
-
-            {expLevel.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {expLevel.map((lvl) => (
-                  <Badge
-                    key={lvl}
-                    variant="outline"
-                    className="text-[10px] gap-1 border-border px-1.5 py-0 font-normal h-5"
-                  >
-                    <GraduationCap className="size-2.5 text-primary" />
-                    {meta?.experience_levels?.find((e) => e.value === lvl)?.label ?? lvl}
-                  </Badge>
-                ))}
-              </div>
-            )}
-
-            {jobTypes.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {jobTypes.map((jt) => (
-                  <Badge
-                    key={jt}
-                    variant="outline"
-                    className="text-[10px] gap-1 border-border px-1.5 py-0 font-normal h-5"
-                  >
-                    <Briefcase className="size-2.5 text-muted-foreground" />
-                    {jt}
-                  </Badge>
-                ))}
-              </div>
-            )}
-
-            {salaryMin && (
-              <Badge
-                variant="outline"
-                className="text-[10px] gap-1 border-border px-1.5 py-0 font-normal h-5"
-              >
-                <DollarSign className="size-2.5 text-success" />
-                {salaryMin}+
-              </Badge>
-            )}
-          </div>
-
-          {/* Targeting preview */}
-          {desiredTitles.length > 0 && (
-            <>
-              <Separator className="opacity-50" />
-              <div className="space-y-2">
-                <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium block">
-                  Targeting
-                </span>
-                <div className="space-y-1.5">
-                  {desiredTitles.slice(0, 3).map((t, i) => (
-                    <div key={t} className="flex items-center gap-2">
-                      <span className="text-[10px] shrink-0 tabular-nums text-muted-foreground">
-                        {i + 1}.
-                      </span>
-                      <span className="text-[11px] text-foreground truncate leading-tight">
-                        {t}
-                      </span>
-                    </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {workModes.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {workModes.map((m) => (
+                    <Badge
+                      key={m}
+                      variant="outline"
+                      className="text-[10px] gap-1 border-border px-1.5 py-0 font-normal h-5"
+                    >
+                      <Monitor className="size-2.5 text-primary" />
+                      {m}
+                    </Badge>
                   ))}
-                  {desiredTitles.length > 3 && (
-                    <p className="text-[10px] text-muted-foreground pl-4">
-                      +{desiredTitles.length - 3} more
-                    </p>
-                  )}
                 </div>
-              </div>
-            </>
-          )}
+              ) : (
+                <p className="text-[11px] text-muted-foreground italic">No preferences set</p>
+              )}
+
+              {expLevel.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {expLevel.map((lvl) => (
+                    <Badge
+                      key={lvl}
+                      variant="outline"
+                      className="text-[10px] gap-1 border-border px-1.5 py-0 font-normal h-5"
+                    >
+                      <GraduationCap className="size-2.5 text-primary" />
+                      {meta?.experience_levels?.find((e) => e.value === lvl)?.label ?? lvl}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {jobTypes.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {jobTypes.map((jt) => (
+                    <Badge
+                      key={jt}
+                      variant="outline"
+                      className="text-[10px] gap-1 border-border px-1.5 py-0 font-normal h-5"
+                    >
+                      <Briefcase className="size-2.5 text-muted-foreground" />
+                      {jt}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {preferredLocationLabel && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] gap-1 border-border px-1.5 py-0 font-normal h-5"
+                >
+                  <MapPin className="size-2.5 text-primary" />
+                  {preferredLocationLabel}
+                </Badge>
+              )}
+
+              {salaryMin && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] gap-1 border-border px-1.5 py-0 font-normal h-5"
+                >
+                  <DollarSign className="size-2.5 text-success" />
+                  {salaryMin}+
+                </Badge>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

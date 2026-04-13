@@ -40,7 +40,7 @@ export default function CVSelector({
     <input
       ref={fileInputRef}
       type="file"
-      accept=".pdf,.docx"
+      accept=".pdf,.docx,.doc"
       className="hidden"
       onChange={handleFileChange}
     />
@@ -56,7 +56,7 @@ export default function CVSelector({
           </div>
           <p className="text-xs font-medium text-foreground">No CVs uploaded yet</p>
           <p className="text-[11px] text-muted-foreground">
-            Upload a CV to get match analysis and optimization suggestions
+            Upload a PDF, DOCX, or DOC file to start matching and improving it
           </p>
           {onUpload && (
             <Button
@@ -67,7 +67,7 @@ export default function CVSelector({
               disabled={uploading}
             >
               {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
-              {uploading ? "Uploading..." : "Upload CV"}
+              {uploading ? "Uploading..." : "Upload file"}
             </Button>
           )}
         </div>

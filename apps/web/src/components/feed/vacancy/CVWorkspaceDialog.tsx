@@ -472,7 +472,7 @@ function MatchScoreStrip({ cvAnalysis, loadingAnalysis }: { cvAnalysis: CVMatchA
   );
 }
 
-function OriginalFileView({ cvUrl, fileType }: { cvUrl: string; fileType: "pdf" | "docx" | "link" }) {
+function OriginalFileView({ cvUrl, fileType }: { cvUrl: string; fileType: "pdf" | "docx" | "doc" | "link" }) {
   const resolved = resolveCVUrl(cvUrl);
 
   if (fileType === "pdf") {
@@ -483,14 +483,14 @@ function OriginalFileView({ cvUrl, fileType }: { cvUrl: string; fileType: "pdf" 
     );
   }
 
-  if (fileType === "docx") {
+  if (fileType === "docx" || fileType === "doc") {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-4 text-muted-foreground">
         <div className="flex size-14 items-center justify-center rounded-2xl bg-muted/60 border border-border/50">
           <FileText className="size-6 opacity-50" />
         </div>
         <div className="text-center space-y-1">
-          <p className="text-sm font-medium text-foreground">DOCX preview not available</p>
+          <p className="text-sm font-medium text-foreground">{fileType.toUpperCase()} preview not available</p>
           <p className="text-xs text-muted-foreground">Browsers can&apos;t render Word documents inline.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -552,10 +552,11 @@ function Spinner({ label = "Loading…" }: { label?: string }) {
 
 /* ── Utilities ── */
 
-function inferCVFileType(cvUrl: string): "pdf" | "docx" | "link" {
+function inferCVFileType(cvUrl: string): "pdf" | "docx" | "doc" | "link" {
   const path = (cvUrl || "").split("?")[0].toLowerCase();
   if (path.endsWith(".pdf")) return "pdf";
   if (path.endsWith(".docx")) return "docx";
+  if (path.endsWith(".doc")) return "doc";
   return "link";
 }
 

@@ -71,19 +71,6 @@ class LocationFilter(BaseModel):
     values: list[str] = []
 
 
-class EducationEntry(BaseModel):
-    institution: str = ""
-    degree: str = ""
-    field_of_study: str = ""
-    start_year: Optional[int] = None
-    end_year: Optional[int] = None
-
-
-class LanguageEntry(BaseModel):
-    language: str = ""
-    level: str = ""  # "native" | "fluent" | "advanced" | "intermediate" | "basic"
-
-
 class UserProfile(BaseModel):
     name: str
     surname: str = ""
@@ -94,25 +81,13 @@ class UserProfile(BaseModel):
     blacklist: list[str] = []
     cv_links: list[CVLink] = []
 
-    # Contact fields — used to pre-fill job applications
-    phone: Optional[str] = None
-    linkedin_url: Optional[str] = None
-    portfolio_url: Optional[str] = None
-    github_url: Optional[str] = None
-
     # Job search preference fields — used to pre-fill feed filters + apply cover letter
     headline: Optional[str] = None
     avatar_url: Optional[str] = None
-    desired_titles: list[str] = []
     job_types: list[str] = []
     preferred_location: Optional[LocationFilter] = None
     salary_min: Optional[str] = None
     salary_period: Optional[str] = None          # "annual" | "monthly" | "hourly"
-    years_of_experience: Optional[int] = None
-
-    education: list[EducationEntry] = []
-    skills: list[str] = []
-    language_levels: list[LanguageEntry] = []
 
 
 # ---------- Search ----------

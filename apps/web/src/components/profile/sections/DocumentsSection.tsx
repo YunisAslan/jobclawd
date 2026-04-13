@@ -20,7 +20,7 @@ export default function DocumentsSection({ control }: Props) {
     <>
       <div>
         <SectionLabel
-          label="CVs & Documents"
+          label="CV Library"
           open={cvsOpen}
           onToggle={() => setCvsOpen((v) => !v)}
         />
@@ -28,7 +28,10 @@ export default function DocumentsSection({ control }: Props) {
           className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${cvsOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
         >
           <div className="overflow-hidden">
-            <div className="peer-hover/header:translate-y-0.5 transition-transform duration-150 pt-0.5 pb-8">
+            <div className="space-y-3 peer-hover/header:translate-y-0.5 transition-transform duration-150 pt-0.5 pb-8">
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs text-muted-foreground">Files</Label>
+              </div>
               <Controller
                 name="cv_links"
                 control={control}

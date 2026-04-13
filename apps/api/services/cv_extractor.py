@@ -1,6 +1,9 @@
-"""CV content extraction — extract text from uploaded PDF and DOCX files."""
+"""CV content extraction — extract text from uploaded PDF, DOCX, and DOC files."""
 
 import re
+import shutil
+import subprocess
+import tempfile
 import zipfile
 from pathlib import Path
 from typing import Optional
@@ -26,6 +29,8 @@ def extract_cv_text(cv_url: str) -> Optional[str]:
         return _extract_pdf(filepath)
     elif ext == ".docx":
         return _extract_docx(filepath)
+    elif ext == ".doc":
+        return _extract_doc(filepath)
     return None
 
 
@@ -50,6 +55,57 @@ def _extract_docx(filepath: Path) -> Optional[str]:
     if text:
         return text
     return _extract_docx_from_xml(filepath)
+
+
+def _extract_doc(filepath: Path) -> Optional[str]:
+    """Best-effort extraction from legacy DOC files using installed system tools."""
+    extractors = (
+        ["antiword", str(filepath)],
+        ["catdoc", str(filepath)],
+        ["textutil", "-convert", "txt", "-stdout", str(filepath)],
+    )
+
+    for cmd in extractors:
+        if not shutil.which(cmd[0]):
+            continue
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
+            if result.returncode == 0:
+                normalized = _normalize_text(result.stdout.splitlines())
+                if normalized:
+                    return normalized
+        except Exception:
+            continue
+
+    office_cmd = shutil.which("soffice") or shutil.which("lowriter")
+    if office_cmd:
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                result = subprocess.run(
+                    [
+                        office_cmd,
+                        "--headless",
+                        "--convert-to",
+                        "txt:Text",
+                        "--outdir",
+                        temp_dir,
+                        str(filepath),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    check=False,
+                )
+                if result.returncode == 0:
+                    txt_path = Path(temp_dir) / f"{filepath.stem}.txt"
+                    if txt_path.exists():
+                        normalized = _normalize_text(txt_path.read_text(errors="ignore").splitlines())
+                        if normalized:
+                            return normalized
+        except Exception:
+            pass
+
+    return None
 
 
 def _extract_docx_with_python_docx(filepath: Path) -> Optional[str]:
@@ -112,5 +168,4 @@ def _normalize_text(parts: list[str]) -> Optional[str]:
         lines.append(cleaned)
 
     return "\n".join(lines) if lines else None
-
 
