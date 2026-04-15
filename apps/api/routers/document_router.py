@@ -30,6 +30,11 @@ _CV_DIR = Path(__file__).resolve().parent.parent / "uploads" / "cv"
 class _ParseRequest(BaseModel):
     cv_url: str
 
+class _SaveRequest(BaseModel):
+    cv_url: str
+    data: CVData
+    cv_name: Optional[str] = None
+
 class _GenerateRequest(BaseModel):
     data: CVData
     file_name: Optional[str] = None
@@ -77,6 +82,19 @@ async def parse_cv_endpoint(
         pass
 
     return {"data": parsed, "cv_name": cv_name}
+
+
+# -- Save edited CV data back to parse cache -----------------------------------
+
+@router.patch("/document/parse")
+async def save_cv_endpoint(
+    request: _SaveRequest,
+    email: str = Depends(get_current_email),
+):
+    """Persist user-edited CVData back to the parse cache so edits survive page refreshes."""
+    from repositories.cv_parse_cache_repo import update_cv_parse
+    update_cv_parse(request.cv_url, request.data.model_dump(), request.cv_name or "")
+    return {"ok": True}
 
 
 # -- PDF generation from structured data ---------------------------------------

@@ -3,6 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from models.schemas import (
+    CachedAnalysisEntry,
+    CachedAnalysisListResponse,
     CVAnalysisBundleResponse,
     CVDraftRequest,
     CVDraftResponse,
@@ -13,6 +15,7 @@ from models.schemas import (
     CVSuggestionRequest,
     CVSuggestionsResponse,
 )
+from repositories import cv_analysis_cache_repo
 from services.cv_analysis_bundle_service import analyze_cv_bundle
 from services.cv_analysis_shared import gather_job_context
 from services.cv_document_service import build_cv_export, extract_cv_draft, infer_cv_filename
@@ -44,12 +47,39 @@ async def cv_match_preview(
     return result
 
 
+@router.delete("/cv-analysis-bundle")
+async def cv_analysis_bundle_delete(
+    job_url: str,
+    cv_url: str,
+    email: str = Depends(get_current_email),
+):
+    cv_analysis_cache_repo.delete_cv_analysis(email, cv_url, job_url)
+    return {"ok": True}
+
+
+@router.get("/cv-analysis-bundle/list", response_model=CachedAnalysisListResponse)
+async def cv_analysis_bundle_list(
+    job_url: str,
+    email: str = Depends(get_current_email),
+):
+    rows = cv_analysis_cache_repo.get_cv_analyses_for_job(email, job_url)
+    entries = [
+        CachedAnalysisEntry(
+            cv_url=row["cv_url"],
+            cv_name=row["cv_name"],
+            analysis=CVMatchResponse(**row["analysis"]),
+        )
+        for row in rows
+    ]
+    return CachedAnalysisListResponse(entries=entries)
+
+
 @router.post("/cv-analysis-bundle", response_model=CVAnalysisBundleResponse)
 async def cv_analysis_bundle(
     request: CVMatchRequest,
     email: str = Depends(get_current_email),
 ):
-    return await analyze_cv_bundle(request.job_url, request.cv_url, email=email)
+    return await analyze_cv_bundle(request.job_url, request.cv_url, email=email, cv_name=request.cv_name)
 
 
 @router.post("/cv-suggestions", response_model=CVSuggestionsResponse)

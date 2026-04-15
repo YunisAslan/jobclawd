@@ -8,8 +8,8 @@ from services.cv_match_service import compute_cv_match_from_data
 from services.cv_suggestions_service import generate_cv_suggestions_from_data
 
 
-async def analyze_cv_bundle(job_url: str, cv_url: str, email: str = "") -> dict:
-    cv_name = infer_cv_filename(cv_url)
+async def analyze_cv_bundle(job_url: str, cv_url: str, email: str = "", cv_name: str = "") -> dict:
+    cv_name = cv_name.strip() or infer_cv_filename(cv_url)
 
     # ── Cache lookup ──────────────────────────────────────────────────────────
     if email:

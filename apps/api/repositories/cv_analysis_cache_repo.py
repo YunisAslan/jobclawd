@@ -73,6 +73,47 @@ def set_cv_analysis(
         )
 
 
+def delete_cv_analysis(email: str, cv_url: str, job_url: str) -> bool:
+    """Delete a specific cached analysis. Returns True if a row was deleted."""
+    with get_db() as conn:
+        cur = conn.execute(
+            "DELETE FROM cv_analysis_cache WHERE email = %s AND cv_url = %s AND job_url = %s",
+            (email, cv_url, job_url),
+        )
+        return cur.rowcount > 0
+
+
+def get_cv_analyses_for_job(email: str, job_url: str) -> list[dict]:
+    """Return all non-expired cached analyses for a user+job combination, newest first."""
+    with get_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT cv_url, cv_name, analysis_json, suggestions_json
+            FROM cv_analysis_cache
+            WHERE email = %s AND job_url = %s
+              AND expires_at > NOW()
+            ORDER BY created_at DESC
+            """,
+            (email, job_url),
+        ).fetchall()
+
+    results = []
+    for row in rows:
+        analysis = row["analysis_json"]
+        suggestions = row["suggestions_json"]
+        if isinstance(analysis, str):
+            analysis = json.loads(analysis)
+        if isinstance(suggestions, str):
+            suggestions = json.loads(suggestions)
+        results.append({
+            "cv_url": row["cv_url"],
+            "cv_name": row["cv_name"],
+            "analysis": analysis,
+            "suggestions": suggestions,
+        })
+    return results
+
+
 def delete_expired_cv_analysis() -> int:
     """Delete all expired entries. Called by the background cleanup task."""
     with get_db() as conn:

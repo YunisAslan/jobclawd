@@ -326,6 +326,7 @@ class BatchCheckSavedResponse(BaseModel):
 class CVMatchRequest(BaseModel):
     job_url: str
     cv_url: str
+    cv_name: str = ""
 
 class CVMatchTextRequest(BaseModel):
     job_url: str
@@ -384,3 +385,13 @@ class CVAnalysisBundleResponse(BaseModel):
     error_analysis: Optional[str] = None
     error_suggestions: Optional[str] = None
     error_draft: Optional[str] = None
+
+
+class CachedAnalysisEntry(BaseModel):
+    cv_url: str
+    cv_name: str
+    analysis: CVMatchResponse
+
+
+class CachedAnalysisListResponse(BaseModel):
+    entries: list[CachedAnalysisEntry]

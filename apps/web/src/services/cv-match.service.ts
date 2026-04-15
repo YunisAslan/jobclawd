@@ -1,6 +1,6 @@
 import { API_BASE_URL, ENDPOINTS } from "@/lib/endpoints";
 import { APIService } from "@/services/api.service";
-import type { CVAnalysisBundleResponse, CVDraftResponse, CVMatchAnalysis, CVSuggestionsResponse } from "@/types";
+import type { CachedAnalysisListResponse, CVAnalysisBundleResponse, CVDraftResponse, CVMatchAnalysis, CVSuggestionsResponse } from "@/types";
 
 function getAuthHeader(): Record<string, string> {
   if (typeof document === "undefined") return {};
@@ -56,11 +56,27 @@ class CVMatchService extends APIService {
     };
   }
 
-  async getBundle(job_url: string, cv_url: string): Promise<CVAnalysisBundleResponse> {
+  async getBundle(job_url: string, cv_url: string, cv_name?: string): Promise<CVAnalysisBundleResponse> {
     const res = await this.post(
       ENDPOINTS.CV_ANALYSIS_BUNDLE,
-      { job_url, cv_url },
+      { job_url, cv_url, cv_name: cv_name ?? "" },
       { headers: getAuthHeader(), timeout: 60000 },
+    );
+    return res.data;
+  }
+
+  async deleteCachedResult(job_url: string, cv_url: string): Promise<void> {
+    await this.delete(
+      `${ENDPOINTS.CV_ANALYSIS_BUNDLE_DELETE}?job_url=${encodeURIComponent(job_url)}&cv_url=${encodeURIComponent(cv_url)}`,
+      { headers: getAuthHeader() },
+    );
+  }
+
+  async getCachedResults(job_url: string): Promise<CachedAnalysisListResponse> {
+    const res = await this.get(
+      ENDPOINTS.CV_ANALYSIS_BUNDLE_LIST,
+      { job_url },
+      { headers: getAuthHeader() },
     );
     return res.data;
   }

@@ -39,3 +39,18 @@ def set_cv_parse(cv_url: str, parsed: dict, cv_name: str = "") -> None:
             """,
             (cv_url, json.dumps(parsed), cv_name),
         )
+
+
+def update_cv_parse(cv_url: str, parsed: dict, cv_name: str = "") -> None:
+    """Upsert a parse result, overwriting any existing entry (used to persist user edits)."""
+    with get_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO cv_parse_cache (cv_url, parsed_json, cv_name)
+            VALUES (%s, %s::jsonb, %s)
+            ON CONFLICT (cv_url) DO UPDATE SET
+                parsed_json = EXCLUDED.parsed_json,
+                cv_name     = EXCLUDED.cv_name
+            """,
+            (cv_url, json.dumps(parsed), cv_name),
+        )

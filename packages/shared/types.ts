@@ -287,6 +287,16 @@ export interface CVAnalysisBundleResponse {
   error_draft?: string | null;
 }
 
+export interface CachedAnalysisEntry {
+  cv_url: string;
+  cv_name: string;
+  analysis: CVMatchAnalysis;
+}
+
+export interface CachedAnalysisListResponse {
+  entries: CachedAnalysisEntry[];
+}
+
 // ── Vacancy Panel ──
 
 export interface VacancyPanelProps {

@@ -23,6 +23,14 @@ class DocumentService extends APIService {
     return res.data;
   }
 
+  async saveCvData(cv_url: string, data: CVData, cv_name?: string): Promise<void> {
+    await this.patch(
+      ENDPOINTS.DOCUMENT_PARSE,
+      { cv_url, data, cv_name: cv_name ?? "" },
+      { headers: getAuthHeader(), timeout: 15000 },
+    );
+  }
+
   async generatePdf(data: CVData, file_name?: string): Promise<void> {
     const res = await this.post(
       ENDPOINTS.DOCUMENT_GENERATE,

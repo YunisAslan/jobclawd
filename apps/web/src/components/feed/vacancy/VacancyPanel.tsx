@@ -2,6 +2,7 @@
 
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
@@ -17,7 +18,6 @@ import {
   Eye,
   Sparkles,
   PencilLine,
-  Plus,
   X,
   TrendingUp,
   RefreshCw,
@@ -62,6 +62,9 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
     updateCvData,
     resetCvData,
     generateAndDownloadPdf,
+    saveCvData,
+    savingCvData,
+    cvDataSaved,
     loadingParse,
     generatingPdf,
     atsPreview,
@@ -90,42 +93,48 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
       <Sheet open={!!job} onOpenChange={(open) => !open && onClose()}>
         <SheetContent
           side="right"
+          showCloseButton={false}
           className="w-full sm:max-w-125 p-0 flex flex-col gap-0 overflow-hidden"
         >
           {/* Header */}
-          <SheetHeader className="px-5 pt-5 pb-4 border-b border-border/50">
-            {/* pr-8 keeps title away from the sheet's built-in close button */}
-            <SheetTitle className="text-sm leading-snug line-clamp-2 pr-8">
-              {job.title}
-            </SheetTitle>
-            <div className="flex items-center gap-2 mt-1">
-              <SheetDescription className="text-xs flex items-center gap-2 flex-1 min-w-0">
-                <span className="truncate">{job.company}</span>
-                <SourceBadge source={job.source} />
-              </SheetDescription>
-              {job.match_score > 0 && (
-                <div
-                  className={cn(
-                    "flex items-center gap-1 rounded-lg px-2 py-0.5 shrink-0",
-                    isHigh
-                      ? "bg-match-high/10 border border-match-high/20"
-                      : "bg-match-review/10 border border-match-review/20",
-                  )}
-                >
-                  <span
+          <SheetHeader className="px-5 pt-4 pb-4 border-b border-border/50">
+            <div className="flex items-start gap-2">
+              <SheetTitle className="text-sm leading-snug line-clamp-2 flex-1 min-w-0 pt-0.5">
+                {job.title}
+              </SheetTitle>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {job.match_score > 0 && (
+                  <div
                     className={cn(
-                      "text-xs font-bold tabular-nums leading-none",
-                      isHigh ? "text-match-high" : "text-match-review",
+                      "flex items-center gap-1 rounded-lg px-2 py-1 border",
+                      isHigh
+                        ? "bg-match-high/10 border-match-high/20"
+                        : "bg-match-review/10 border-match-review/20",
                     )}
                   >
-                    {job.match_score}
-                  </span>
-                  <span className={cn("text-[9px] font-medium opacity-70", isHigh ? "text-match-high" : "text-match-review")}>
-                    match
-                  </span>
-                </div>
-              )}
+                    <span
+                      className={cn(
+                        "text-xs font-bold tabular-nums leading-none",
+                        isHigh ? "text-match-high" : "text-match-review",
+                      )}
+                    >
+                      {job.match_score}
+                    </span>
+                    <span className={cn("text-[9px] font-medium opacity-70", isHigh ? "text-match-high" : "text-match-review")}>
+                      match
+                    </span>
+                  </div>
+                )}
+                <SheetClose className="cursor-pointer rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                  <X className="size-4" />
+                  <span className="sr-only">Close</span>
+                </SheetClose>
+              </div>
             </div>
+            <SheetDescription className="text-xs flex items-center gap-2 mt-0.5">
+              <span className="truncate">{job.company}</span>
+              <SourceBadge source={job.source} />
+            </SheetDescription>
           </SheetHeader>
 
           {/* Tabs */}
@@ -252,6 +261,9 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
         onCvDataChange={updateCvData}
         onCvDataReset={resetCvData}
         onGeneratePdf={generateAndDownloadPdf}
+        onSaveCvData={saveCvData}
+        savingCvData={savingCvData}
+        cvDataSaved={cvDataSaved}
         loadingParse={loadingParse}
         generatingPdf={generatingPdf}
         cvAnalysis={cvAnalysis}

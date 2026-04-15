@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useProfile } from "@/contexts/ProfileContext";
 import { savedVacanciesService } from "@/services/saved-vacancies.service";
@@ -26,6 +26,8 @@ export function useVacancyPanel(job: JobListing | null) {
   const [uploading, setUploading] = useState(false);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [multiCVResults, setMultiCVResults] = useState<MultiCVEntry[]>([]);
+  // Tracks which job URL has already been hydrated from cache to avoid overwriting user-added entries
+  const hydratedJobUrl = useRef<string | null>(null);
 
   const cvMatch = useCVMatch();
 
@@ -38,14 +40,23 @@ export function useVacancyPanel(job: JobListing | null) {
       cvMatch.reset();
       setWorkspaceOpen(false);
       setMultiCVResults([]);
+      hydratedJobUrl.current = null;
     } else {
       setSelectedCV(null);
       setActiveTab("overview");
       cvMatch.reset();
       setWorkspaceOpen(false);
       setMultiCVResults([]);
+      hydratedJobUrl.current = null;
     }
   }, [job?.url]);
+
+  // If the profile loaded after the panel opened, selectedCV may still be null — auto-select first CV
+  useEffect(() => {
+    if (job?.url && !selectedCV && profile.cv_links?.[0]) {
+      setSelectedCV(profile.cv_links[0]);
+    }
+  }, [profile.cv_links?.length]);
 
   // Job detail query
   const { data: detail, isLoading: loadingDetail } = useQuery({
@@ -54,6 +65,33 @@ export function useVacancyPanel(job: JobListing | null) {
     enabled: !!job?.url,
     staleTime: 5 * 60 * 1000,
   });
+
+  // Load previously cached CV analyses for this vacancy
+  const { data: cachedAnalyses } = useQuery({
+    queryKey: ["cv-analyses-cache", job?.url],
+    queryFn: () => cvMatchService.getCachedResults(job!.url),
+    enabled: !!job?.url,
+    staleTime: Infinity,
+  });
+
+  // Hydrate multiCVResults once per job URL from cached data
+  useEffect(() => {
+    if (!job?.url || !cachedAnalyses || hydratedJobUrl.current === job.url) return;
+    hydratedJobUrl.current = job.url;
+    if (cachedAnalyses.entries.length === 0) return;
+    setMultiCVResults(
+      cachedAnalyses.entries.map((entry) => {
+        // Prefer the real name from profile (handles old cache entries with hash names)
+        const profileCV = profile.cv_links?.find((cv) => cv.url === entry.cv_url);
+        return {
+          cv: { name: profileCV?.name ?? entry.cv_name, url: entry.cv_url },
+          analysis: entry.analysis,
+          loading: false,
+          error: null,
+        };
+      }),
+    );
+  }, [job?.url, cachedAnalyses]);
 
   // Explicit analyze trigger
   const analyzeCV = useCallback(() => {
@@ -102,10 +140,12 @@ export function useVacancyPanel(job: JobListing | null) {
       return [...prev, entry];
     });
     try {
-      const analysis = await cvMatchService.getAnalysis(job.url, cv.url);
+      const bundle = await cvMatchService.getBundle(job.url, cv.url, cv.name);
       setMultiCVResults((prev) =>
-        prev.map((e) => (e.cv.url === cv.url ? { ...e, loading: false, analysis } : e))
+        prev.map((e) => (e.cv.url === cv.url ? { ...e, loading: false, analysis: bundle.analysis } : e))
       );
+      // Invalidate so next open of this vacancy reflects the newly cached entry
+      qc.invalidateQueries({ queryKey: ["cv-analyses-cache", job.url] });
     } catch {
       setMultiCVResults((prev) =>
         prev.map((e) => (e.cv.url === cv.url ? { ...e, loading: false, error: "Analysis failed. Try again." } : e))
@@ -115,7 +155,10 @@ export function useVacancyPanel(job: JobListing | null) {
 
   const removeCVFromCompare = useCallback((cvUrl: string) => {
     setMultiCVResults((prev) => prev.filter((e) => e.cv.url !== cvUrl));
-  }, []);
+    if (job?.url) {
+      cvMatchService.deleteCachedResult(job.url, cvUrl).catch(() => {});
+    }
+  }, [job?.url]);
 
   const closeWorkspace = useCallback(() => {
     setWorkspaceOpen(false);
@@ -209,6 +252,9 @@ export function useVacancyPanel(job: JobListing | null) {
     updateCvData: cvMatch.updateCvData,
     resetCvData: cvMatch.resetCvData,
     generateAndDownloadPdf: cvMatch.generateAndDownloadPdf,
+    saveCvData: () => (selectedCV?.url ? cvMatch.saveCvData(selectedCV.url) : Promise.resolve()),
+    savingCvData: cvMatch.savingCvData,
+    cvDataSaved: cvMatch.cvDataSaved,
     loadingParse: cvMatch.loadingParse,
     generatingPdf: cvMatch.generatingPdf,
     parseCv: cvMatch.parseCv,

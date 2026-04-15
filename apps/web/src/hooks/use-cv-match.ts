@@ -25,6 +25,8 @@ interface CVMatchState {
   originalCvData: CVData | null;
   loadingParse: boolean;
   generatingPdf: boolean;
+  savingCvData: boolean;
+  cvDataSaved: boolean;
   // ── ATS Preview ──
   atsPreview: CVMatchAnalysis | null;
   atsPreviewBaseline: number | null;
@@ -53,6 +55,8 @@ export function useCVMatch() {
     originalCvData: null,
     loadingParse: false,
     generatingPdf: false,
+    savingCvData: false,
+    cvDataSaved: false,
     atsPreview: null,
     atsPreviewBaseline: null,
     loadingAtsPreview: false,
@@ -236,6 +240,18 @@ export function useCVMatch() {
     }
   }
 
+  async function saveCvData(cvUrl: string) {
+    if (!state.cvData) return;
+    setState((s) => ({ ...s, savingCvData: true, cvDataSaved: false }));
+    try {
+      await documentService.saveCvData(cvUrl, state.cvData, state.draftFileName);
+      setState((s) => ({ ...s, savingCvData: false, cvDataSaved: true, originalCvData: s.cvData }));
+      setTimeout(() => setState((s) => ({ ...s, cvDataSaved: false })), 3000);
+    } catch {
+      setState((s) => ({ ...s, savingCvData: false }));
+    }
+  }
+
   // ── Draft editing ──────────────────────────────────────────────────────
 
   function updateDraft(text: string) {
@@ -357,6 +373,8 @@ export function useCVMatch() {
       originalCvData: null,
       loadingParse: false,
       generatingPdf: false,
+      savingCvData: false,
+      cvDataSaved: false,
       atsPreview: null,
       atsPreviewBaseline: null,
       loadingAtsPreview: false,
@@ -378,6 +396,7 @@ export function useCVMatch() {
     updateCvData,
     resetCvData,
     generateAndDownloadPdf,
+    saveCvData,
     previewAtsScore,
     dismissAtsPreview,
     reset,

@@ -22,6 +22,8 @@ import {
   X,
   Zap,
   ScanEye,
+  Save,
+  Check,
 } from "lucide-react";
 import type { CVData, CVMatchAnalysis, CVSuggestion, CVSuggestionsResponse } from "@/types";
 import WorkspaceSuggestions from "./WorkspaceSuggestions";
@@ -55,6 +57,9 @@ interface CVWorkspaceDialogProps {
   onCvDataChange: (data: CVData) => void;
   onCvDataReset: () => void;
   onGeneratePdf: (name?: string) => void;
+  onSaveCvData: () => void;
+  savingCvData?: boolean;
+  cvDataSaved?: boolean;
   loadingParse: boolean;
   generatingPdf: boolean;
   cvAnalysis?: CVMatchAnalysis | null;
@@ -85,6 +90,9 @@ export default function CVWorkspaceDialog({
   onCvDataChange,
   onCvDataReset,
   onGeneratePdf,
+  onSaveCvData,
+  savingCvData,
+  cvDataSaved,
   loadingParse,
   generatingPdf,
   cvAnalysis,
@@ -197,8 +205,43 @@ export default function CVWorkspaceDialog({
               <div className="h-4 w-px bg-border/40 hidden sm:block" />
 
               {hasStructuredData && (
-                <Button type="button" size="sm" variant="outline" className="gap-1.5 cursor-pointer" onClick={onCvDataReset}>
+                <Button type="button" size="sm" variant="outline" className="gap-1.5 cursor-pointer" onClick={onCvDataReset} disabled={savingCvData}>
                   <RotateCcw className="size-3.5" /><span className="hidden sm:inline">Reset</span>
+                </Button>
+              )}
+
+              {hasStructuredData && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={onSaveCvData}
+                  disabled={savingCvData || (!hasChanges && !cvDataSaved)}
+                  className={cn(
+                    "gap-1.5 cursor-pointer transition-colors",
+                    cvDataSaved
+                      ? "border-match-high/40 text-match-high bg-match-high/5"
+                      : hasChanges
+                        ? "border-primary/50 text-primary bg-primary/5 hover:bg-primary/10"
+                        : ""
+                  )}
+                >
+                  {savingCvData ? (
+                    <>
+                      <div className="size-3.5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+                      <span className="hidden sm:inline">Saving…</span>
+                    </>
+                  ) : cvDataSaved ? (
+                    <>
+                      <Check className="size-3.5" />
+                      <span className="hidden sm:inline">Saved</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="size-3.5" />
+                      <span className="hidden sm:inline">Save{hasChanges ? " •" : ""}</span>
+                    </>
+                  )}
                 </Button>
               )}
 
