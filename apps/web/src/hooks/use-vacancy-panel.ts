@@ -116,15 +116,15 @@ export function useVacancyPanel(job: JobListing | null) {
     if (cvOverride) setSelectedCV(cvOverride);
     setWorkspaceOpen(true);
     cvMatch.parseCv(cv.url);
-    // Reuse existing sidebar score if already computed — avoids a redundant API call
-    // and guarantees the workspace shows the same score as the comparison list.
+    // Reuse existing sidebar score if already computed — seeds score only, shows "Generate Suggestions"
+    // button instead of auto-fetching so users who already applied aren't re-prompted.
     const existingEntry = multiCVResults.find((e) => e.cv.url === cv.url && e.analysis && !e.loading);
     if (existingEntry?.analysis) {
-      cvMatch.analyzeWithSeededResult(job.url, cv.url, existingEntry.analysis);
+      cvMatch.seedAnalysis(existingEntry.analysis);
     } else {
       cvMatch.analyze(job.url, cv.url);
     }
-  }, [job?.url, selectedCV, multiCVResults, cvMatch.analyze, cvMatch.analyzeWithSeededResult, cvMatch.parseCv]);
+  }, [job?.url, selectedCV, multiCVResults, cvMatch.analyze, cvMatch.seedAnalysis, cvMatch.parseCv]);
 
   // Multi-CV: analyze a CV and add result to comparison list
   const addCVToCompare = useCallback(async (cv: CVLink) => {
@@ -163,6 +163,12 @@ export function useVacancyPanel(job: JobListing | null) {
   const closeWorkspace = useCallback(() => {
     setWorkspaceOpen(false);
   }, []);
+
+  // Fetch suggestions on demand (used when workspace was opened from an already-analyzed CV)
+  const generateSuggestions = useCallback(() => {
+    if (!job?.url || !selectedCV?.url) return;
+    cvMatch.generateSuggestions(job.url, selectedCV.url);
+  }, [job?.url, selectedCV?.url, cvMatch.generateSuggestions]);
 
   // When user changes CV, reset analysis
   const handleCVChange = useCallback((cv: CVLink | null) => {
@@ -273,6 +279,7 @@ export function useVacancyPanel(job: JobListing | null) {
     openWorkspace,
     analyzeAndOpen,
     closeWorkspace,
+    generateSuggestions,
     isSaved,
     toggleSave,
     profile,

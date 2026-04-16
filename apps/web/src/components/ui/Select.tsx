@@ -161,7 +161,7 @@ function Select({
         <SelectPrimitive.Root
           open={open}
           onOpenChange={setOpen}
-          value={[...selectedValues][0] || undefined}
+          value={[...selectedValues][0] ?? ""}
           onValueChange={toggleValue}
         >
           {children}

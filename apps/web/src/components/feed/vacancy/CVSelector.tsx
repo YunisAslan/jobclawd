@@ -82,16 +82,18 @@ export default function CVSelector({
         <label className="text-xs font-medium text-muted-foreground">Select CV to analyze</label>
         <div className="flex gap-2">
           <Select
-            value={selectedCV?.url}
+            key={selectedCV?.url ?? "__none__"}
+            value={selectedCV?.url ?? ""}
             onValueChange={(url) => {
               const cv = cvLinks.find((c) => c.url === url) ?? null;
               onChange(cv);
             }}
+            options={cvLinks.map((cv) => ({ value: cv.url, label: cv.name }))}
           >
-            <SelectTrigger className="h-9 text-xs flex-1">
-              <SelectValue placeholder="Choose a CV..." />
+            <SelectTrigger className="h-9 text-xs flex-1 min-w-0">
+              <SelectValue placeholder="Choose a CV…" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent search={false} position="popper">
               {cvLinks.map((cv) => (
                 <SelectItem key={cv.url} value={cv.url}>
                   <span className="flex items-center gap-2">

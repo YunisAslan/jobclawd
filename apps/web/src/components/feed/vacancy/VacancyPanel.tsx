@@ -78,6 +78,7 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
     workspaceOpen,
     analyzeAndOpen,
     closeWorkspace,
+    generateSuggestions,
     isSaved,
     toggleSave,
     profile,
@@ -273,6 +274,7 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
         loadingAtsPreview={loadingAtsPreview}
         onAtsPreview={previewAtsScore}
         onDismissAtsPreview={dismissAtsPreview}
+        onGenerateSuggestions={generateSuggestions}
       />
     </>
   );

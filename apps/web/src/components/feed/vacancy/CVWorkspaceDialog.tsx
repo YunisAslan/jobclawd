@@ -69,6 +69,7 @@ interface CVWorkspaceDialogProps {
   loadingAtsPreview: boolean;
   onAtsPreview: () => void;
   onDismissAtsPreview: () => void;
+  onGenerateSuggestions?: () => void;
 }
 
 /* ── Component ── */
@@ -102,6 +103,7 @@ export default function CVWorkspaceDialog({
   loadingAtsPreview,
   onAtsPreview,
   onDismissAtsPreview,
+  onGenerateSuggestions,
 }: CVWorkspaceDialogProps) {
   const fileType = inferCVFileType(cvUrl);
   const isPdf = fileType === "pdf";
@@ -319,6 +321,8 @@ export default function CVWorkspaceDialog({
               onReject={onRejectSuggestion}
               onReset={onResetSuggestion}
               onAppliedScrollTarget={handleAppliedScrollTarget}
+              onGenerateSuggestions={onGenerateSuggestions}
+              cvData={cvData}
             />
 
             {/* Document area */}

@@ -17,8 +17,10 @@ import {
   Wand2,
   PenLine,
   ChevronsRight,
+  Sparkles,
+  RefreshCw,
 } from "lucide-react";
-import type { CVSuggestion, CVSuggestionsResponse, SuggestionCategory } from "@/types";
+import type { CVData, CVSuggestion, CVSuggestionsResponse, SuggestionCategory } from "@/types";
 
 /* ── Target section mapping ── */
 
@@ -47,6 +49,52 @@ interface WorkspaceSuggestionsProps {
   onReset: (index: number) => void;
   readOnly?: boolean;
   onAppliedScrollTarget?: (sectionId: string) => void;
+  onGenerateSuggestions?: () => void;
+  cvData?: CVData | null;
+}
+
+/**
+ * Resolve the *current* text in the CV for a suggestion's "before" slot.
+ * This prevents the diff from showing stale text that was captured at analysis
+ * time but has since been edited by the user.
+ *
+ * Returns null if the text no longer exists in the CV (e.g. a bullet was
+ * already removed), which hides the minus row entirely.
+ */
+function resolveCurrentBeforeText(suggestion: CVSuggestion, cvData: CVData | null | undefined): string | null {
+  if (!suggestion.specific_text) return null; // add-type: no "before"
+  if (!cvData) return suggestion.specific_text;
+
+  const target = suggestion.specific_text.trim();
+
+  switch (suggestion.category) {
+    case "improve_headline":
+      // Always show the CURRENT summary so the user sees what will be replaced.
+      return cvData.personal_info.summary || target;
+
+    case "rewrite_bullets":
+    case "elevate_experience":
+    case "address_requirements": {
+      // Find the bullet that still contains the original text.
+      for (const entry of cvData.experience) {
+        const match = entry.bullets.find((b) => b.includes(target) || target.includes(b));
+        if (match) return match;
+      }
+      // Bullet no longer exists — was already applied or removed. Hide minus row.
+      return null;
+    }
+
+    case "reduce_irrelevant": {
+      for (const entry of cvData.experience) {
+        const match = entry.bullets.find((b) => b.includes(target) || target.includes(b));
+        if (match) return match;
+      }
+      return null; // Already removed.
+    }
+
+    default:
+      return target;
+  }
 }
 
 function extractQuotedValue(text: string): string {
@@ -54,9 +102,10 @@ function extractQuotedValue(text: string): string {
   return match ? (match[1] || match[2] || "") : "";
 }
 
-/** Strip AI instruction prefixes that sometimes appear verbatim in suggestion text. */
+/** Strip AI instruction prefixes and leading bullet markers from suggestion text. */
 function cleanSuggestionText(text: string): string {
   return text
+    .replace(/^[-•*]\s+/, "")
     .replace(/^add\s+to\s+\w[\w\s]*\s*:\s*/i, "")
     .replace(/^(?:add|include|consider\s+adding)\s+(?:the\s+)?(?:following\s+)?(?:skills?|keywords?|items?|bullet[s]?)\s*:\s*/i, "")
     .replace(/^include\s*:\s*/i, "")
@@ -74,6 +123,8 @@ export default function WorkspaceSuggestions({
   onReset,
   readOnly = false,
   onAppliedScrollTarget,
+  onGenerateSuggestions,
+  cvData,
 }: WorkspaceSuggestionsProps) {
   const list = suggestions?.suggestions ?? [];
 
@@ -142,11 +193,25 @@ export default function WorkspaceSuggestions({
               <Badge variant="outline" className="text-[10px] font-medium">{list.length}</Badge>
             )}
           </div>
-          {appliedCount > 0 && (
-            <Badge className="text-[10px] font-medium bg-success/10 text-success border-success/20 border">
-              {appliedCount} applied
-            </Badge>
-          )}
+          <div className="flex items-center gap-1.5">
+            {appliedCount > 0 && (
+              <Badge className="text-[10px] font-medium bg-success/10 text-success border-success/20 border">
+                {appliedCount} applied
+              </Badge>
+            )}
+            {!loading && list.length > 0 && onGenerateSuggestions && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onGenerateSuggestions}
+                className="size-6 text-muted-foreground/60 hover:text-foreground"
+                title="Regenerate suggestions"
+              >
+                <RefreshCw className="size-3.5" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Apply All / Undo All */}
@@ -220,8 +285,27 @@ export default function WorkspaceSuggestions({
             </div>
           )}
           {!loading && list.length === 0 && (
-            <div className="text-center py-10 px-4 text-xs text-muted-foreground">
-              Run CV analysis from the panel to see suggestions here.
+            <div className="flex flex-col items-center gap-3 py-10 px-4 text-center">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/15">
+                <Sparkles className="size-5 text-primary" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-foreground">Get AI suggestions</p>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  AI will review your CV against this job and suggest targeted improvements.
+                </p>
+              </div>
+              {onGenerateSuggestions && (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="gap-1.5 mt-1"
+                  onClick={onGenerateSuggestions}
+                >
+                  <Sparkles className="size-3.5" />
+                  Generate suggestions
+                </Button>
+              )}
             </div>
           )}
 
@@ -238,6 +322,7 @@ export default function WorkspaceSuggestions({
               onReject={onReject}
               onReset={onReset}
               readOnly={readOnly}
+              cvData={cvData}
             />
           ))}
         </div>
@@ -259,11 +344,12 @@ interface SuggestionCardProps {
   onReject: (index: number) => void;
   onReset: (index: number) => void;
   readOnly: boolean;
+  cvData?: CVData | null;
 }
 
 function SuggestionCard({
   index, suggestion, action, editedText, onEditChange,
-  onAccept, onUndo, onReject, onReset, readOnly,
+  onAccept, onUndo, onReject, onReset, readOnly, cvData,
 }: SuggestionCardProps) {
   const isAccepted = action === "accepted";
   const isDeclined = action === "rejected";
@@ -275,8 +361,9 @@ function SuggestionCard({
     : suggestion.priority === "medium" ? "bg-warning"
     : "bg-muted-foreground/40";
 
-  const isAddType = !suggestion.specific_text;
-  const target    = CATEGORY_TARGET[suggestion.category];
+  const isAddType     = !suggestion.specific_text;
+  const target        = CATEGORY_TARGET[suggestion.category];
+  const currentBefore = resolveCurrentBeforeText(suggestion, cvData);
 
   function handleCopyPlusText(text: string) {
     if (!text) return;
@@ -341,13 +428,13 @@ function SuggestionCard({
       </div>
 
       {/* Diff block */}
-      {!isDeclined && (suggestion.specific_text || suggestion.suggested_text) && (
+      {!isDeclined && (currentBefore !== null || !isAddType || suggestion.suggested_text) && (
         <div className="rounded border border-border overflow-hidden text-[11px] font-mono ml-3">
-          {suggestion.specific_text && (
+          {currentBefore !== null && (
             <div className="flex gap-1.5 px-2 py-1.5 bg-destructive/5 border-b border-destructive/10">
               <span className="text-destructive/60 font-bold shrink-0">−</span>
               <span className="text-destructive/50 line-through wrap-break-word leading-normal flex-1 min-w-0">
-                {suggestion.specific_text}
+                {currentBefore}
               </span>
             </div>
           )}
@@ -378,14 +465,14 @@ function SuggestionCard({
             ) : (
               <>
                 <span className="text-success/80 wrap-break-word leading-normal flex-1 min-w-0">
-                  {suggestion.suggested_text}
+                  {editedText}
                 </span>
-                {suggestion.suggested_text && (
+                {editedText && (
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleCopyPlusText(suggestion.suggested_text ?? "")}
+                    onClick={() => handleCopyPlusText(editedText)}
                     title="Copy to clipboard"
                     className={cn("size-5 shrink-0 ml-1", copied ? "text-success" : "text-success/40 hover:text-success")}
                   >

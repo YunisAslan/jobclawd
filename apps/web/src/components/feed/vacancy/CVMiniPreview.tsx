@@ -201,6 +201,16 @@ export default function CVMiniPreview({ data, originalData }: CVMiniPreviewProps
                     {[e.degree && e.institution ? e.degree : null, e.field_of_study].filter(Boolean).join(" · ")}
                   </div>
                 )}
+                {e.details && e.details.length > 0 && (
+                  <div style={{ marginTop: "3px" }}>
+                    {e.details.map((d, i) => (
+                      <div key={i} style={{ fontSize: "12px", color: "#334155", paddingLeft: "12px", position: "relative", marginBottom: "2px" }}>
+                        <span style={{ position: "absolute", left: 0 }}>•</span>
+                        {d}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}

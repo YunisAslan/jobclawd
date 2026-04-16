@@ -230,6 +230,36 @@ export function useCVMatch() {
     setState((s) => ({ ...s, atsPreview: null, atsPreviewBaseline: null }));
   }
 
+  /** Seed only the analysis score into state — does NOT fetch suggestions or draft. */
+  function seedAnalysis(analysis: CVMatchAnalysis) {
+    setState((s) => ({
+      ...s,
+      analysis,
+      loadingAnalysis: false,
+      loadingSuggestions: false,
+      loadingDraft: false,
+      errorAnalysis: null,
+      errorSuggestions: null,
+      analyzed: true,
+      suggestions: null, // cleared so UI shows the "Generate" CTA
+    }));
+  }
+
+  /** Fetch fresh suggestions on demand (bypasses bundle cache — uses /cv-suggestions directly). */
+  async function generateSuggestions(jobUrl: string, cvUrl: string) {
+    setState((s) => ({ ...s, loadingSuggestions: true, errorSuggestions: null, suggestions: null }));
+    try {
+      const result = await cvMatchService.getSuggestions(jobUrl, cvUrl);
+      setState((s) => ({ ...s, suggestions: result, loadingSuggestions: false }));
+    } catch {
+      setState((s) => ({
+        ...s,
+        loadingSuggestions: false,
+        errorSuggestions: "Failed to generate suggestions. Please try again.",
+      }));
+    }
+  }
+
   async function generateAndDownloadPdf(fileName?: string) {
     if (!state.cvData) return;
     setState((s) => ({ ...s, generatingPdf: true }));
@@ -385,6 +415,8 @@ export function useCVMatch() {
     ...state,
     analyze,
     analyzeWithSeededResult,
+    seedAnalysis,
+    generateSuggestions,
     updateDraft,
     resetDraft,
     acceptSuggestion,
@@ -471,6 +503,8 @@ function cvDataToText(data: CVData): string {
  */
 function cleanSuggestionText(text: string): string {
   return text
+    // Leading bullet markers ("- ", "• ", "* ")
+    .replace(/^[-•*]\s+/, "")
     // "Add to <section>: ..."
     .replace(/^add\s+to\s+\w[\w\s]*\s*:\s*/i, "")
     // "Add [the] [following] skills/keywords/items: ..."
