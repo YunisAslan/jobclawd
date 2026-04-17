@@ -5,7 +5,7 @@ import logo from "@/assets/logo/jobclawd-logo.svg";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
-import { Search, Bookmark, User, Settings, LogOut } from "lucide-react";
+import { Search, Bookmark, User, Settings, LogOut, BarChart2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSidebarShell } from "@/contexts/SidebarShellContext";
 import { useFeedUrl } from "@/contexts/FeedUrlContext";
@@ -24,6 +24,11 @@ const NAV_ITEMS = [
     href: "/dashboard/saved",
     label: "Saved Jobs",
     icon: <Bookmark className="size-4.5 shrink-0" />,
+  },
+  {
+    href: "/dashboard/analytics",
+    label: "Analytics",
+    icon: <BarChart2 className="size-4.5 shrink-0" />,
   },
   {
     href: "/dashboard/profile",

@@ -17,6 +17,7 @@ export const ENDPOINTS = {
 
   // Stats
   STATS: "/api/stats",
+  ANALYTICS: "/api/analytics",
 
   // Meta
   META_FILTERS: "/api/meta/filters",

@@ -219,6 +219,19 @@ export function useVacancyPanel(job: JobListing | null) {
 
   const resolvedApplyUrl = detail?.resolved_apply_url || job?.url || "";
 
+  // Save CV then immediately re-score so workspace header and sidebar reflect the new score
+  const saveCvData = useCallback(async () => {
+    if (!selectedCV?.url) return;
+    await cvMatch.saveCvData(selectedCV.url);
+    if (!job?.url) return;
+    const newAnalysis = await cvMatch.rescoreAfterSave(job.url);
+    if (newAnalysis) {
+      setMultiCVResults((prev) =>
+        prev.map((e) => (e.cv.url === selectedCV.url ? { ...e, analysis: newAnalysis } : e))
+      );
+    }
+  }, [selectedCV?.url, job?.url, cvMatch.saveCvData, cvMatch.rescoreAfterSave]);
+
   return {
     detail,
     loadingDetail,
@@ -258,7 +271,7 @@ export function useVacancyPanel(job: JobListing | null) {
     updateCvData: cvMatch.updateCvData,
     resetCvData: cvMatch.resetCvData,
     generateAndDownloadPdf: cvMatch.generateAndDownloadPdf,
-    saveCvData: () => (selectedCV?.url ? cvMatch.saveCvData(selectedCV.url) : Promise.resolve()),
+    saveCvData,
     savingCvData: cvMatch.savingCvData,
     cvDataSaved: cvMatch.cvDataSaved,
     loadingParse: cvMatch.loadingParse,

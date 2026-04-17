@@ -166,6 +166,46 @@
   --radius-2xl: calc(var(--radius) + 10px);
 }
 
+/* =====================================================
+   SCROLLBAR — thin, theme-aware
+===================================================== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) var(--scroll-track);
+}
+
+:root {
+  --scroll-thumb: #c8ccd8;
+  --scroll-track: transparent;
+}
+
+.dark {
+  --scroll-thumb: #2e3244;
+  --scroll-track: transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 99px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

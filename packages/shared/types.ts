@@ -326,6 +326,31 @@ export interface StatsResponse {
   cv_performance: CVPerformanceEntry[];
 }
 
+export interface FunnelEntry {
+  label: string;
+  count: number;
+  pct: number;
+}
+
+export interface MatchBandEntry {
+  band: string;
+  applied: number;
+  replied: number;
+  reply_rate: number;
+}
+
+export interface AnalyticsResponse {
+  total_applied: number;
+  total_replies: number;
+  reply_rate: number;
+  best_cv_name: string | null;
+  best_cv_reply_rate: number | null;
+  funnel: FunnelEntry[];
+  cv_performance: CVPerformanceEntry[];
+  match_bands: MatchBandEntry[];
+  trend_30d: WeeklyChartEntry[];
+}
+
 // ── Structured CV Data ──
 
 export interface CVPersonalInfo {

@@ -282,6 +282,22 @@ export function useCVMatch() {
     }
   }
 
+  /**
+   * Re-score the current (saved) CV against the job and update state.analysis.
+   * Call this after saveCvData resolves to reflect the new score in the workspace header and sidebar.
+   */
+  async function rescoreAfterSave(jobUrl: string): Promise<CVMatchAnalysis | null> {
+    if (!state.cvData) return null;
+    const editedText = cvDataToText(state.cvData);
+    try {
+      const result = await cvMatchService.matchFromText(jobUrl, editedText);
+      setState((s) => ({ ...s, analysis: result }));
+      return result;
+    } catch {
+      return null;
+    }
+  }
+
   // ── Draft editing ──────────────────────────────────────────────────────
 
   function updateDraft(text: string) {
@@ -429,6 +445,7 @@ export function useCVMatch() {
     resetCvData,
     generateAndDownloadPdf,
     saveCvData,
+    rescoreAfterSave,
     previewAtsScore,
     dismissAtsPreview,
     reset,

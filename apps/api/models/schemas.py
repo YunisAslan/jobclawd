@@ -262,6 +262,38 @@ class StatsResponse(BaseModel):
     cv_performance: list[CVPerformanceEntry]
 
 
+# ---------- Analytics ----------
+
+class FunnelEntry(BaseModel):
+    label: str
+    count: int
+    pct: float  # percentage relative to first stage (applied)
+
+
+class MatchBandEntry(BaseModel):
+    band: str        # "Strong (75+)", "Good (50–74)", "Low (<50)", "Unscored"
+    applied: int
+    replied: int
+    reply_rate: float  # 0–100
+
+
+class AnalyticsResponse(BaseModel):
+    # Summary
+    total_applied: int
+    total_replies: int
+    reply_rate: float
+    best_cv_name: Optional[str]
+    best_cv_reply_rate: Optional[float]
+    # Application funnel
+    funnel: list[FunnelEntry]
+    # CV A/B comparison
+    cv_performance: list[CVPerformanceEntry]
+    # Match score impact
+    match_bands: list[MatchBandEntry]
+    # 30-day daily trend
+    trend_30d: list[WeeklyChartEntry]
+
+
 # ---------- Meta ----------
 
 class FilterOption(BaseModel):
