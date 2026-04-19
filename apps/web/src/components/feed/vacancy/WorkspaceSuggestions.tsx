@@ -102,15 +102,26 @@ function extractQuotedValue(text: string): string {
   return match ? (match[1] || match[2] || "") : "";
 }
 
-/** Strip AI instruction prefixes and leading bullet markers from suggestion text. */
+const BULLET_GLYPH_RE = /[\u25A0\u25A1\u25AA\u25AB\u25CF\u25CB\u25C6\u25C7\u25B8\u25B6\u25BA\u2B1B\u2B1C\u2756\u00B7]/g;
+const LEADING_LABEL_RE = /^[A-Z][A-Z0-9\s&/+\-]{2,}?(?:\s{2,}|[:—–-]\s+|\s(?=[A-Z][a-z]))/;
+
+/** Strip AI instruction prefixes, bullet glyphs, and ALL-CAPS labels from suggestion text. */
 function cleanSuggestionText(text: string): string {
-  return text
+  let out = text
+    .replace(BULLET_GLYPH_RE, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim()
     .replace(/^[-•*]\s+/, "")
     .replace(/^add\s+to\s+\w[\w\s]*\s*:\s*/i, "")
     .replace(/^(?:add|include|consider\s+adding)\s+(?:the\s+)?(?:following\s+)?(?:skills?|keywords?|items?|bullet[s]?)\s*:\s*/i, "")
     .replace(/^include\s*:\s*/i, "")
     .replace(/^consider\s+adding\s*:\s*/i, "")
     .trim();
+  const labelMatch = out.match(LEADING_LABEL_RE);
+  if (labelMatch && labelMatch[0].length < out.length - 10) {
+    out = out.slice(labelMatch[0].length).trim();
+  }
+  return out;
 }
 
 export default function WorkspaceSuggestions({

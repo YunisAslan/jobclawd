@@ -518,19 +518,44 @@ function cvDataToText(data: CVData): string {
  *   "Consider adding: Docker"           → "Docker"
  *   "Add to experience: Led a team…"    → "Led a team…"
  */
+const BULLET_GLYPH_CHARS = "\\u25A0\\u25A1\\u25AA\\u25AB\\u25CF\\u25CB\\u25C6\\u25C7\\u25B8\\u25B6\\u25BA\\u2B1B\\u2B1C\\u2756\\u00B7";
+const BULLET_GLYPH_RE = new RegExp(`[${BULLET_GLYPH_CHARS}]`, "g");
+const BULLET_SPLIT_RE = new RegExp(`\\s*[${BULLET_GLYPH_CHARS}]\\s*|\\s*\\n+\\s*`, "g");
+const LEADING_LABEL_RE = /^[A-Z][A-Z0-9\s&/+\-]{2,}?(?:\s{2,}|[:—–-]\s+|\s(?=[A-Z][a-z]))/;
+
 function cleanSuggestionText(text: string): string {
-  return text
-    // Leading bullet markers ("- ", "• ", "* ")
+  let out = text
+    .replace(BULLET_GLYPH_RE, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim()
     .replace(/^[-•*]\s+/, "")
-    // "Add to <section>: ..."
     .replace(/^add\s+to\s+\w[\w\s]*\s*:\s*/i, "")
-    // "Add [the] [following] skills/keywords/items: ..."
     .replace(/^(?:add|include|consider\s+adding)\s+(?:the\s+)?(?:following\s+)?(?:skills?|keywords?|items?|bullet[s]?)\s*:\s*/i, "")
-    // "Include: ..."
     .replace(/^include\s*:\s*/i, "")
-    // "Consider adding: ..."
     .replace(/^consider\s+adding\s*:\s*/i, "")
     .trim();
+  const labelMatch = out.match(LEADING_LABEL_RE);
+  if (labelMatch && labelMatch[0].length < out.length - 10) {
+    out = out.slice(labelMatch[0].length).trim();
+  }
+  return out;
+}
+
+function splitBulletText(text: string): string[] {
+  if (!text) return [];
+  return text
+    .split(BULLET_SPLIT_RE)
+    .map((s) => cleanSuggestionText(s))
+    .filter((s) => s.length > 0);
+}
+
+function dedupeBullet(existing: string[], candidate: string): boolean {
+  const norm = candidate.trim().toLowerCase();
+  if (!norm) return false;
+  return !existing.some((b) => {
+    const n = b.trim().toLowerCase();
+    return n === norm || n.includes(norm) || norm.includes(n);
+  });
 }
 
 // ── Section-aware suggestion application ────────────────────────────────────
@@ -630,7 +655,7 @@ function isExperienceBullet(text: string): boolean {
 }
 
 function applySuggestionToCvData(data: CVData, suggestion: CVSuggestion, suggestedText: string): CVData {
-  const text = suggestedText.trim();
+  const text = cleanSuggestionText(suggestedText);
   if (!text) return data;
 
   const cat = suggestion.category;
@@ -639,10 +664,12 @@ function applySuggestionToCvData(data: CVData, suggestion: CVSuggestion, suggest
 
   // add_keywords → add skills to the most relevant skill group (or create "General")
   if (cat === "add_keywords") {
-    // Split by comma/semicolon, strip any per-item instruction prefix,
-    // then discard sentence-like fragments (> 5 words) which are descriptions, not keywords.
-    const rawItems = text.split(/[,;]/).map((s) => cleanSuggestionText(s.trim())).filter(Boolean);
-    const newItems = rawItems.filter((s) => s.split(/\s+/).length <= 5 && s.length <= 50);
+    const rawItems = text.split(/[,;]/).map((s) => cleanSuggestionText(s)).filter(Boolean);
+    const filtered = rawItems.filter((s) => s.split(/\s+/).length <= 5 && s.length <= 50);
+    const existingAll = new Set(
+      data.skills.flatMap((g) => g.items.map((i) => i.trim().toLowerCase()))
+    );
+    const newItems = filtered.filter((s) => !existingAll.has(s.trim().toLowerCase()));
     if (newItems.length === 0) return data;
     const skills = [...data.skills];
     if (skills.length > 0) {
@@ -655,45 +682,58 @@ function applySuggestionToCvData(data: CVData, suggestion: CVSuggestion, suggest
     return { ...data, skills };
   }
 
-  // rewrite_bullets → find and replace matching bullet in experience
+  // rewrite_bullets → replace matched bullet; if text contains multiple bullets, insert the rest right after
   if (cat === "rewrite_bullets" && target) {
+    const pieces = splitBulletText(text);
+    if (pieces.length === 0) return data;
     const experience = data.experience.map((entry) => {
       const bulletIdx = entry.bullets.findIndex((b) => b.includes(target) || target.includes(b));
       if (bulletIdx === -1) return entry;
       const bullets = [...entry.bullets];
-      bullets[bulletIdx] = text;
+      const [first, ...rest] = pieces;
+      bullets[bulletIdx] = first;
+      const insertions = rest.filter((p) => dedupeBullet(bullets, p));
+      bullets.splice(bulletIdx + 1, 0, ...insertions);
       return { ...entry, bullets };
     });
     return { ...data, experience };
   }
 
-  // improve_headline → always update summary
+  // improve_headline → always update summary (single clean paragraph)
   if (cat === "improve_headline") {
     return { ...data, personal_info: { ...data.personal_info, summary: text } };
   }
 
-  // address_requirements → add as a bullet to the most recent experience entry.
-  // If the text reads like a headline/summary (not an action-verb bullet),
-  // route it to the summary field instead.
+  // address_requirements → append bullets to the most recent experience entry.
+  // If the text reads like a headline/summary, route it to the summary field instead.
   if (cat === "address_requirements") {
     if (isHeadlineLike(text) && !isExperienceBullet(text)) {
       return { ...data, personal_info: { ...data.personal_info, summary: text } };
     }
     if (data.experience.length === 0) return data;
+    const pieces = splitBulletText(text);
+    if (pieces.length === 0) return data;
     const experience = [...data.experience];
-    experience[0] = { ...experience[0], bullets: [...experience[0].bullets, text] };
+    const current = [...experience[0].bullets];
+    for (const p of pieces) {
+      if (dedupeBullet(current, p)) current.push(p);
+    }
+    experience[0] = { ...experience[0], bullets: current };
     return { ...data, experience };
   }
 
-  // elevate_experience → prepend a bullet to first experience entry.
-  // Route headline-style text to summary instead of polluting experience bullets.
+  // elevate_experience → prepend bullets to the most recent experience entry.
   if (cat === "elevate_experience") {
     if (isHeadlineLike(text) && !isExperienceBullet(text)) {
       return { ...data, personal_info: { ...data.personal_info, summary: text } };
     }
     if (data.experience.length === 0) return data;
+    const pieces = splitBulletText(text);
+    if (pieces.length === 0) return data;
     const experience = [...data.experience];
-    experience[0] = { ...experience[0], bullets: [text, ...experience[0].bullets] };
+    const current = [...experience[0].bullets];
+    const fresh = pieces.filter((p) => dedupeBullet(current, p));
+    experience[0] = { ...experience[0], bullets: [...fresh, ...current] };
     return { ...data, experience };
   }
 
@@ -712,14 +752,19 @@ function applySuggestionToCvData(data: CVData, suggestion: CVSuggestion, suggest
   }
 
   if (hint.includes("skill") || hint.includes("keyword") || hint.includes("technolog")) {
-    const skills = [...data.skills];
-    const newItems = text.split(/[,;]/).map((s) => cleanSuggestionText(s.trim())).filter(Boolean)
+    const newItems = text.split(/[,;]/).map((s) => cleanSuggestionText(s)).filter(Boolean)
       .filter((s) => s.split(/\s+/).length <= 5 && s.length <= 50);
     if (newItems.length === 0) return data;
+    const existingAll = new Set(
+      data.skills.flatMap((g) => g.items.map((i) => i.trim().toLowerCase()))
+    );
+    const fresh = newItems.filter((s) => !existingAll.has(s.trim().toLowerCase()));
+    if (fresh.length === 0) return data;
+    const skills = [...data.skills];
     if (skills.length > 0) {
-      skills[0] = { ...skills[0], items: [...skills[0].items, ...newItems] };
+      skills[0] = { ...skills[0], items: [...skills[0].items, ...fresh] };
     } else {
-      skills.push({ category: "General", items: newItems });
+      skills.push({ category: "General", items: fresh });
     }
     return { ...data, skills };
   }

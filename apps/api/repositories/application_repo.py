@@ -165,12 +165,12 @@ def get_analytics() -> AnalyticsResponse:
             FROM applications
             GROUP BY 1
             ORDER BY
-              CASE
+              MIN(CASE
                 WHEN match_score IS NULL       THEN 4
                 WHEN match_score >= 75         THEN 1
                 WHEN match_score >= 50         THEN 2
                 ELSE                                3
-              END
+              END)
             """
         ).fetchall()
 
