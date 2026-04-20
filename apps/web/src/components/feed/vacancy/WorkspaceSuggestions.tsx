@@ -31,6 +31,7 @@ const CATEGORY_TARGET: Record<SuggestionCategory, { label: string; sectionId: st
   reduce_irrelevant:    { label: "Experience",  sectionId: "cv-section-experience" },
   improve_headline:     { label: "Summary",     sectionId: "cv-section-personal" },
   address_requirements: { label: "Experience",  sectionId: "cv-section-experience" },
+  address_gaps:         { label: "Experience",  sectionId: "cv-section-experience" },
 };
 
 export function getTargetSectionId(category: SuggestionCategory): string {
@@ -74,7 +75,8 @@ function resolveCurrentBeforeText(suggestion: CVSuggestion, cvData: CVData | nul
 
     case "rewrite_bullets":
     case "elevate_experience":
-    case "address_requirements": {
+    case "address_requirements":
+    case "address_gaps": {
       // Find the bullet that still contains the original text.
       for (const entry of cvData.experience) {
         const match = entry.bullets.find((b) => b.includes(target) || target.includes(b));

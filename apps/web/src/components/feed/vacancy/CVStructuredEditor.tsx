@@ -15,7 +15,7 @@ import {
   LayoutGrid,
   Camera,
 } from "lucide-react";
-import type { CVData, CVExperienceEntry, CVEducationEntry } from "@/types";
+import type { CVData, CVExperienceEntry, CVEducationEntry, CVAdditionalEntry } from "@/types";
 import {
   Section,
   SortableList,
@@ -24,6 +24,7 @@ import {
   FieldLabel,
   EmptyState,
   RemoveButton,
+  BulletList,
   reorder,
   uid,
 } from "./CVEditorPrimitives";
@@ -62,6 +63,16 @@ export default function CVStructuredEditor({ data, onChange, highlightSection, o
   );
 
   const [sectionOrder, setSectionOrder] = useState<SectionKey[]>(() => {
+    // Initialise from the stored section_order if present, otherwise use default.
+    // Backend uses "personal_info"; frontend uses "personal".
+    if (data.section_order && data.section_order.length > 0) {
+      const mapped = data.section_order.map((k) => k === "personal_info" ? "personal" : k);
+      // Always ensure "personal" is first and all base+extra keys are present.
+      const present = new Set(mapped);
+      const extras = Object.keys(data.additional_sections ?? {}).filter((k) => !present.has(k));
+      const base = BASE_ORDER.filter((k) => !present.has(k));
+      return ["personal", ...mapped.filter((k) => k !== "personal"), ...base, ...extras];
+    }
     const extras = Object.keys(data.additional_sections ?? {});
     return [...BASE_ORDER, ...extras];
   });
@@ -339,16 +350,25 @@ export default function CVStructuredEditor({ data, onChange, highlightSection, o
             forceOpen={highlightSection === "cv-section-certifications"}
             onAdd={() => update({ certifications: [...data.certifications, emptyCertification()] })}
           >
-            <div className="space-y-2">
+            <div className="space-y-3">
               {data.certifications.map((cert, i) => (
                 <div key={cert.id} className="flex items-start gap-2">
-                  <div className="flex-1 grid grid-cols-3 gap-2">
-                    <Field label="Certificate Name" value={cert.name} placeholder="e.g. AWS Solutions Architect"
-                      onChange={(v) => { const next = [...data.certifications]; next[i] = { ...cert, name: v }; update({ certifications: next }); }} />
-                    <Field label="Issuer" value={cert.issuer} placeholder="e.g. Amazon"
-                      onChange={(v) => { const next = [...data.certifications]; next[i] = { ...cert, issuer: v }; update({ certifications: next }); }} />
-                    <Field label="Date" value={cert.date} placeholder="e.g. 2024-03"
-                      onChange={(v) => { const next = [...data.certifications]; next[i] = { ...cert, date: v }; update({ certifications: next }); }} />
+                  <div className="flex-1 space-y-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      <LinkedField
+                        label="Certificate Name"
+                        value={cert.name}
+                        placeholder="e.g. AWS Solutions Architect"
+                        onChange={(v) => { const next = [...data.certifications]; next[i] = { ...cert, name: v }; update({ certifications: next }); }}
+                        link={cert.link ?? ""}
+                        onLinkChange={(v) => { const next = [...data.certifications]; next[i] = { ...cert, link: v }; update({ certifications: next }); }}
+                        linkPlaceholder="https://… (credential URL, optional)"
+                      />
+                      <Field label="Issuer" value={cert.issuer} placeholder="e.g. Amazon"
+                        onChange={(v) => { const next = [...data.certifications]; next[i] = { ...cert, issuer: v }; update({ certifications: next }); }} />
+                      <Field label="Date" value={cert.date} placeholder="e.g. 2024-03"
+                        onChange={(v) => { const next = [...data.certifications]; next[i] = { ...cert, date: v }; update({ certifications: next }); }} />
+                    </div>
                   </div>
                   <div className="mt-5.5">
                     <RemoveButton onClick={() => update({ certifications: data.certifications.filter((_, j) => j !== i) })} />
@@ -362,8 +382,31 @@ export default function CVStructuredEditor({ data, onChange, highlightSection, o
 
       default: {
         const name = key;
-        const items = data.additional_sections?.[name] ?? [];
+        const entries = data.additional_sections?.[name] ?? [];
         const displayName = name.charAt(0).toUpperCase() + name.slice(1);
+
+        const updateEntry = (i: number, patch: Partial<CVAdditionalEntry>) => {
+          const next = { ...data.additional_sections };
+          const list = [...entries];
+          list[i] = { ...list[i], ...patch };
+          next[name] = list;
+          update({ additional_sections: next });
+        };
+
+        const removeEntry = (i: number) => {
+          const next = { ...data.additional_sections };
+          const list = entries.filter((_, j) => j !== i);
+          if (list.length === 0) delete next[name];
+          else next[name] = list;
+          update({ additional_sections: next });
+        };
+
+        const addEntry = () => {
+          const next = { ...data.additional_sections };
+          next[name] = [...entries, emptyAdditionalEntry()];
+          update({ additional_sections: next });
+        };
+
         return (
           <Section
             key={name}
@@ -371,32 +414,56 @@ export default function CVStructuredEditor({ data, onChange, highlightSection, o
             id={`cv-section-${name}`}
             dragHandle={dragHandle}
             icon={<LayoutGrid className="size-3.5" />}
+            onAdd={addEntry}
           >
-            <div className="space-y-2">
-              {items.map((item, i) => (
-                <div key={i} className="flex items-start gap-2">
-                  <Field
-                    className="flex-1"
-                    label={`Item ${i + 1}`}
-                    value={item}
-                    onChange={(v) => {
-                      const next = { ...data.additional_sections };
-                      next[name] = [...items];
-                      next[name][i] = v;
-                      update({ additional_sections: next });
-                    }}
-                  />
-                  <div className="mt-5.5">
-                    <RemoveButton onClick={() => {
-                      const next = { ...data.additional_sections };
-                      next[name] = items.filter((_, j) => j !== i);
-                      if (next[name].length === 0) delete next[name];
-                      update({ additional_sections: next });
-                    }} />
+            <SortableList
+              items={entries}
+              onReorder={(nextList) => {
+                const next = { ...data.additional_sections };
+                next[name] = nextList;
+                update({ additional_sections: next });
+              }}
+              className="space-y-3"
+              renderItem={(entry, i, handle) => (
+                <div className="rounded-xl border border-border bg-background/40 p-3 space-y-3">
+                  <div className="flex items-start gap-2">
+                    {handle}
+                    <div className="flex-1 grid grid-cols-2 gap-2">
+                      <Field
+                        label="Title"
+                        value={entry.title}
+                        placeholder="e.g. Dean's List"
+                        onChange={(v) => updateEntry(i, { title: v })}
+                      />
+                      <Field
+                        label="Date"
+                        value={entry.date}
+                        placeholder="e.g. 12/2018 – 05/2019"
+                        onChange={(v) => updateEntry(i, { date: v })}
+                      />
+                    </div>
+                    <div className="mt-5.5">
+                      <RemoveButton onClick={() => removeEntry(i)} />
+                    </div>
                   </div>
+                  <LinkedField
+                    label="Subtitle"
+                    value={entry.subtitle}
+                    onChange={(v) => updateEntry(i, { subtitle: v })}
+                    link={entry.link ?? ""}
+                    onLinkChange={(v) => updateEntry(i, { link: v })}
+                    linkPlaceholder="https://… (optional)"
+                    placeholder="e.g. ABC College, Los Angeles"
+                  />
+                  <BulletList
+                    items={entry.bullets}
+                    onChange={(bullets) => updateEntry(i, { bullets })}
+                    placeholder="Describe the achievement or contribution"
+                  />
                 </div>
-              ))}
-            </div>
+              )}
+            />
+            {entries.length === 0 && <EmptyState label={`No ${displayName.toLowerCase()} added yet`} />}
           </Section>
         );
       }
@@ -432,7 +499,10 @@ export default function CVStructuredEditor({ data, onChange, highlightSection, o
                 onDrop={(e) => {
                   e.preventDefault(); e.stopPropagation();
                   if (secDragFrom !== null && secDragFrom !== i) {
-                    setSectionOrder((prev) => reorder(prev, secDragFrom, i));
+                    const newOrder = reorder(sectionOrder, secDragFrom, i);
+                    setSectionOrder(newOrder);
+                    // Persist order — map frontend "personal" → backend "personal_info"
+                    update({ section_order: newOrder.map((k) => k === "personal" ? "personal_info" : k) });
                   }
                   setSecDragFrom(null); setSecDragOver(null);
                 }}
@@ -455,15 +525,19 @@ export default function CVStructuredEditor({ data, onChange, highlightSection, o
 /* ── Factory functions ── */
 
 function emptyExperience(): CVExperienceEntry {
-  return { id: uid(), company: "", title: "", location: "", start_date: "", end_date: "", bullets: [] };
+  return { id: uid(), company: "", title: "", location: "", start_date: "", end_date: "", bullets: [], link: "" };
 }
 
 function emptyEducation(): CVEducationEntry {
-  return { id: uid(), institution: "", degree: "", field_of_study: "", start_date: "", end_date: "", details: [] };
+  return { id: uid(), institution: "", degree: "", field_of_study: "", start_date: "", end_date: "", details: [], link: "" };
 }
 
 function emptyCertification() {
-  return { id: uid(), name: "", issuer: "", date: "" };
+  return { id: uid(), name: "", issuer: "", date: "", link: "" };
+}
+
+function emptyAdditionalEntry(): CVAdditionalEntry {
+  return { id: uid(), title: "", subtitle: "", date: "", bullets: [], link: "" };
 }
 
 function resolveLinkedIn(value: string): string {

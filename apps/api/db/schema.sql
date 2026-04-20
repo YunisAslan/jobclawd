@@ -159,8 +159,12 @@ CREATE INDEX IF NOT EXISTS idx_cv_analysis_cache_expires
 
 -- CV parse cache: cv_url → structured CVData JSON (permanent, URL contains UUID)
 CREATE TABLE IF NOT EXISTS cv_parse_cache (
-  cv_url      TEXT PRIMARY KEY,
-  parsed_json JSONB NOT NULL,
-  cv_name     TEXT NOT NULL DEFAULT '',
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  cv_url         TEXT PRIMARY KEY,
+  parsed_json    JSONB NOT NULL,
+  cv_name        TEXT NOT NULL DEFAULT '',
+  schema_version INT NOT NULL DEFAULT 1,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Migration for existing installs: ensure schema_version column exists.
+ALTER TABLE cv_parse_cache ADD COLUMN IF NOT EXISTS schema_version INT NOT NULL DEFAULT 1;

@@ -243,9 +243,12 @@ export default function CVMiniPreview({ data, originalData }: CVMiniPreviewProps
           <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "#1a1a1a", borderBottom: "0.4px solid #d1d5db", paddingBottom: "3px", marginBottom: "8px", marginTop: "10px" }}>
             Languages
           </div>
-          <div style={{ fontSize: "12px", color: "#334155" }}>
-            {data.languages.map((l) => l.level ? `${l.language} — ${l.level}` : l.language).join(", ")}
-          </div>
+          {data.languages.map((l, i) => (
+            <div key={i} style={{ fontSize: "12px", color: "#334155", paddingLeft: "12px", position: "relative", marginBottom: "2px" }}>
+              <span style={{ position: "absolute", left: 0 }}>•</span>
+              {l.level ? `${l.language}: ${l.level}` : l.language}
+            </div>
+          ))}
         </section>
       )}
 
@@ -255,29 +258,100 @@ export default function CVMiniPreview({ data, originalData }: CVMiniPreviewProps
           <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "#1a1a1a", borderBottom: "0.4px solid #d1d5db", paddingBottom: "3px", marginBottom: "8px", marginTop: "10px" }}>
             Certifications
           </div>
-          {data.certifications.map((c) => (
-            <div key={c.id} style={{ fontSize: "12px", color: "#334155", marginBottom: "3px" }}>
-              <span style={{ fontWeight: 700 }}><H text={c.name} changed={changed} /></span>
-              {c.issuer && <span style={{ color: "#475569" }}> — {c.issuer}</span>}
-              {c.date && <span style={{ color: "#64748b" }}> ({c.date})</span>}
-            </div>
-          ))}
+          {data.certifications.map((c) => {
+            const nameNode = <H text={c.name} changed={changed} />;
+            return (
+              <div key={c.id} style={{ fontSize: "12px", color: "#334155", marginBottom: "3px" }}>
+                <span style={{ fontWeight: 700 }}>
+                  {c.link?.trim() ? (
+                    <a href={c.link} target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb", textDecoration: "none" }}>
+                      {nameNode}
+                    </a>
+                  ) : nameNode}
+                </span>
+                {c.issuer && <span style={{ color: "#475569" }}> — {c.issuer}</span>}
+                {c.date && <span style={{ color: "#64748b" }}> ({c.date})</span>}
+              </div>
+            );
+          })}
         </section>
       )}
 
-      {/* Additional sections */}
-      {Object.entries(data.additional_sections ?? {}).map(([name, items]) =>
-        Array.isArray(items) && items.length > 0 ? (
+      {/* Additional sections — flat items get plain bullet + inline date;
+          titled entries (has bullets or subtitle) get bold title + right-aligned date */}
+      {Object.entries(data.additional_sections ?? {}).map(([name, entries]) =>
+        Array.isArray(entries) && entries.length > 0 ? (
           <section key={name} style={{ marginBottom: "14px" }}>
             <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "#1a1a1a", borderBottom: "0.4px solid #d1d5db", paddingBottom: "3px", marginBottom: "8px", marginTop: "10px" }}>
               {name}
             </div>
-            {items.map((item, i) => (
-              <div key={i} style={{ fontSize: "12px", color: "#334155", paddingLeft: "12px", position: "relative", marginBottom: "2px" }}>
-                <span style={{ position: "absolute", left: 0 }}>•</span>
-                {item}
-              </div>
-            ))}
+            {entries.map((entry, i) => {
+              const title = entry.title?.trim() ?? "";
+              const subtitle = entry.subtitle?.trim() ?? "";
+              const date = entry.date?.trim() ?? "";
+              const bullets = entry.bullets ?? [];
+              const hasDetail = bullets.length > 0 || Boolean(subtitle);
+
+              // Legacy flat-bullet (no title/subtitle/date)
+              if (!title && !subtitle && !date) {
+                return bullets.map((b, j) => (
+                  <div key={`${i}-${j}`} style={{ fontSize: "12px", color: "#334155", paddingLeft: "12px", position: "relative", marginBottom: "2px" }}>
+                    <span style={{ position: "absolute", left: 0 }}>•</span>
+                    {b}
+                  </div>
+                ));
+              }
+
+              if (!hasDetail) {
+                // ── Flat list item ── plain bullet + inline date in parens
+                const titleNode = title ? <H text={title} changed={changed} /> : null;
+                const href = entry.link?.trim();
+                return (
+                  <div key={entry.id ?? i} style={{ fontSize: "12px", color: "#334155", paddingLeft: "12px", position: "relative", marginBottom: "3px" }}>
+                    <span style={{ position: "absolute", left: 0 }}>•</span>
+                    {href ? (
+                      <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: "#334155", textDecoration: "none" }}>
+                        {titleNode}
+                      </a>
+                    ) : titleNode}
+                    {date && <span style={{ color: "#64748b" }}> ({date})</span>}
+                  </div>
+                );
+              }
+
+              // ── Titled entry ── bold title, right-aligned date, italic subtitle, bullets
+              const titleNode = <H text={title} changed={changed} />;
+              const href = entry.link?.trim();
+              return (
+                <div key={entry.id ?? i} style={{ marginBottom: "8px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "12px" }}>
+                    <span style={{ fontWeight: 700, fontSize: "13px", color: "#0f172a" }}>
+                      {href ? (
+                        <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb", textDecoration: "none" }}>
+                          {titleNode}
+                        </a>
+                      ) : titleNode}
+                    </span>
+                    {date && <span style={{ fontSize: "11px", color: "#64748b" }}>{date}</span>}
+                  </div>
+                  {subtitle && (
+                    <div style={{ fontSize: "12px", color: "#475569", fontStyle: "italic" }}>
+                      {subtitle}
+                    </div>
+                  )}
+                  {bullets.length > 0 && (
+                    <div style={{ marginTop: "3px" }}>
+                      {bullets.map((b, j) => (
+                        <div key={j} style={{ fontSize: "12px", color: "#334155", paddingLeft: "12px", position: "relative", marginBottom: "2px" }}>
+                          <span style={{ position: "absolute", left: 0 }}>•</span>
+                          <H text={b} changed={changed} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </section>
         ) : null
       )}

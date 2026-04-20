@@ -129,6 +129,41 @@ def _build_styles() -> dict[str, ParagraphStyle]:
     }
 
 
+_BUILTIN_SECTIONS = ["personal_info", "experience", "education", "skills", "languages", "certifications"]
+
+
+def _effective_order(data: CVData) -> list[str]:
+    """Return the final section render order.
+
+    Priority: stored section_order → default order + additional sections.
+    personal_info is always first. Any section present in data but missing
+    from the stored order is appended at the end so nothing is silently dropped.
+    """
+    stored = [s for s in (data.section_order or []) if s]
+
+    if not stored:
+        stored = list(_BUILTIN_SECTIONS)
+        stored += list(data.additional_sections.keys())
+
+    # personal_info must be first (it is the document header)
+    if "personal_info" in stored:
+        stored.remove("personal_info")
+    order = ["personal_info"] + stored
+
+    # Append anything present in data that isn't already listed
+    seen = set(order)
+    for key in _BUILTIN_SECTIONS:
+        if key not in seen:
+            order.append(key)
+            seen.add(key)
+    for key in data.additional_sections:
+        if key not in seen:
+            order.append(key)
+            seen.add(key)
+
+    return order
+
+
 # ── Public API ───────────────────────────────────────────────────────────────
 
 def generate_cv_pdf(data: CVData) -> BytesIO:
@@ -147,59 +182,53 @@ def generate_cv_pdf(data: CVData) -> BytesIO:
 
     story: list = []
 
-    # ── Personal Info / Header ──
-    _render_header(story, data, styles)
+    for section_key in _effective_order(data):
+        if section_key == "personal_info":
+            _render_header(story, data, styles)
+            if data.personal_info.summary:
+                story.append(Paragraph(data.personal_info.summary, styles["summary"]))
+                story.append(Spacer(1, 4))
 
-    # ── Summary ──
-    if data.personal_info.summary:
-        story.append(Paragraph(data.personal_info.summary, styles["summary"]))
-        story.append(Spacer(1, 4))
+        elif section_key == "experience" and data.experience:
+            _render_section_heading(story, "WORK EXPERIENCE", styles)
+            for entry in data.experience:
+                _render_experience_entry(story, entry, styles)
 
-    # ── Experience ──
-    if data.experience:
-        _render_section_heading(story, "WORK EXPERIENCE", styles)
-        for entry in data.experience:
-            _render_experience_entry(story, entry, styles)
+        elif section_key == "education" and data.education:
+            _render_section_heading(story, "EDUCATION", styles)
+            for entry in data.education:
+                _render_education_entry(story, entry, styles)
 
-    # ── Education ──
-    if data.education:
-        _render_section_heading(story, "EDUCATION", styles)
-        for entry in data.education:
-            _render_education_entry(story, entry, styles)
+        elif section_key == "skills" and data.skills:
+            _render_section_heading(story, "SKILLS", styles)
+            _render_skills(story, data, styles)
 
-    # ── Skills ──
-    if data.skills:
-        _render_section_heading(story, "SKILLS", styles)
-        _render_skills(story, data, styles)
+        elif section_key == "languages" and data.languages:
+            _render_section_heading(story, "LANGUAGES", styles)
+            for lang in data.languages:
+                if not lang.language and not lang.level:
+                    continue
+                text = f"{_esc(lang.language)}: {_esc(lang.level)}" if lang.level else _esc(lang.language)
+                story.append(Paragraph(f"• {text}", styles["bullet"]))
 
-    # ── Languages ──
-    if data.languages:
-        _render_section_heading(story, "LANGUAGES", styles)
-        items = []
-        for lang in data.languages:
-            if lang.level:
-                items.append(f"{lang.language} — {lang.level}")
-            else:
-                items.append(lang.language)
-        story.append(Paragraph(", ".join(items), styles["body"]))
+        elif section_key == "certifications" and data.certifications:
+            _render_section_heading(story, "CERTIFICATIONS", styles)
+            for cert in data.certifications:
+                name_frag = _linked(cert.name, cert.link) if cert.name else ""
+                parts = [name_frag] if name_frag else []
+                if cert.issuer:
+                    parts.append(f"— {_esc(cert.issuer)}")
+                if cert.date:
+                    parts.append(f"({_esc(cert.date)})")
+                if parts:
+                    story.append(Paragraph("  ".join(parts), styles["body"]))
 
-    # ── Certifications ──
-    if data.certifications:
-        _render_section_heading(story, "CERTIFICATIONS", styles)
-        for cert in data.certifications:
-            parts = [cert.name]
-            if cert.issuer:
-                parts.append(f"— {cert.issuer}")
-            if cert.date:
-                parts.append(f"({cert.date})")
-            story.append(Paragraph("  ".join(parts), styles["body"]))
-
-    # ── Additional sections ──
-    for section_name, items in data.additional_sections.items():
-        display_name = section_name.upper() if section_name.islower() else section_name
-        _render_section_heading(story, display_name, styles)
-        for item in items:
-            story.append(Paragraph(f"• {_esc(item)}", styles["bullet"]))
+        elif section_key in data.additional_sections:
+            entries = data.additional_sections[section_key]
+            if entries:
+                _render_section_heading(story, section_key.upper(), styles)
+                for entry in entries:
+                    _render_additional_entry(story, entry, styles)
 
     doc.build(story)
     buf.seek(0)
@@ -324,8 +353,34 @@ def _render_section_heading(story: list, title: str, styles: dict):
     story.append(Spacer(1, 3))
 
 
+def _linked(label: str, href: str | None) -> str:
+    """Return a ReportLab XML fragment — hyperlink if href, else plain text."""
+    esc_label = _esc(label)
+    if href and href.strip():
+        esc_href = href.strip().replace("&", "&amp;").replace('"', "&quot;")
+        return f'<a href="{esc_href}" color="#2563eb">{esc_label}</a>'
+    return esc_label
+
+
+def _title_date_row(story: list, title_html: str, date_str: str, styles: dict):
+    if date_str:
+        title_para = Paragraph(title_html, styles["entry_title"])
+        date_para = Paragraph(_esc(date_str), styles["entry_date"])
+        t = Table([[title_para, date_para]], colWidths=["70%", "30%"])
+        t.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+        ]))
+        story.append(t)
+    else:
+        story.append(Paragraph(title_html, styles["entry_title"]))
+
+
 def _render_experience_entry(story: list, entry, styles: dict):
-    # Title line with date on the right
     title = entry.title or entry.company
     subtitle_parts = []
     if entry.company and entry.title:
@@ -339,22 +394,9 @@ def _render_experience_entry(story: list, entry, styles: dict):
         if entry.end_date:
             date_str += f" — {entry.end_date}"
 
-    # Title + date as a table for alignment
-    if date_str:
-        title_para = Paragraph(f"<b>{_esc(title)}</b>", styles["entry_title"])
-        date_para = Paragraph(_esc(date_str), styles["entry_date"])
-        t = Table([[title_para, date_para]], colWidths=["70%", "30%"])
-        t.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("ALIGN", (1, 0), (1, 0), "RIGHT"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ("TOPPADDING", (0, 0), (-1, -1), 0),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
-        ]))
-        story.append(t)
-    else:
-        story.append(Paragraph(f"<b>{_esc(title)}</b>", styles["entry_title"]))
+    link = getattr(entry, "link", "") or ""
+    title_html = f"<b>{_linked(title, link)}</b>"
+    _title_date_row(story, title_html, date_str, styles)
 
     if subtitle_parts:
         story.append(Paragraph(_esc(", ".join(subtitle_parts)), styles["entry_subtitle"]))
@@ -373,21 +415,9 @@ def _render_education_entry(story: list, entry, styles: dict):
         if entry.end_date:
             date_str += f" — {entry.end_date}"
 
-    if date_str:
-        title_para = Paragraph(f"<b>{_esc(title)}</b>", styles["entry_title"])
-        date_para = Paragraph(_esc(date_str), styles["entry_date"])
-        t = Table([[title_para, date_para]], colWidths=["70%", "30%"])
-        t.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("ALIGN", (1, 0), (1, 0), "RIGHT"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ("TOPPADDING", (0, 0), (-1, -1), 0),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
-        ]))
-        story.append(t)
-    else:
-        story.append(Paragraph(f"<b>{_esc(title)}</b>", styles["entry_title"]))
+    link = getattr(entry, "link", "") or ""
+    title_html = f"<b>{_linked(title, link)}</b>"
+    _title_date_row(story, title_html, date_str, styles)
 
     if entry.degree and entry.institution:
         subtitle_parts = [_esc(entry.degree)]
@@ -401,6 +431,64 @@ def _render_education_entry(story: list, entry, styles: dict):
         story.append(Paragraph(f"• {_esc(detail)}", styles["bullet"]))
 
     story.append(Spacer(1, 4))
+
+
+def _render_additional_entry(story: list, entry, styles: dict):
+    """Render a structured AdditionalEntry preserving the original layout.
+
+    Two modes are inferred from the data shape:
+
+    Flat item  (no sub-bullets AND no subtitle):
+        Rendered as a plain bullet with the date inline in parentheses —
+        e.g. "• Professional Customer Service Association (08/2019 – PRESENT)".
+        No bold, no right-aligned date column.
+
+    Titled entry (has sub-bullets OR subtitle):
+        Bold title with right-aligned date (same table layout as Experience),
+        italic subtitle beneath, then indented bullets.
+        e.g. "Dean's List   |   12/2018 and 05/2019"
+             "  ABC College"
+             "  • Completed 12 or more letter-graded units…"
+    """
+    title = (entry.title or "").strip()
+    subtitle = (entry.subtitle or "").strip()
+    date_str = (entry.date or "").strip()
+    link = getattr(entry, "link", "") or ""
+    bullets = entry.bullets or []
+
+    # No data at all — legacy fallback
+    if not title and not subtitle and not date_str and not bullets:
+        return
+
+    # Legacy flat-bullet (only bullets, no title/subtitle/date)
+    if not title and not subtitle and not date_str:
+        for bullet in bullets:
+            story.append(Paragraph(f"• {_esc(bullet)}", styles["bullet"]))
+        return
+
+    has_detail = bool(bullets) or bool(subtitle)
+
+    if not has_detail:
+        # ── Flat list item ── plain bullet, date inline in parens
+        title_frag = _linked(title, link) if title else ""
+        date_frag = f" ({_esc(date_str)})" if date_str else ""
+        text = f"• {title_frag}{date_frag}" if title_frag else f"• {date_frag.strip()}"
+        story.append(Paragraph(text, styles["bullet"]))
+    else:
+        # ── Titled entry ── bold + right-aligned date + subtitle + bullets
+        if title:
+            title_html = f"<b>{_linked(title, link)}</b>"
+            _title_date_row(story, title_html, date_str, styles)
+        elif date_str:
+            story.append(Paragraph(_esc(date_str), styles["entry_date"]))
+
+        if subtitle:
+            story.append(Paragraph(_esc(subtitle), styles["entry_subtitle"]))
+
+        for bullet in bullets:
+            story.append(Paragraph(f"• {_esc(bullet)}", styles["bullet"]))
+
+        story.append(Spacer(1, 4))
 
 
 def _render_skills(story: list, data: CVData, styles: dict):

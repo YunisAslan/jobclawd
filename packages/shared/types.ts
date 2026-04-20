@@ -255,7 +255,8 @@ export type SuggestionCategory =
   | "elevate_experience"
   | "reduce_irrelevant"
   | "improve_headline"
-  | "address_requirements";
+  | "address_requirements"
+  | "address_gaps";
 
 export interface CVSuggestion {
   category: SuggestionCategory;
@@ -376,6 +377,7 @@ export interface CVExperienceEntry {
   start_date: string;
   end_date: string;
   bullets: string[];
+  link?: string;
 }
 
 export interface CVEducationEntry {
@@ -386,6 +388,7 @@ export interface CVEducationEntry {
   start_date: string;
   end_date: string;
   details: string[];
+  link?: string;
 }
 
 export interface CVSkillGroup {
@@ -403,6 +406,16 @@ export interface CVCertificationEntry {
   name: string;
   issuer: string;
   date: string;
+  link?: string;
+}
+
+export interface CVAdditionalEntry {
+  id: string;
+  title: string;
+  subtitle: string;
+  date: string;
+  bullets: string[];
+  link?: string;
 }
 
 export interface CVData {
@@ -412,5 +425,8 @@ export interface CVData {
   skills: CVSkillGroup[];
   languages: CVLanguageEntry[];
   certifications: CVCertificationEntry[];
-  additional_sections: Record<string, string[]>;
+  additional_sections: Record<string, CVAdditionalEntry[]>;
+  /** Section keys in original document order. "personal_info" maps to the
+   *  editor's "personal" key. Empty means default order. */
+  section_order?: string[];
 }

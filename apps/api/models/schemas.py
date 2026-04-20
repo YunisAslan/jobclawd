@@ -49,6 +49,7 @@ class SuggestionCategory(str, Enum):
     reduce_irrelevant = "reduce_irrelevant"
     improve_headline = "improve_headline"
     address_requirements = "address_requirements"
+    address_gaps = "address_gaps"
 
 
 class JobSource(str, Enum):

@@ -64,7 +64,10 @@ async def parse_cv_endpoint(
     try:
         cached = get_cv_parse(cv_url)
         if cached:
-            return {"data": cached["data"], "cv_name": cached["cv_name"] or cv_name}
+            # Run cached JSON through CVData so pre-structured-entries caches
+            # (additional_sections shaped as list[str]) get coerced on read.
+            normalized = CVData.model_validate(cached["data"]).model_dump()
+            return {"data": normalized, "cv_name": cached["cv_name"] or cv_name}
     except Exception:
         pass
 

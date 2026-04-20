@@ -194,6 +194,7 @@ export function useCVMatch() {
         case "elevate_experience":
         case "reduce_irrelevant":
         case "address_requirements":
+        case "address_gaps":
           touchedMatchCategories.add("experience");
           break;
         case "improve_headline":
@@ -495,10 +496,13 @@ function cvDataToText(data: CVData): string {
     }
   }
 
-  for (const [section, items] of Object.entries(data.additional_sections ?? {})) {
-    if (items.length > 0) {
-      lines.push(`\n${section}`);
-      for (const item of items) lines.push(`- ${item}`);
+  for (const [section, entries] of Object.entries(data.additional_sections ?? {})) {
+    if (!Array.isArray(entries) || entries.length === 0) continue;
+    lines.push(`\n${section}`);
+    for (const entry of entries) {
+      const header = [entry.title, entry.subtitle, entry.date].filter(Boolean).join(" · ");
+      if (header) lines.push(header);
+      for (const bullet of entry.bullets ?? []) lines.push(`- ${bullet}`);
     }
   }
 
@@ -594,7 +598,7 @@ function applySuggestionToDraft(draft: string, suggestion: CVSuggestion, suggest
   const cat = suggestion.category;
   let hint = `${suggestion.title} ${suggestion.description}`;
   if (
-    (cat === "elevate_experience" || cat === "address_requirements") &&
+    (cat === "elevate_experience" || cat === "address_requirements" || cat === "address_gaps") &&
     isHeadlineLike(replacement) &&
     !isExperienceBullet(replacement)
   ) {
@@ -704,9 +708,9 @@ function applySuggestionToCvData(data: CVData, suggestion: CVSuggestion, suggest
     return { ...data, personal_info: { ...data.personal_info, summary: text } };
   }
 
-  // address_requirements → append bullets to the most recent experience entry.
+  // address_requirements / address_gaps → append bullets to the most recent experience entry.
   // If the text reads like a headline/summary, route it to the summary field instead.
-  if (cat === "address_requirements") {
+  if (cat === "address_requirements" || cat === "address_gaps") {
     if (isHeadlineLike(text) && !isExperienceBullet(text)) {
       return { ...data, personal_info: { ...data.personal_info, summary: text } };
     }

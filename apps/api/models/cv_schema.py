@@ -1,9 +1,9 @@
 """Structured CV data schema for parsing and regeneration."""
 
-from typing import Optional
+from typing import Any, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 def _uid() -> str:
@@ -33,6 +33,7 @@ class ExperienceEntry(BaseModel):
     start_date: str = ""
     end_date: str = ""
     bullets: list[str] = []
+    link: str = ""
 
 
 class EducationEntry(BaseModel):
@@ -43,6 +44,7 @@ class EducationEntry(BaseModel):
     start_date: str = ""
     end_date: str = ""
     details: list[str] = []
+    link: str = ""
 
 
 class SkillGroup(BaseModel):
@@ -60,6 +62,22 @@ class CertificationEntry(BaseModel):
     name: str = ""
     issuer: str = ""
     date: str = ""
+    link: str = ""
+
+
+class AdditionalEntry(BaseModel):
+    """Structured entry inside an `additional_sections` bucket.
+
+    Mirrors the title+subtitle+date+bullets layout of Experience/Education so
+    sections like Awards, Volunteer Experience, Memberships preserve the
+    original document's hierarchy instead of being flattened into bullets.
+    """
+    id: str = Field(default_factory=_uid)
+    title: str = ""
+    subtitle: str = ""
+    date: str = ""
+    bullets: list[str] = []
+    link: str = ""
 
 
 class CVData(BaseModel):
@@ -69,4 +87,31 @@ class CVData(BaseModel):
     skills: list[SkillGroup] = []
     languages: list[LanguageEntry] = []
     certifications: list[CertificationEntry] = []
-    additional_sections: dict[str, list[str]] = {}
+    additional_sections: dict[str, list[AdditionalEntry]] = {}
+    # Section keys in the order they appeared in the source document.
+    # Uses "personal_info", "experience", "education", "skills", "languages",
+    # "certifications" for built-in sections and the exact heading text for
+    # additional_sections. Empty list means "use default order".
+    section_order: list[str] = []
+
+    @field_validator("additional_sections", mode="before")
+    @classmethod
+    def _coerce_additional_sections(cls, v: Any) -> dict[str, list[dict]]:
+        # Tolerate legacy cached shape `dict[str, list[str]]` and mixed content.
+        # A plain string is treated as a single-bullet entry with no title so
+        # older parses keep rendering without manual migration.
+        if not isinstance(v, dict):
+            return {}
+        result: dict[str, list[dict]] = {}
+        for section, items in v.items():
+            if not isinstance(items, list):
+                continue
+            coerced: list[dict] = []
+            for item in items:
+                if isinstance(item, str):
+                    if item.strip():
+                        coerced.append({"bullets": [item]})
+                elif isinstance(item, dict):
+                    coerced.append(item)
+            result[str(section)] = coerced
+        return result

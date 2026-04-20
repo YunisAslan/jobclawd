@@ -69,6 +69,7 @@ const categoryIcons: Record<string, React.ReactNode> = {
   reduce_irrelevant: <Scissors className="size-3.5" />,
   improve_headline: <Layout className="size-3.5" />,
   address_requirements: <AlertTriangle className="size-3.5" />,
+  address_gaps:         <AlertTriangle className="size-3.5" />,
 };
 
 const categoryLabels: Record<string, string> = {
@@ -78,6 +79,7 @@ const categoryLabels: Record<string, string> = {
   reduce_irrelevant: "Reduce",
   improve_headline: "Headline",
   address_requirements: "Requirements",
+  address_gaps:         "Gap Fill",
 };
 
 function SuggestionCard({

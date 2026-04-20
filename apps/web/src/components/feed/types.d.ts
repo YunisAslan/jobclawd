@@ -35,4 +35,5 @@ export type {
   CVSkillGroup,
   CVLanguageEntry,
   CVCertificationEntry,
+  CVAdditionalEntry,
 } from "@jobclawd/shared";
