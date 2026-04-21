@@ -1,11 +1,12 @@
 """
 Router: HTTP handler for dashboard stats and analytics.
-Thin layer — delegates to application_repo.
+Thin layer — delegates to repositories.
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from models.schemas import StatsResponse, AnalyticsResponse
-from repositories import application_repo
+from repositories import application_repo, analytics_repo
+from utils.auth_utils import get_current_email
 
 router = APIRouter()
 
@@ -16,5 +17,5 @@ async def get_stats():
 
 
 @router.get("/analytics", response_model=AnalyticsResponse)
-async def get_analytics():
-    return application_repo.get_analytics()
+async def get_analytics(email: str = Depends(get_current_email)):
+    return analytics_repo.get_analytics(email)

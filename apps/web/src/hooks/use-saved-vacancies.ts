@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { savedVacanciesService } from "@/services/saved-vacancies.service";
-import type { JobListing } from "@/types";
+import type { JobListing, SavedVacanciesResponse } from "@/types";
 import { useCallback, useMemo } from "react";
 
 export function useSavedVacancies() {
@@ -15,7 +15,7 @@ export function useSavedVacancies() {
   const saveMutation = useMutation({
     mutationFn: ({ job_url, job_data }: { job_url: string; job_data: JobListing }) =>
       savedVacanciesService.save(job_url, job_data),
-    onSuccess: () => {
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ["saved-vacancies"] });
       qc.invalidateQueries({ queryKey: ["saved-check"] });
     },
@@ -23,7 +23,22 @@ export function useSavedVacancies() {
 
   const unsaveMutation = useMutation({
     mutationFn: (job_url: string) => savedVacanciesService.unsave(job_url),
-    onSuccess: () => {
+    onMutate: async (job_url: string) => {
+      await qc.cancelQueries({ queryKey: ["saved-vacancies"] });
+      const previous = qc.getQueryData<SavedVacanciesResponse>(["saved-vacancies"]);
+      qc.setQueryData<SavedVacanciesResponse>(["saved-vacancies"], (old) => {
+        if (!old) return old;
+        const next = old.vacancies.filter((v) => v.job_url !== job_url);
+        return { ...old, vacancies: next, total: next.length };
+      });
+      return { previous };
+    },
+    onError: (_err, _job_url, context) => {
+      if (context?.previous) {
+        qc.setQueryData(["saved-vacancies"], context.previous);
+      }
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ["saved-vacancies"] });
       qc.invalidateQueries({ queryKey: ["saved-check"] });
     },

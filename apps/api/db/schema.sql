@@ -168,3 +168,42 @@ CREATE TABLE IF NOT EXISTS cv_parse_cache (
 
 -- Migration for existing installs: ensure schema_version column exists.
 ALTER TABLE cv_parse_cache ADD COLUMN IF NOT EXISTS schema_version INT NOT NULL DEFAULT 1;
+
+-- Analytics event tables (permanent — no TTL)
+
+CREATE TABLE IF NOT EXISTS cv_analysis_events (
+  id            SERIAL PRIMARY KEY,
+  user_email    TEXT NOT NULL,
+  cv_url        TEXT,
+  cv_name       TEXT,
+  job_url       TEXT,
+  job_title     TEXT,
+  company       TEXT,
+  overall_score INTEGER,
+  match_level   TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_cv_analysis_events_user    ON cv_analysis_events (user_email);
+CREATE INDEX IF NOT EXISTS idx_cv_analysis_events_created ON cv_analysis_events (created_at);
+
+CREATE TABLE IF NOT EXISTS suggestion_events (
+  id          SERIAL PRIMARY KEY,
+  user_email  TEXT NOT NULL,
+  cv_name     TEXT,
+  job_url     TEXT,
+  category    TEXT NOT NULL,
+  priority    TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_suggestion_events_user ON suggestion_events (user_email);
+
+CREATE TABLE IF NOT EXISTS impact_check_events (
+  id           SERIAL PRIMARY KEY,
+  user_email   TEXT NOT NULL,
+  cv_name      TEXT,
+  job_url      TEXT,
+  score_before INTEGER NOT NULL,
+  score_after  INTEGER NOT NULL,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_impact_check_events_user ON impact_check_events (user_email);

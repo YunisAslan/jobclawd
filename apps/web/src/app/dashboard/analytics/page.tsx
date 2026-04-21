@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import {
-  Send, MessageSquare, TrendingUp, Percent,
-  BarChart2, GitFork, Layers, Sparkles,
+  Search, MousePointerClick, Wand2, Layers, Bookmark,
+  TrendingUp, BarChart2, Target, ArrowUpDown, ListOrdered,
+  Globe, Sparkles,
 } from "lucide-react";
 import { useAnalytics } from "@/hooks/use-analytics";
 import TopBar from "@/components/layout/TopBar";
 import StatsCard from "@/components/dashboard/StatsCard";
-import ApplicationFunnel from "@/components/dashboard/ApplicationFunnel";
-import CVComparison from "@/components/dashboard/CVComparison";
-import MatchScoreImpact from "@/components/dashboard/MatchScoreImpact";
 import ActivityTrend from "@/components/dashboard/ActivityTrend";
+import ScoreDistribution from "@/components/dashboard/ScoreDistribution";
+import CVPerformanceAnalytics from "@/components/dashboard/CVPerformanceAnalytics";
+import TopJobTitles from "@/components/dashboard/TopJobTitles";
+import SourceBreakdown from "@/components/dashboard/SourceBreakdown";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
@@ -33,7 +35,7 @@ function CardSkeleton({ rows = 4 }: { rows?: number }) {
               <Skeleton className="h-3 w-28" />
               <Skeleton className="h-3 w-10" />
             </div>
-            <Skeleton className="h-2.5 w-full rounded-full" />
+            <Skeleton className="h-2 w-full rounded-full" />
           </div>
         ))}
       </CardContent>
@@ -44,31 +46,31 @@ function CardSkeleton({ rows = 4 }: { rows?: number }) {
 /* ── Summary banner ── */
 
 function SummaryBanner({
-  total, replies, replyRate, bestCv, bestRate,
+  totalAnalyses,
+  avgScore,
+  totalSuggestions,
 }: {
-  total: number;
-  replies: number;
-  replyRate: number;
-  bestCv: string | null;
-  bestRate: number | null;
+  totalAnalyses: number;
+  avgScore: number;
+  totalSuggestions: number;
 }) {
   let headline = "";
-  if (total === 0) {
-    headline = "Apply to your first 5 jobs to unlock your Career Insights.";
-  } else if (replyRate >= 25) {
-    headline = `Outstanding! A ${replyRate}% reply rate puts you well ahead of most applicants.`;
-  } else if (replyRate >= 10) {
-    headline = `You have a ${replyRate}% reply rate across ${total} applications — solid progress.`;
+  if (totalAnalyses === 0) {
+    headline = "Analyze your first CV against a job to unlock Career Insights.";
+  } else if (avgScore >= 75) {
+    headline = `Strong profile! Your average match score is ${avgScore}% across ${totalAnalyses} analyses.`;
+  } else if (avgScore >= 50) {
+    headline = `Solid start — ${avgScore}% avg match score across ${totalAnalyses} analyses. Keep refining.`;
   } else {
-    headline = `You've applied to ${total} jobs. Focus on stronger CV alignment to boost replies.`;
+    headline = `${totalAnalyses} jobs analyzed. Focus on CV alignment to push your match scores higher.`;
   }
 
   return (
     <div className={cn(
       "rounded-2xl border px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3",
-      replyRate >= 25
+      avgScore >= 75
         ? "border-success/25 bg-success/5"
-        : replyRate >= 10
+        : avgScore >= 50
           ? "border-primary/20 bg-primary/5"
           : "border-border/60 bg-muted/20",
     )}>
@@ -77,13 +79,58 @@ function SummaryBanner({
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground leading-snug">{headline}</p>
-        {bestCv && bestRate !== null && (
+        {totalAnalyses > 0 && totalSuggestions > 0 && (
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Your best CV is <span className="font-semibold text-foreground">{bestCv}</span> with a{" "}
-            <span className="font-semibold text-success">{bestRate}%</span> reply rate.
+            You have applied{" "}
+            <span className="font-semibold text-foreground">{totalSuggestions}</span>{" "}
+            AI suggestions to your CV.
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ── Check Impact card ── */
+
+function CheckImpactCard({
+  totalChecks,
+  avgDelta,
+}: {
+  totalChecks: number;
+  avgDelta: number;
+}) {
+  const isPositive = avgDelta > 0;
+  const isNegative = avgDelta < 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className={cn(
+          "flex size-10 shrink-0 items-center justify-center rounded-xl border",
+          isPositive ? "bg-success/10 border-success/20" : isNegative ? "bg-destructive/10 border-destructive/20" : "bg-muted/40 border-border/40",
+        )}>
+          <ArrowUpDown className={cn(
+            "size-5",
+            isPositive ? "text-success" : isNegative ? "text-destructive" : "text-muted-foreground",
+          )} />
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Avg score change</p>
+          <p className={cn(
+            "text-2xl font-bold tracking-tight",
+            isPositive ? "text-success" : isNegative ? "text-destructive" : "text-muted-foreground",
+          )}>
+            {isPositive ? "+" : ""}{avgDelta.toFixed(1)} pts
+          </p>
+        </div>
+      </div>
+
+      <p className="text-[11px] text-muted-foreground">
+        {totalChecks === 0
+          ? "Run Check Impact after accepting suggestions to see your score change here."
+          : `Based on ${totalChecks} Check Impact ${totalChecks === 1 ? "run" : "runs"}.`}
+      </p>
     </div>
   );
 }
@@ -100,8 +147,7 @@ function EmptyState() {
         <div className="space-y-1 max-w-sm">
           <p className="text-sm font-semibold text-foreground">No data yet</p>
           <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Apply to your first 5 jobs to unlock your Career Insights — funnel analytics,
-            CV comparison, and match score impact.
+            Open a vacancy, select your CV, and run an analysis to start building your career insights.
           </p>
         </div>
         <Button asChild size="sm">
@@ -117,7 +163,7 @@ function EmptyState() {
 export default function AnalyticsPage() {
   const { data, isLoading } = useAnalytics();
 
-  const isEmpty = !isLoading && (data?.total_applied ?? 0) === 0;
+  const isEmpty = !isLoading && (data?.total_analyses ?? 0) === 0;
 
   return (
     <div>
@@ -129,11 +175,9 @@ export default function AnalyticsPage() {
           <Skeleton className="h-18 w-full rounded-2xl" />
         ) : (
           <SummaryBanner
-            total={data?.total_applied ?? 0}
-            replies={data?.total_replies ?? 0}
-            replyRate={data?.reply_rate ?? 0}
-            bestCv={data?.best_cv_name ?? null}
-            bestRate={data?.best_cv_reply_rate ?? null}
+            totalAnalyses={data?.total_analyses ?? 0}
+            avgScore={data?.avg_match_score ?? 0}
+            totalSuggestions={data?.total_suggestions_applied ?? 0}
           />
         )}
 
@@ -141,9 +185,9 @@ export default function AnalyticsPage() {
 
         {/* KPI cards */}
         {!isEmpty && (
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
             {isLoading ? (
-              Array.from({ length: 4 }).map((_, i) => (
+              Array.from({ length: 6 }).map((_, i) => (
                 <Card key={i} className="gap-0 py-5">
                   <CardContent className="px-5 space-y-3">
                     <div className="flex justify-between">
@@ -157,40 +201,99 @@ export default function AnalyticsPage() {
             ) : (
               <>
                 <StatsCard
-                  label="Total applied"
-                  value={data?.total_applied ?? 0}
+                  label="Total analyses"
+                  value={data?.total_analyses ?? 0}
                   tone="primary"
-                  icon={<Send className="size-5" />}
+                  icon={<Search className="size-5" />}
                 />
                 <StatsCard
-                  label="Replies received"
-                  value={data?.total_replies ?? 0}
-                  tone="success"
-                  icon={<MessageSquare className="size-5" />}
-                />
-                <StatsCard
-                  label="Reply rate"
-                  value={`${data?.reply_rate ?? 0}%`}
+                  label="Apply clicks"
+                  value={data?.total_apply_clicks ?? 0}
                   tone="secondary"
-                  icon={<Percent className="size-5" />}
+                  icon={<MousePointerClick className="size-5" />}
+                />
+                <StatsCard
+                  label="Suggestions applied"
+                  value={data?.total_suggestions_applied ?? 0}
+                  tone="success"
+                  icon={<Wand2 className="size-5" />}
                 />
                 <StatsCard
                   label="CVs compared"
-                  value={data?.cv_performance.length ?? 0}
+                  value={data?.cvs_compared ?? 0}
                   tone="muted"
                   icon={<Layers className="size-5" />}
+                />
+                <StatsCard
+                  label="Saved jobs"
+                  value={data?.total_saved ?? 0}
+                  tone="muted"
+                  icon={<Bookmark className="size-5" />}
+                />
+                <StatsCard
+                  label="Avg match score"
+                  value={`${data?.avg_match_score ?? 0}%`}
+                  tone="primary"
+                  icon={<Target className="size-5" />}
                 />
               </>
             )}
           </div>
         )}
 
-        {/* Row 1: Funnel + Activity Trend */}
+        {/* Row 1: Activity Trend + Check Impact */}
+        {!isEmpty && (
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            {isLoading ? (
+              <>
+                <div className="xl:col-span-2"><CardSkeleton rows={3} /></div>
+                <CardSkeleton rows={2} />
+              </>
+            ) : (
+              <>
+                <Card className="xl:col-span-2">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="size-4 text-muted-foreground" />
+                      <CardTitle className="text-sm font-semibold">Activity Trend</CardTitle>
+                    </div>
+                    <CardDescription className="text-[11px]">
+                      Daily CV analyses — last 30 days
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ActivityTrend data={data?.trend_30d ?? []} />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-2">
+                      <ArrowUpDown className="size-4 text-muted-foreground" />
+                      <CardTitle className="text-sm font-semibold">Check Impact</CardTitle>
+                    </div>
+                    <CardDescription className="text-[11px]">
+                      Average score change after applying suggestions
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <CheckImpactCard
+                      totalChecks={data?.total_impact_checks ?? 0}
+                      avgDelta={data?.avg_score_delta ?? 0}
+                    />
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Row 2: Score Distribution + Source Breakdown */}
         {!isEmpty && (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {isLoading ? (
               <>
-                <CardSkeleton rows={4} />
+                <CardSkeleton rows={3} />
                 <CardSkeleton rows={3} />
               </>
             ) : (
@@ -198,30 +301,30 @@ export default function AnalyticsPage() {
                 <Card>
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-2">
-                      <GitFork className="size-4 text-muted-foreground" />
-                      <CardTitle className="text-sm font-semibold">Application Funnel</CardTitle>
+                      <BarChart2 className="size-4 text-muted-foreground" />
+                      <CardTitle className="text-sm font-semibold">Score Distribution</CardTitle>
                     </div>
                     <CardDescription className="text-[11px]">
-                      Conversion at each stage of your job search
+                      How your CV scores across all analyzed jobs
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ApplicationFunnel data={data?.funnel ?? []} />
+                    <ScoreDistribution data={data?.score_distribution ?? []} />
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-2">
-                      <TrendingUp className="size-4 text-muted-foreground" />
-                      <CardTitle className="text-sm font-semibold">Activity Trend</CardTitle>
+                      <Globe className="size-4 text-muted-foreground" />
+                      <CardTitle className="text-sm font-semibold">Source Breakdown</CardTitle>
                     </div>
                     <CardDescription className="text-[11px]">
-                      Daily application velocity — last 30 days
+                      Which job boards you analyze from most
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ActivityTrend data={data?.trend_30d ?? []} />
+                    <SourceBreakdown data={data?.source_breakdown ?? []} />
                   </CardContent>
                 </Card>
               </>
@@ -229,13 +332,13 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* Row 2: CV A/B + Match Score Impact */}
+        {/* Row 3: CV Performance + Top Job Titles */}
         {!isEmpty && (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {isLoading ? (
               <>
                 <CardSkeleton rows={3} />
-                <CardSkeleton rows={3} />
+                <CardSkeleton rows={4} />
               </>
             ) : (
               <>
@@ -243,29 +346,29 @@ export default function AnalyticsPage() {
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-2">
                       <Layers className="size-4 text-muted-foreground" />
-                      <CardTitle className="text-sm font-semibold">CV A/B Comparison</CardTitle>
+                      <CardTitle className="text-sm font-semibold">CV Performance</CardTitle>
                     </div>
                     <CardDescription className="text-[11px]">
-                      Reply rates across your CV versions — find the winner
+                      Average match score per CV version
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <CVComparison data={data?.cv_performance ?? []} />
+                    <CVPerformanceAnalytics data={data?.cv_performance ?? []} />
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-2">
-                      <BarChart2 className="size-4 text-muted-foreground" />
-                      <CardTitle className="text-sm font-semibold">AI Match Score Impact</CardTitle>
+                      <ListOrdered className="size-4 text-muted-foreground" />
+                      <CardTitle className="text-sm font-semibold">Top Job Titles</CardTitle>
                     </div>
                     <CardDescription className="text-[11px]">
-                      How your AI match score correlates with actual replies
+                      Roles you analyze most — your actual targets
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <MatchScoreImpact data={data?.match_bands ?? []} />
+                    <TopJobTitles data={data?.top_job_titles ?? []} />
                   </CardContent>
                 </Card>
               </>

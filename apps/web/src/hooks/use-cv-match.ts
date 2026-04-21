@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { cvMatchService } from "@/services/cv-match.service";
 import { documentService } from "@/services/document.service";
+import { analyticsEventsService } from "@/services/analytics-events.service";
 import type { CVData, CVMatchAnalysis, CVSuggestion, CVSuggestionsResponse } from "@/types";
 
 interface CVMatchState {
@@ -31,6 +32,10 @@ interface CVMatchState {
   atsPreview: CVMatchAnalysis | null;
   atsPreviewBaseline: number | null;
   loadingAtsPreview: boolean;
+  // ── Context (for analytics tracking) ──
+  jobUrl: string;
+  cvUrl: string;
+  cvName: string;
 }
 
 export function useCVMatch() {
@@ -60,9 +65,12 @@ export function useCVMatch() {
     atsPreview: null,
     atsPreviewBaseline: null,
     loadingAtsPreview: false,
+    jobUrl: "",
+    cvUrl: "",
+    cvName: "",
   });
 
-  async function analyze(jobUrl: string, cvUrl: string) {
+  async function analyze(jobUrl: string, cvUrl: string, cvName?: string) {
     setState((s) => ({
       ...s,
       loadingAnalysis: true,
@@ -73,6 +81,9 @@ export function useCVMatch() {
       errorDraft: null,
       analyzed: true,
       suggestionActions: {},
+      jobUrl,
+      cvUrl,
+      cvName: cvName ?? s.cvName,
     }));
 
     const bundleResult = await Promise.allSettled([cvMatchService.getBundle(jobUrl, cvUrl)]);
@@ -104,13 +115,25 @@ export function useCVMatch() {
           ? "Could not load the CV draft for editing."
           : bundle.value.error_draft || null,
     }));
+
+    if (bundle.status === "fulfilled") {
+      analyticsEventsService.trackCvAnalyzed({
+        cv_url: cvUrl,
+        cv_name: cvName ?? "",
+        job_url: jobUrl,
+        job_title: bundle.value.suggestions?.job_title ?? "",
+        company: bundle.value.suggestions?.job_company ?? "",
+        overall_score: bundle.value.analysis.overall_score,
+        match_level: bundle.value.analysis.match_level,
+      });
+    }
   }
 
   /**
    * Use a pre-computed analysis (e.g. from the sidebar comparison list) and only
    * fetch suggestions + draft text — avoids a redundant scoring API call.
    */
-  async function analyzeWithSeededResult(jobUrl: string, cvUrl: string, seededAnalysis: CVMatchAnalysis) {
+  async function analyzeWithSeededResult(jobUrl: string, cvUrl: string, seededAnalysis: CVMatchAnalysis, cvName?: string) {
     setState((s) => ({
       ...s,
       analysis: seededAnalysis,
@@ -122,6 +145,9 @@ export function useCVMatch() {
       errorDraft: null,
       analyzed: true,
       suggestionActions: {},
+      jobUrl,
+      cvUrl,
+      cvName: cvName ?? s.cvName,
     }));
 
     const [suggestionsResult, draftResult] = await Promise.allSettled([
@@ -143,6 +169,16 @@ export function useCVMatch() {
       loadingDraft: false,
       errorDraft: draftResult.status === "rejected" ? "Could not load the CV draft for editing." : null,
     }));
+
+    analyticsEventsService.trackCvAnalyzed({
+      cv_url: cvUrl,
+      cv_name: cvName ?? "",
+      job_url: jobUrl,
+      job_title: suggestionsResult.status === "fulfilled" ? (suggestionsResult.value?.job_title ?? "") : "",
+      company: suggestionsResult.status === "fulfilled" ? (suggestionsResult.value?.job_company ?? "") : "",
+      overall_score: seededAnalysis.overall_score,
+      match_level: seededAnalysis.match_level,
+    });
   }
 
   // ── Structured CV parsing & generation ──────────────────────────────────
@@ -216,12 +252,20 @@ export function useCVMatch() {
       const correctedOverall = correctedCategories.length > 0
         ? Math.round(correctedCategories.reduce((sum, c) => sum + c.score, 0) / correctedCategories.length)
         : previewResult.overall_score;
-      setState((s) => ({
-        ...s,
-        atsPreviewBaseline: s.analysis!.overall_score,
-        atsPreview: { ...previewResult, categories: correctedCategories, overall_score: correctedOverall },
-        loadingAtsPreview: false,
-      }));
+      setState((s) => {
+        analyticsEventsService.trackImpactChecked({
+          cv_name: s.cvName,
+          job_url: jobUrl,
+          score_before: s.analysis!.overall_score,
+          score_after: correctedOverall,
+        });
+        return {
+          ...s,
+          atsPreviewBaseline: s.analysis!.overall_score,
+          atsPreview: { ...previewResult, categories: correctedCategories, overall_score: correctedOverall },
+          loadingAtsPreview: false,
+        };
+      });
     } catch {
       setState((s) => ({ ...s, loadingAtsPreview: false }));
     }
@@ -330,6 +374,12 @@ export function useCVMatch() {
         : cleanSuggestionText(suggestion.suggested_text ?? "");
       const nextDraft = applySuggestionToDraft(s.draftText, suggestion, suggestedText);
       const nextCvData = s.cvData ? applySuggestionToCvData(s.cvData, suggestion, suggestedText) : s.cvData;
+      analyticsEventsService.trackSuggestionApplied({
+        cv_name: s.cvName,
+        job_url: s.jobUrl,
+        category: suggestion.category,
+        priority: suggestion.priority,
+      });
       return {
         ...s,
         draftText: nextDraft,
@@ -425,6 +475,9 @@ export function useCVMatch() {
       atsPreview: null,
       atsPreviewBaseline: null,
       loadingAtsPreview: false,
+      jobUrl: "",
+      cvUrl: "",
+      cvName: "",
     });
   }
 

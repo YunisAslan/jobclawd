@@ -1,1 +1,13 @@
-export type { WeeklyChartEntry, CVPerformanceEntry, StatsResponse } from "@jobclawd/shared";
+export type {
+  WeeklyChartEntry,
+  CVPerformanceEntry,
+  StatsResponse,
+  AnalyticsResponse,
+  CVAnalyticsEntry,
+  ScoreDistributionEntry,
+  TopJobTitleEntry,
+  SourceBreakdownEntry,
+  CvAnalyzedEvent,
+  SuggestionAppliedEvent,
+  ImpactCheckedEvent,
+} from "@jobclawd/shared";

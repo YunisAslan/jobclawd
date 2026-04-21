@@ -96,8 +96,8 @@ export function useVacancyPanel(job: JobListing | null) {
   // Explicit analyze trigger
   const analyzeCV = useCallback(() => {
     if (!job?.url || !selectedCV?.url) return;
-    cvMatch.analyze(job.url, selectedCV.url);
-  }, [job?.url, selectedCV?.url]);
+    cvMatch.analyze(job.url, selectedCV.url, selectedCV.name);
+  }, [job?.url, selectedCV?.url, selectedCV?.name]);
 
   // Open workspace: parse CV into structured JSON, then open dialog
   const openWorkspace = useCallback(async () => {
@@ -122,7 +122,7 @@ export function useVacancyPanel(job: JobListing | null) {
     if (existingEntry?.analysis) {
       cvMatch.seedAnalysis(existingEntry.analysis);
     } else {
-      cvMatch.analyze(job.url, cv.url);
+      cvMatch.analyze(job.url, cv.url, cv.name);
     }
   }, [job?.url, selectedCV, multiCVResults, cvMatch.analyze, cvMatch.seedAnalysis, cvMatch.parseCv]);
 

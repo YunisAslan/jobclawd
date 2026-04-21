@@ -263,36 +263,79 @@ class StatsResponse(BaseModel):
     cv_performance: list[CVPerformanceEntry]
 
 
-# ---------- Analytics ----------
+# ---------- Analytics event request models ----------
 
-class FunnelEntry(BaseModel):
-    label: str
+class CvAnalyzedEventRequest(BaseModel):
+    cv_url: str
+    cv_name: str = ""
+    job_url: str
+    job_title: str = ""
+    company: str = ""
+    overall_score: int
+    match_level: str = ""
+
+
+class SuggestionAppliedEventRequest(BaseModel):
+    cv_name: str = ""
+    job_url: str = ""
+    category: str
+    priority: str = "medium"
+
+
+class ImpactCheckedEventRequest(BaseModel):
+    cv_name: str = ""
+    job_url: str = ""
+    score_before: int
+    score_after: int
+
+
+# ---------- Analytics response models ----------
+
+class CVAnalyticsEntry(BaseModel):
+    cv_name: str
+    analyses: int
+    avg_score: float
+    best_score: int
+
+
+class ScoreDistributionEntry(BaseModel):
+    band: str
     count: int
-    pct: float  # percentage relative to first stage (applied)
 
 
-class MatchBandEntry(BaseModel):
-    band: str        # "Strong (75+)", "Good (50–74)", "Low (<50)", "Unscored"
-    applied: int
-    replied: int
-    reply_rate: float  # 0–100
+class TopJobTitleEntry(BaseModel):
+    title: str
+    count: int
+
+
+class SourceBreakdownEntry(BaseModel):
+    source: str
+    count: int
 
 
 class AnalyticsResponse(BaseModel):
-    # Summary
-    total_applied: int
-    total_replies: int
-    reply_rate: float
-    best_cv_name: Optional[str]
-    best_cv_reply_rate: Optional[float]
-    # Application funnel
-    funnel: list[FunnelEntry]
-    # CV A/B comparison
-    cv_performance: list[CVPerformanceEntry]
-    # Match score impact
-    match_bands: list[MatchBandEntry]
-    # 30-day daily trend
+    # KPIs
+    total_analyses: int
+    total_apply_clicks: int
+    total_suggestions_applied: int
+    total_saved: int
+    avg_match_score: float
+    cvs_compared: int
+    # Check Impact
+    total_impact_checks: int
+    avg_score_delta: float
+    # CV performance (avg score by CV)
+    cv_performance: list[CVAnalyticsEntry]
+    # Score distribution
+    score_distribution: list[ScoreDistributionEntry]
+    # Top job titles analyzed
+    top_job_titles: list[TopJobTitleEntry]
+    # Source breakdown
+    source_breakdown: list[SourceBreakdownEntry]
+    # 30-day daily trend (analyses per day)
     trend_30d: list[WeeklyChartEntry]
+    # Selectivity ratio
+    analysis_to_apply_ratio: float
 
 
 # ---------- Meta ----------

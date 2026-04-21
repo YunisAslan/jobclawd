@@ -327,29 +327,71 @@ export interface StatsResponse {
   cv_performance: CVPerformanceEntry[];
 }
 
-export interface FunnelEntry {
-  label: string;
-  count: number;
-  pct: number;
+// ── Analytics ──
+
+export interface CVAnalyticsEntry {
+  cv_name: string;
+  analyses: number;
+  avg_score: number;
+  best_score: number;
 }
 
-export interface MatchBandEntry {
+export interface ScoreDistributionEntry {
   band: string;
-  applied: number;
-  replied: number;
-  reply_rate: number;
+  count: number;
+}
+
+export interface TopJobTitleEntry {
+  title: string;
+  count: number;
+}
+
+export interface SourceBreakdownEntry {
+  source: string;
+  count: number;
 }
 
 export interface AnalyticsResponse {
-  total_applied: number;
-  total_replies: number;
-  reply_rate: number;
-  best_cv_name: string | null;
-  best_cv_reply_rate: number | null;
-  funnel: FunnelEntry[];
-  cv_performance: CVPerformanceEntry[];
-  match_bands: MatchBandEntry[];
+  total_analyses: number;
+  total_apply_clicks: number;
+  total_suggestions_applied: number;
+  total_saved: number;
+  avg_match_score: number;
+  cvs_compared: number;
+  total_impact_checks: number;
+  avg_score_delta: number;
+  cv_performance: CVAnalyticsEntry[];
+  score_distribution: ScoreDistributionEntry[];
+  top_job_titles: TopJobTitleEntry[];
+  source_breakdown: SourceBreakdownEntry[];
   trend_30d: WeeklyChartEntry[];
+  analysis_to_apply_ratio: number;
+}
+
+// ── Analytics event tracking payloads ──
+
+export interface CvAnalyzedEvent {
+  cv_url: string;
+  cv_name: string;
+  job_url: string;
+  job_title: string;
+  company: string;
+  overall_score: number;
+  match_level: string;
+}
+
+export interface SuggestionAppliedEvent {
+  cv_name: string;
+  job_url: string;
+  category: string;
+  priority: string;
+}
+
+export interface ImpactCheckedEvent {
+  cv_name: string;
+  job_url: string;
+  score_before: number;
+  score_after: number;
 }
 
 // ── Structured CV Data ──

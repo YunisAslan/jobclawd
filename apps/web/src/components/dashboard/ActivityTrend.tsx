@@ -49,7 +49,7 @@ export default function ActivityTrend({ data, days = 30 }: ActivityTrendProps) {
   if (total === 0) {
     return (
       <p className="text-xs text-muted-foreground text-center py-6">
-        No application activity in the last {days} days.
+        No analysis activity in the last {days} days.
       </p>
     );
   }
@@ -117,7 +117,7 @@ export default function ActivityTrend({ data, days = 30 }: ActivityTrendProps) {
       </svg>
 
       <div className="flex items-center justify-between mt-1 text-[11px] text-muted-foreground">
-        <span>{total} applications in {days} days</span>
+        <span>{total} analyses in {days} days</span>
         <span>avg {(total / days).toFixed(1)}/day</span>
       </div>
     </div>

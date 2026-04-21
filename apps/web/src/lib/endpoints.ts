@@ -50,4 +50,9 @@ export const ENDPOINTS = {
   // Document (CV parsing + PDF generation)
   DOCUMENT_PARSE: "/api/document/parse",
   DOCUMENT_GENERATE: "/api/document/generate",
+
+  // Analytics event tracking
+  ANALYTICS_CV_ANALYZED: "/api/analytics/cv-analyzed",
+  ANALYTICS_SUGGESTION_APPLIED: "/api/analytics/suggestion-applied",
+  ANALYTICS_IMPACT_CHECKED: "/api/analytics/impact-checked",
 } as const;

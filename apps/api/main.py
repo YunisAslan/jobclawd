@@ -22,6 +22,7 @@ from routers import profile_router
 from routers import saved_vacancies_router
 from routers import cv_analysis_router
 from routers import document_router
+from routers import analytics_events_router
 from scraper import shutdown_browser
 from db.database import init_db
 
@@ -95,6 +96,7 @@ app.include_router(profile_router.router, prefix="/api")
 app.include_router(saved_vacancies_router.router, prefix="/api")
 app.include_router(cv_analysis_router.router, prefix="/api")
 app.include_router(document_router.router, prefix="/api")
+app.include_router(analytics_events_router.router, prefix="/api")
 
 
 @app.get("/health")

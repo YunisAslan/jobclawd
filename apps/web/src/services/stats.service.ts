@@ -2,6 +2,13 @@ import { APIService } from "@/services/api.service";
 import { API_BASE_URL, ENDPOINTS } from "@/lib/endpoints";
 import { StatsResponse, AnalyticsResponse } from "@/types";
 
+function getAuthHeader(): Record<string, string> {
+  if (typeof document === "undefined") return {};
+  const match = document.cookie.match(/(?:^|; )jc_token=([^;]*)/);
+  const token = match ? decodeURIComponent(match[1]) : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 class StatsService extends APIService {
   constructor() {
     super(API_BASE_URL);
@@ -12,7 +19,7 @@ class StatsService extends APIService {
   }
 
   async getAnalytics(): Promise<AnalyticsResponse> {
-    return this.get(ENDPOINTS.ANALYTICS, {}).then((r) => r.data);
+    return this.get(ENDPOINTS.ANALYTICS, {}, { headers: getAuthHeader() }).then((r) => r.data);
   }
 }
 
