@@ -29,7 +29,7 @@ export default function TopJobTitles({ data }: TopJobTitlesProps) {
             </div>
             <div className="h-1.5 w-full rounded-full bg-muted/50 overflow-hidden">
               <div
-                className="h-full rounded-full bg-primary/60 transition-all"
+                className="h-full rounded-full bg-primary transition-all"
                 style={{ width: `${Math.round((entry.count / max) * 100)}%` }}
               />
             </div>

@@ -3,6 +3,7 @@ Repository: aggregate analytics queries for the analytics dashboard.
 All queries are scoped to a single user_email.
 """
 from db.database import get_db
+from utils.title_normalizer import normalize_titles
 from models.schemas import (
     AnalyticsResponse,
     CVAnalyticsEntry,
@@ -52,9 +53,10 @@ def get_analytics(email: str) -> AnalyticsResponse:
             (email,),
         ).fetchone()["cnt"]
 
-        # ── KPI: apply clicks (applications table has no user_email) ──────
+        # ── KPI: apply clicks ──────────────────────────────────────────────
         total_apply_clicks = conn.execute(
-            "SELECT COUNT(*) AS cnt FROM applications",
+            "SELECT COUNT(*) AS cnt FROM apply_click_events WHERE user_email = %s",
+            (email,),
         ).fetchone()["cnt"]
 
         # ── KPI: suggestions applied ───────────────────────────────────────
@@ -121,7 +123,7 @@ def get_analytics(email: str) -> AnalyticsResponse:
             (email,),
         ).fetchall()
 
-        # ── Top job titles ─────────────────────────────────────────────────
+        # ── Top job titles (normalised + clustered via AI) ────────────────
         title_rows = conn.execute(
             """
             SELECT job_title, COUNT(*) AS cnt
@@ -129,10 +131,11 @@ def get_analytics(email: str) -> AnalyticsResponse:
             WHERE user_email = %s AND job_title IS NOT NULL AND job_title <> ''
             GROUP BY job_title
             ORDER BY cnt DESC
-            LIMIT 8
             """,
             (email,),
         ).fetchall()
+        raw_title_counts = [(r["job_title"], r["cnt"]) for r in title_rows]
+        title_counts = normalize_titles(raw_title_counts)[:8]
 
         # ── Source breakdown (derived from job_url) ───────────────────────
         source_rows = conn.execute(
@@ -195,8 +198,8 @@ def get_analytics(email: str) -> AnalyticsResponse:
             for r in score_dist_rows
         ],
         top_job_titles=[
-            TopJobTitleEntry(title=r["job_title"], count=r["cnt"])
-            for r in title_rows
+            TopJobTitleEntry(title=title, count=count)
+            for title, count in title_counts
         ],
         source_breakdown=[
             SourceBreakdownEntry(source=r["source"], count=r["cnt"])

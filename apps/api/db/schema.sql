@@ -207,3 +207,13 @@ CREATE TABLE IF NOT EXISTS impact_check_events (
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_impact_check_events_user ON impact_check_events (user_email);
+
+CREATE TABLE IF NOT EXISTS apply_click_events (
+  id         SERIAL PRIMARY KEY,
+  user_email TEXT NOT NULL,
+  job_url    TEXT,
+  job_title  TEXT,
+  company    TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_apply_click_events_user ON apply_click_events (user_email);

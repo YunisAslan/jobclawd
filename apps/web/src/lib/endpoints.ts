@@ -55,4 +55,5 @@ export const ENDPOINTS = {
   ANALYTICS_CV_ANALYZED: "/api/analytics/cv-analyzed",
   ANALYTICS_SUGGESTION_APPLIED: "/api/analytics/suggestion-applied",
   ANALYTICS_IMPACT_CHECKED: "/api/analytics/impact-checked",
+  ANALYTICS_APPLY_CLICKED: "/api/analytics/apply-clicked",
 } as const;

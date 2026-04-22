@@ -5,6 +5,7 @@ import { savedVacanciesService } from "@/services/saved-vacancies.service";
 import { profileService } from "@/services/profile.service";
 import { jobsService } from "@/services/jobs.service";
 import { cvMatchService } from "@/services/cv-match.service";
+import { analyticsEventsService } from "@/services/analytics-events.service";
 import { useCVMatch } from "@/hooks/use-cv-match";
 import type { JobListing, CVLink, CVMatchAnalysis } from "@/types";
 
@@ -146,6 +147,15 @@ export function useVacancyPanel(job: JobListing | null) {
       );
       // Invalidate so next open of this vacancy reflects the newly cached entry
       qc.invalidateQueries({ queryKey: ["cv-analyses-cache", job.url] });
+      analyticsEventsService.trackCvAnalyzed({
+        cv_url: cv.url,
+        cv_name: cv.name ?? "",
+        job_url: job.url,
+        job_title: bundle.suggestions?.job_title ?? "",
+        company: bundle.suggestions?.job_company ?? "",
+        overall_score: bundle.analysis.overall_score,
+        match_level: bundle.analysis.match_level,
+      });
     } catch {
       setMultiCVResults((prev) =>
         prev.map((e) => (e.cv.url === cv.url ? { ...e, loading: false, error: "Analysis failed. Try again." } : e))

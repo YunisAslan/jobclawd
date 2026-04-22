@@ -289,6 +289,12 @@ class ImpactCheckedEventRequest(BaseModel):
     score_after: int
 
 
+class ApplyClickEventRequest(BaseModel):
+    job_url: str = ""
+    job_title: str = ""
+    company: str = ""
+
+
 # ---------- Analytics response models ----------
 
 class CVAnalyticsEntry(BaseModel):

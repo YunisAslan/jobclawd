@@ -2,9 +2,17 @@
 
 ## Project Overview
 
-**JobClawd** is a full SaaS-style job application dashboard. It aggregates job listings from multiple sources (jobsearch.az, LinkedIn, Indeed) using Playwright browser automation, scores vacancies against the user's CV and profile using AI, and provides a CV editor with AI-powered optimization suggestions.
+**JobClawd** is a SaaS-style job application dashboard. It aggregates job listings from multiple sources (jobsearch.az, LinkedIn, Indeed) using Playwright browser automation, scores vacancies against the user's CV using AI, and provides a CV editor with AI-powered optimization suggestions.
 
-Key features: job feed with AI match scoring, CV editor with structured editing + ATS preview + suggestion engine, saved vacancies, application tracking, autopilot job applications.
+Key features:
+- **Job feed** — aggregated listings from jobsearch.az, LinkedIn, Indeed with AI match scoring per CV
+- **CV editor** — structured section editing, ATS preview, AI suggestion engine (accept/reject suggestions, Check Impact re-scoring)
+- **Multi-CV comparison** — score multiple CVs against a vacancy side by side
+- **Saved vacancies** — bookmark jobs for later review
+- **Applications** — manually track which jobs you've applied to
+- **Analytics dashboard** — career insights: activity trend, score distribution, source breakdown, top job titles, CV performance, Check Impact stats
+- **Profile** — user profile with CV uploads, personal info, job preferences
+- **Auth** — magic link email login + Google OAuth
 
 ## Monorepo Structure
 

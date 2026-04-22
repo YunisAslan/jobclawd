@@ -1,5 +1,5 @@
 """
-Repository: insert analytics event rows (cv_analysis_events, suggestion_events, impact_check_events).
+Repository: insert analytics event rows (cv_analysis_events, suggestion_events, impact_check_events, apply_click_events).
 No business logic — pure data access.
 """
 from db.database import get_db
@@ -40,6 +40,22 @@ def insert_suggestion_event(
             VALUES (%s, %s, %s, %s, %s)
             """,
             (user_email, cv_name, job_url, category, priority),
+        )
+
+
+def insert_apply_click_event(
+    user_email: str,
+    job_url: str,
+    job_title: str,
+    company: str,
+) -> None:
+    with get_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO apply_click_events (user_email, job_url, job_title, company)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (user_email, job_url, job_title, company),
         )
 
 

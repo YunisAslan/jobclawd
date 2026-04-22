@@ -29,6 +29,7 @@ import MatchScoreBreakdown from "./MatchScoreBreakdown";
 import CVSelector from "./CVSelector";
 import CVWorkspaceDialog from "./CVWorkspaceDialog";
 import { useVacancyPanel, type VacancyTab, type MultiCVEntry } from "@/hooks/use-vacancy-panel";
+import { analyticsEventsService } from "@/services/analytics-events.service";
 import type { JobListing } from "@/types";
 import Link from "next/link";
 
@@ -233,7 +234,16 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
                 size="md"
               />
               <Button asChild className="flex-1 gap-2">
-                <Link href={resolvedApplyUrl || job.url} target="_blank" rel="noopener noreferrer">
+                <Link
+                  href={resolvedApplyUrl || job.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => analyticsEventsService.trackApplyClicked({
+                    job_url: job.url,
+                    job_title: job.title ?? "",
+                    company: job.company ?? "",
+                  })}
+                >
                   <ExternalLink className="size-3.5" /> Open &amp; apply
                 </Link>
               </Button>

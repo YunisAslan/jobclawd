@@ -394,6 +394,12 @@ export interface ImpactCheckedEvent {
   score_after: number;
 }
 
+export interface ApplyClickEvent {
+  job_url: string;
+  job_title: string;
+  company: string;
+}
+
 // ── Structured CV Data ──
 
 export interface CVPersonalInfo {

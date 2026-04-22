@@ -1,6 +1,6 @@
 import { APIService } from "@/services/api.service";
 import { API_BASE_URL, ENDPOINTS } from "@/lib/endpoints";
-import type { CvAnalyzedEvent, SuggestionAppliedEvent, ImpactCheckedEvent } from "@/types";
+import type { CvAnalyzedEvent, SuggestionAppliedEvent, ImpactCheckedEvent, ApplyClickEvent } from "@/types";
 
 function getAuthHeader(): Record<string, string> {
   if (typeof document === "undefined") return {};
@@ -24,6 +24,10 @@ class AnalyticsEventsService extends APIService {
 
   trackImpactChecked(payload: ImpactCheckedEvent): void {
     this.post(ENDPOINTS.ANALYTICS_IMPACT_CHECKED, payload, { headers: getAuthHeader() }).catch(() => {});
+  }
+
+  trackApplyClicked(payload: ApplyClickEvent): void {
+    this.post(ENDPOINTS.ANALYTICS_APPLY_CLICKED, payload, { headers: getAuthHeader() }).catch(() => {});
   }
 }
 
