@@ -217,3 +217,39 @@ CREATE TABLE IF NOT EXISTS apply_click_events (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_apply_click_events_user ON apply_click_events (user_email);
+
+-- Email change verification requests (one pending request per user at a time)
+CREATE TABLE IF NOT EXISTS email_change_requests (
+  id          SERIAL PRIMARY KEY,
+  old_email   TEXT NOT NULL,
+  new_email   TEXT NOT NULL,
+  token       TEXT NOT NULL UNIQUE,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  used        BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_email_change_token     ON email_change_requests (token);
+CREATE INDEX IF NOT EXISTS idx_email_change_old_email ON email_change_requests (old_email);
+
+-- Re-auth OTP codes sent to current email before allowing an email change
+CREATE TABLE IF NOT EXISTS email_reauth_codes (
+  id         SERIAL PRIMARY KEY,
+  email      TEXT NOT NULL,
+  code       TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used       BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_reauth_codes_email ON email_reauth_codes (email);
+
+-- Revert tokens stored after a successful email change (7-day window to undo)
+CREATE TABLE IF NOT EXISTS email_revert_tokens (
+  id          SERIAL PRIMARY KEY,
+  old_email   TEXT NOT NULL,
+  new_email   TEXT NOT NULL,
+  token       TEXT NOT NULL UNIQUE,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  used        BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_revert_tokens_token ON email_revert_tokens (token);

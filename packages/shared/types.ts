@@ -40,6 +40,7 @@ export interface UserProfile {
   preferred_location?: LocationValue;
   salary_min?: string;
   salary_period?: SalaryPeriod;
+  onboarding_completed?: boolean;
 }
 
 // ── Feed / Search ──

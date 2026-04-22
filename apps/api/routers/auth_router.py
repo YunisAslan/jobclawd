@@ -9,6 +9,13 @@ from services.auth_service import (
     create_and_store_token,
     send_magic_link_email,
     verify_token,
+    create_reauth_code,
+    send_reauth_code_email,
+    create_email_change_request,
+    send_email_change_verification,
+    send_email_change_notification,
+    verify_email_change,
+    revert_email_change,
     get_google_auth_url,
     handle_google_callback,
     FRONTEND_URL,
@@ -24,6 +31,11 @@ class MagicLinkRequest(BaseModel):
 
 class VerifyTokenRequest(BaseModel):
     token: str
+
+
+class EmailChangeRequest(BaseModel):
+    new_email: str
+    otp: str
 
 
 @router.post("/send-magic-link")
@@ -42,6 +54,56 @@ async def send_magic_link(body: MagicLinkRequest):
 async def verify_magic_link(body: VerifyTokenRequest):
     try:
         return verify_token(body.token)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/send-reauth-code", status_code=204)
+async def send_reauth_code(email: str = Depends(get_current_email)):
+    try:
+        code = create_reauth_code(email)
+        await send_reauth_code_email(email, code)
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to send code: {exc}")
+
+
+@router.post("/request-email-change", status_code=204)
+async def request_email_change(
+    body: EmailChangeRequest,
+    email: str = Depends(get_current_email),
+):
+    try:
+        token = create_email_change_request(email, body.new_email, body.otp)
+        await send_email_change_verification(body.new_email, email, token)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to send email: {exc}")
+
+
+@router.post("/verify-email-change")
+async def verify_email_change_route(body: VerifyTokenRequest):
+    try:
+        result = verify_email_change(body.token)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    import asyncio
+    asyncio.create_task(
+        send_email_change_notification(result["old_email"], result["user"]["email"], result["revert_token"])
+    )
+
+    return result
+
+
+@router.post("/revert-email-change")
+async def revert_email_change_route(body: VerifyTokenRequest):
+    try:
+        return revert_email_change(body.token)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

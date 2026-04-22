@@ -7,13 +7,14 @@ import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import SectionLabel from "@/components/profile/SectionLabel";
 import InfoTooltip from "@/components/profile/InfoTooltip";
+import ChangeEmailSection from "@/components/settings/ChangeEmailSection";
 
 interface Props {
   control: Control<UserProfile>;
-  email: string;
+  email?: string;
 }
 
-export default function IdentitySection({ control, email }: Props) {
+export default function IdentitySection({ control }: Props) {
   const [open, setOpen] = useState(true);
   return (
     <div>
@@ -43,11 +44,8 @@ export default function IdentitySection({ control, email }: Props) {
             </div>
 
             <div className="space-y-1.5">
-              <div className="flex items-center gap-1.5">
-                <Label className="text-xs text-muted-foreground">Email</Label>
-                <InfoTooltip text="Locked to your account — tied to your login." />
-              </div>
-              <Input value={email} disabled className="opacity-50 cursor-not-allowed" />
+              <Label className="text-xs text-muted-foreground">Email</Label>
+              <ChangeEmailSection />
             </div>
 
             <div className="space-y-1.5">

@@ -28,6 +28,32 @@ class AuthService extends APIService {
       headers: getAuthHeader(),
     }).then((r) => r.data);
   }
+
+  async sendReauthCode(): Promise<void> {
+    return this.post(ENDPOINTS.SEND_REAUTH_CODE, {}, { headers: getAuthHeader() }).then(
+      (r) => r.data,
+    );
+  }
+
+  async requestEmailChange(newEmail: string, otp: string): Promise<void> {
+    return this.post(
+      ENDPOINTS.REQUEST_EMAIL_CHANGE,
+      { new_email: newEmail, otp },
+      { headers: getAuthHeader() },
+    ).then((r) => r.data);
+  }
+
+  async verifyEmailChange(
+    token: string,
+  ): Promise<{ access_token: string; user: { email: string; name: string } }> {
+    return this.post(ENDPOINTS.VERIFY_EMAIL_CHANGE, { token }).then((r) => r.data);
+  }
+
+  async revertEmailChange(
+    token: string,
+  ): Promise<{ access_token: string; user: { email: string; name: string } }> {
+    return this.post(ENDPOINTS.REVERT_EMAIL_CHANGE, { token }).then((r) => r.data);
+  }
 }
 
 export const authService = new AuthService();

@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse
 from models.schemas import UserProfile
 from repositories.profile_repo import get_profile, save_profile
 from utils.auth_utils import get_current_email
+from db.database import get_db
 
 router = APIRouter(tags=["profile"])
 
@@ -50,6 +51,20 @@ async def save_user_profile(
     data["email"] = email
     save_profile(email, data)
     return {"success": True}
+
+
+@router.post("/profile/complete-onboarding", status_code=204)
+async def complete_onboarding(email: str = Depends(get_current_email)):
+    with get_db() as db:
+        db.execute(
+            """
+            UPDATE profiles
+            SET data = data || '{"onboarding_completed": true}'::jsonb,
+                updated_at = NOW()
+            WHERE email = %s
+            """,
+            (email,),
+        )
 
 
 @router.post("/profile/cv/upload")

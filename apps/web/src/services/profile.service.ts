@@ -43,6 +43,10 @@ class ProfileService extends APIService {
     return res.data;
   }
 
+  async completeOnboarding(): Promise<void> {
+    await this.post(ENDPOINTS.COMPLETE_ONBOARDING, {}, { headers: getAuthHeader() });
+  }
+
   async uploadAvatar(file: File): Promise<{ url: string }> {
     const form = new FormData();
     form.append("file", file);

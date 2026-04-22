@@ -1,6 +1,7 @@
 import TopBar from "@/components/layout/TopBar";
+import ChangeEmailSection from "@/components/settings/ChangeEmailSection";
 import DeleteAccountSection from "@/components/settings/DeleteAccountSection";
-import { ShieldAlert } from "lucide-react";
+import { Mail, ShieldAlert } from "lucide-react";
 
 export default function SettingsPage() {
   return (
@@ -16,6 +17,15 @@ export default function SettingsPage() {
               Manage your account preferences and integrations.
             </p>
           </div>
+
+          {/* ── Email address ── */}
+          <SettingsSection
+            icon={<Mail className="size-4" />}
+            title="Email address"
+            description="Change the email address linked to your account."
+          >
+            <ChangeEmailSection />
+          </SettingsSection>
 
           {/* ── Danger zone ── */}
           <SettingsSection

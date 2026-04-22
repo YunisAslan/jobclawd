@@ -29,9 +29,14 @@ export const ENDPOINTS = {
   PROFILE: "/api/profile",
   CV_UPLOAD: "/api/profile/cv/upload",
   AVATAR_UPLOAD: "/api/profile/avatar/upload",
+  COMPLETE_ONBOARDING: "/api/profile/complete-onboarding",
 
   // Account
   DELETE_ACCOUNT: "/api/auth/account",
+  SEND_REAUTH_CODE: "/api/auth/send-reauth-code",
+  REQUEST_EMAIL_CHANGE: "/api/auth/request-email-change",
+  VERIFY_EMAIL_CHANGE: "/api/auth/verify-email-change",
+  REVERT_EMAIL_CHANGE: "/api/auth/revert-email-change",
 
   // Saved Vacancies
   SAVED_VACANCIES: "/api/saved-vacancies",
