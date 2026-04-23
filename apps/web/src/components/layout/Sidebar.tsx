@@ -47,11 +47,13 @@ function NavItem({
   label,
   icon,
   collapsed,
+  "data-tour": dataTour,
 }: {
   href: string;
   label: string;
   icon: React.ReactNode;
   collapsed: boolean;
+  "data-tour"?: string;
 }) {
   const pathname = usePathname();
   const { feedUrl } = useFeedUrl();
@@ -61,6 +63,7 @@ function NavItem({
   const inner = (
     <Link
       href={resolvedHref}
+      data-tour={dataTour}
       className={cn(
         "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 w-full",
         isActive
@@ -154,7 +157,7 @@ export default function AppSidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2 space-y-0.5">
+      <nav data-tour="sidebar-nav" className="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2 space-y-0.5">
         {NAV_ITEMS.map((item) => (
           <NavItem
             key={item.href}
@@ -162,6 +165,7 @@ export default function AppSidebar() {
             label={item.label}
             icon={item.icon}
             collapsed={collapsed}
+            data-tour={item.href.includes("profile") ? "nav-profile" : undefined}
           />
         ))}
       </nav>

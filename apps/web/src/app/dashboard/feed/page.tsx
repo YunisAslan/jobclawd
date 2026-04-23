@@ -297,19 +297,21 @@ function FeedPageInner() {
       <TopBar title="Job Feed" />
 
       <div className="p-6 space-y-5">
-        <FeedFilterForm
-          onSubmit={onSearchSubmit}
-          onChange={setLocalFilters}
-          loading={loading}
-          profileDefaults={profileDefaults}
-          initialValues={urlFilters}
-        />
+        <div data-tour="feed-filter">
+          <FeedFilterForm
+            onSubmit={onSearchSubmit}
+            onChange={setLocalFilters}
+            loading={loading}
+            profileDefaults={profileDefaults}
+            initialValues={urlFilters}
+          />
+        </div>
         {error && (
           <div className="rounded-xl border border-destructive/20 bg-destructive/8 px-4 py-3 text-sm text-destructive">
             {error}
           </div>
         )}
-        <div ref={resultsRef}>
+        <div ref={resultsRef} data-tour="feed-results">
           <FeedResults
             highMatch={filteredHighMatch}
             needsReview={filteredNeedsReview}

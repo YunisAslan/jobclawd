@@ -11,7 +11,7 @@ export const DEFAULT_PROFILE: UserProfile = {
   name: "",
   surname: "",
   email: "",
-  work_modes: ["hybrid"],
+  work_modes: [],
   experience_level: [],
   relocation: false,
   blacklist: [],

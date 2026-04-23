@@ -299,22 +299,27 @@ export default function FeedResults({
         { jobs: highMatch, color: "primary" as const, label: "High Match" },
         { jobs: needsReview, color: "warning" as const, label: "Needs Review" },
       ].map(
-        ({ jobs: sectionJobs, color, label }) =>
+        ({ jobs: sectionJobs, color, label }, sectionIdx) =>
           sectionJobs.length > 0 && (
             <section key={label} className="space-y-3">
               <FeedResultSectionHeader color={color} label={label} count={sectionJobs.length} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {sectionJobs.map((job) => (
-                  <FeedJobCard
-                    key={job.url}
-                    job={job}
-                    saved={savedUrls.has(job.url)}
-                    onToggleSave={() => onToggleSave(job)}
-                    savePending={savePending === job.url}
-                    onDetails={() => onDetails(job)}
-                    onHideCompany={(c) => onHideCompany?.(c)}
-                  />
-                ))}
+                {sectionJobs.map((job, idx) => {
+                  const isFirstCard = idx === 0 && (sectionIdx === 0 || highMatch.length === 0);
+                  return (
+                    <div key={job.url} {...(isFirstCard ? { "data-tour": "first-job-card" } : {})}>
+                      <FeedJobCard
+                        job={job}
+                        saved={savedUrls.has(job.url)}
+                        onToggleSave={() => onToggleSave(job)}
+                        savePending={savePending === job.url}
+                        onDetails={() => onDetails(job)}
+                        onHideCompany={(c) => onHideCompany?.(c)}
+                        {...(isFirstCard ? { detailsTourTarget: "view-details-btn" } : {})}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </section>
           ),

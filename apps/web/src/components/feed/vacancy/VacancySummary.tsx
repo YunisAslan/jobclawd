@@ -35,7 +35,7 @@ export default function VacancySummary({ job, detail, loadingDetail }: VacancySu
   return (
     <div className="space-y-4">
       {/* Structured metadata */}
-      <div className="space-y-2 p-3.5 rounded-xl border border-border/50 bg-card">
+      <div className="space-y-2 p-3.5 rounded-xl border border-border/50 bg-card" data-tour="vacancy-summary-card">
         {job.location_str && (
           <MetaRow icon={<MapPin className="size-3.5" />} label="Location" value={job.location_str} />
         )}

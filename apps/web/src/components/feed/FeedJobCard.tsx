@@ -36,6 +36,7 @@ interface FeedJobCardProps {
   savePending?: boolean;
   onDetails: () => void;
   onHideCompany?: (company: string) => void;
+  detailsTourTarget?: string;
 }
 
 function CompanyAvatar({ company, logoUrl }: { company: string; logoUrl?: string | null }) {
@@ -135,6 +136,7 @@ export default function FeedJobCard({
   savePending,
   onDetails,
   onHideCompany,
+  detailsTourTarget,
 }: FeedJobCardProps) {
   const isHigh = job.match_level === "high";
   const experienceChip = !job.seniority_str && !job.experience_years_str ? job.experience_str : null;
@@ -271,7 +273,7 @@ export default function FeedJobCard({
         )}
 
         <div className="flex items-center gap-2 pt-0.5">
-          <Button onClick={onDetails} size="sm" className="flex-1 h-8 text-xs font-medium gap-1.5">
+          <Button onClick={onDetails} size="sm" className="flex-1 h-8 text-xs font-medium gap-1.5" {...(detailsTourTarget ? { "data-tour": detailsTourTarget } : {})}>
             <Eye className="size-3.5" />
             View Details
           </Button>

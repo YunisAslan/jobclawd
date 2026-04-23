@@ -140,6 +140,7 @@ const SearchAutocomplete = forwardRef<SearchAutocompleteHandle, SearchAutocomple
         placeholder="Job title or skill..."
         className="pl-10 h-12 text-[15px]"
         autoComplete="off"
+        data-tour="search-input"
         onFocus={() => setShowHistory(true)}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {

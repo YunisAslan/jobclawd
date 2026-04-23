@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import AppSidebar from "@/components/layout/Sidebar";
-import OnboardingModal from "@/components/onboarding/OnboardingModal";
+import TourOverlay from "@/components/onboarding/TourOverlay";
+import { TourProvider, useTour } from "@/contexts/TourContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useProfile } from "@/contexts/ProfileContext";
 
 const APP_ROUTES = ["/dashboard", "/feed", "/saved", "/applications", "/profile", "/settings"];
 
@@ -13,19 +13,12 @@ function isAppRoute(pathname: string) {
   return APP_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"));
 }
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+// Inner component — sits inside TourProvider so useTour() works here
+function AppShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isApp = isAppRoute(pathname);
   const { user } = useAuth();
-  const { profile } = useProfile();
-  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
-
-  const showOnboarding =
-    isApp &&
-    !!user &&
-    profile.email !== "" &&
-    !profile.onboarding_completed &&
-    !onboardingDismissed;
+  const { start } = useTour();
 
   useEffect(() => {
     if (isApp) {
@@ -41,21 +34,29 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [isApp]);
 
-  if (!isApp) {
-    // Landing page, auth pages — render without sidebar
-    return <>{children}</>;
-  }
+  // Auto-start tour on every visit
+  useEffect(() => {
+    if (isApp && user) {
+      const t = setTimeout(start, 800);
+      return () => clearTimeout(t);
+    }
+  }, [isApp, user, start]);
+
+  if (!isApp) return <>{children}</>;
 
   return (
     <div className="flex h-screen overflow-hidden">
       <AppSidebar />
       <main className="flex-1 min-w-0 overflow-y-auto">{children}</main>
-      {showOnboarding && (
-        <OnboardingModal
-          userName={user.name || user.email}
-          onClose={() => setOnboardingDismissed(true)}
-        />
-      )}
+      <TourOverlay />
     </div>
+  );
+}
+
+export default function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <TourProvider onFinish={() => {}}>
+      <AppShellInner>{children}</AppShellInner>
+    </TourProvider>
   );
 }

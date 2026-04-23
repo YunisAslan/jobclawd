@@ -20,6 +20,7 @@ import { feedFilterSchema, FeedFilterValues } from "@/validations/feed";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/Tooltip";
 import { useMetaFilters } from "@/hooks/use-meta";
 import SelectBox from "@/components/SelectBox";
 import LocationPicker from "@/components/feed/search/LocationPicker";
@@ -56,7 +57,7 @@ export default function FeedFilterForm({
   initialValues,
 }: FeedFilterFormProps) {
   const { data: meta } = useMetaFilters();
-  const { control, handleSubmit, watch, reset } = useForm<FeedFilterValues>({
+  const { control, handleSubmit, watch, reset, getValues } = useForm<FeedFilterValues>({
     resolver: zodResolver(feedFilterSchema),
     defaultValues: { ...EMPTY_FILTERS, ...initialValues },
   });
@@ -149,19 +150,36 @@ export default function FeedFilterForm({
                 />
               )}
             />
-            {hasProfileDefaults && (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={loading}
-                className="gap-1.5 h-12 shrink-0 text-muted-foreground"
-                onClick={() => reset({ ...EMPTY_FILTERS, ...profileDefaults })}
-              >
-                <Sparkles className="size-4" />
-                Fill from profile
-              </Button>
-            )}
-            <Button type="submit" disabled={loading} className="gap-2 px-6 h-12 shrink-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span data-tour="fill-profile-btn" tabIndex={-1}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={loading || !hasProfileDefaults}
+                    className="gap-1.5 h-12 shrink-0 text-muted-foreground"
+                    onClick={() => {
+                      const currentQuery = getValues("query");
+                      reset({
+                        ...EMPTY_FILTERS,
+                        ...profileDefaults,
+                        query: profileDefaults?.query || currentQuery,
+                      });
+                    }}
+                  >
+                    <Sparkles className="size-4" />
+                    Fill from profile
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {!hasProfileDefaults && (
+                <TooltipContent side="bottom" className="max-w-56 text-center">
+                  Your profile has no data yet. Add a job title, location, or preferences in your{" "}
+                  <span className="font-semibold">Profile</span> page to use this.
+                </TooltipContent>
+              )}
+            </Tooltip>
+            <Button type="submit" disabled={loading} className="gap-2 px-6 h-12 shrink-0" data-tour="search-btn">
               {loading ? (
                 <div className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
               ) : (

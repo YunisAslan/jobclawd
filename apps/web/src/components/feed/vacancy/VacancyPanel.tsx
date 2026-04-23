@@ -30,7 +30,9 @@ import CVSelector from "./CVSelector";
 import CVWorkspaceDialog from "./CVWorkspaceDialog";
 import { useVacancyPanel, type VacancyTab, type MultiCVEntry } from "@/hooks/use-vacancy-panel";
 import { analyticsEventsService } from "@/services/analytics-events.service";
+import { useTour } from "@/contexts/TourContext";
 import type { JobListing } from "@/types";
+import { useLayoutEffect } from "react";
 import Link from "next/link";
 
 interface VacancyPanelProps {
@@ -39,6 +41,15 @@ interface VacancyPanelProps {
 }
 
 export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
+  const { active: tourActive, current: tourStep, tabHint } = useTour();
+  // Prevent Radix from closing the sheet when the user clicks the tour tooltip (outside the panel)
+  const tourLockOpen = tourActive && (
+    tourStep?.id === "click_job" ||
+    tourStep?.id === "vacancy_overview" ||
+    tourStep?.id === "vacancy_improve" ||
+    tourStep?.id === "cv_upload"
+  );
+
   const {
     detail,
     loadingDetail,
@@ -85,6 +96,11 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
     profile,
   } = useVacancyPanel(job);
 
+  // Tour tab hint: switch the panel to the correct tab synchronously before paint
+  useLayoutEffect(() => {
+    if (tabHint) setActiveTab(tabHint as VacancyTab);
+  }, [tabHint]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!job) return null;
 
   const isHigh = job.match_level === "high";
@@ -97,6 +113,9 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
           side="right"
           showCloseButton={false}
           className="w-full sm:max-w-125 p-0 flex flex-col gap-0 overflow-hidden"
+          data-tour="vacancy-panel"
+          onPointerDownOutside={tourLockOpen ? (e) => e.preventDefault() : undefined}
+          onInteractOutside={tourLockOpen ? (e) => e.preventDefault() : undefined}
         >
           {/* Header */}
           <SheetHeader className="px-5 pt-4 pb-4 border-b border-border/50">
@@ -146,11 +165,11 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
             className="flex-1 min-h-0 flex flex-col"
           >
             <div className="px-5 pt-3 pb-0">
-              <TabsList className="w-full">
-                <TabsTrigger value="overview" className="gap-1.5 text-xs">
+              <TabsList className="w-full" data-tour="vacancy-tabs">
+                <TabsTrigger value="overview" className="gap-1.5 text-xs" data-tour="vacancy-overview-tab">
                   <Eye className="size-3.5" /> Overview
                 </TabsTrigger>
-                <TabsTrigger value="improve" className="gap-1.5 text-xs">
+                <TabsTrigger value="improve" className="gap-1.5 text-xs" data-tour="vacancy-improve-tab">
                   <Sparkles className="size-3.5" /> Improve CV
                 </TabsTrigger>
               </TabsList>
@@ -165,7 +184,7 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
 
                 <TabsContent value="improve" className="mt-0 space-y-4">
                   {/* CV selector + add to compare */}
-                  <div className="space-y-2">
+                  <div className="space-y-2" data-tour="cv-selector-area">
                     <CVSelector
                       cvLinks={profile.cv_links ?? []}
                       selectedCV={selectedCV}
