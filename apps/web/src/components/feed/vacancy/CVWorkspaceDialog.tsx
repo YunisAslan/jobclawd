@@ -26,6 +26,7 @@ import {
   Check,
 } from "lucide-react";
 import type { CVData, CVMatchAnalysis, CVSuggestion, CVSuggestionsResponse } from "@/types";
+import { useTour } from "@/contexts/TourContext";
 import WorkspaceSuggestions from "./WorkspaceSuggestions";
 import CVStructuredEditor from "./CVStructuredEditor";
 import CVMiniPreview from "./CVMiniPreview";
@@ -105,6 +106,11 @@ export default function CVWorkspaceDialog({
   onDismissAtsPreview,
   onGenerateSuggestions,
 }: CVWorkspaceDialogProps) {
+  const { active: tourActive, current: tourStep } = useTour();
+  const tourLockOpen = tourActive && [
+    "workspace_form", "workspace_ats", "workspace_suggestions", "workspace_check_impact",
+  ].includes(tourStep?.id ?? "");
+
   const fileType = inferCVFileType(cvUrl);
   const isPdf = fileType === "pdf";
   const hasStructuredData = !!cvData;
@@ -179,7 +185,11 @@ export default function CVWorkspaceDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-none w-[calc(100vw-2rem)] h-[calc(100vh-2rem)] p-0 gap-0 overflow-hidden rounded-2xl flex flex-col">
+        <DialogContent
+          className="sm:max-w-none w-[calc(100vw-2rem)] h-[calc(100vh-2rem)] p-0 gap-0 overflow-hidden rounded-2xl flex flex-col"
+          onPointerDownOutside={tourLockOpen ? (e) => e.preventDefault() : undefined}
+          onInteractOutside={tourLockOpen ? (e) => e.preventDefault() : undefined}
+        >
 
           {/* Header */}
           <header className="flex items-center justify-between gap-4 px-6 py-4 border-b border-border/50 shrink-0 bg-background">
@@ -260,6 +270,7 @@ export default function CVWorkspaceDialog({
                   )}
                   onClick={() => setMiniPreviewOpen((v) => !v)}
                   aria-label="Toggle ATS Preview"
+                  data-tour="workspace-ats-btn"
                 >
                   <ScanEye className="size-3.5" />
                   <span className="hidden sm:inline">ATS Preview</span>
@@ -275,6 +286,7 @@ export default function CVWorkspaceDialog({
                   onClick={onAtsPreview}
                   disabled={loadingAtsPreview || !canCheckImpact}
                   title={!canCheckImpact ? "Edit your CV first to check impact" : undefined}
+                  data-tour="workspace-check-impact-btn"
                 >
                   {loadingAtsPreview ? (
                     <>
@@ -326,7 +338,7 @@ export default function CVWorkspaceDialog({
             />
 
             {/* Document area */}
-            <div className="flex-1 min-w-0 overflow-hidden flex flex-col bg-muted/40">
+            <div className="flex-1 min-w-0 overflow-hidden flex flex-col bg-muted/40" data-tour="workspace-cv-form">
               {loadingParse && !hasStructuredData && (
                 <Spinner label="Parsing CV structure…" />
               )}

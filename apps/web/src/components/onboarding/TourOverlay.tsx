@@ -274,6 +274,19 @@ export default function TourOverlay() {
 
               {/* Right side */}
               {showNextBtn ? (
+                current.id === "cv_upload" ? (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      const btn = document.querySelector("[data-tour='analyze-cv-btn']") as HTMLElement | null;
+                      btn?.click();
+                      next();
+                    }}
+                    className="h-7 text-xs px-3"
+                  >
+                    Next <ArrowRight className="size-3 ml-1" />
+                  </Button>
+                ) : (
                 <Button
                   size="sm"
                   onClick={next}
@@ -281,6 +294,7 @@ export default function TourOverlay() {
                 >
                   {isLast ? "Done ✓" : <>Next <ArrowRight className="size-3 ml-1" /></>}
                 </Button>
+                )
               ) : current.id === "click_job" ? (
                 <Button
                   size="sm"

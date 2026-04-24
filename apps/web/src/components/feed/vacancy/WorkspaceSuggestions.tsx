@@ -195,7 +195,7 @@ export default function WorkspaceSuggestions({
   }
 
   return (
-    <aside className="w-80 flex-none border-r border-border/50 flex flex-col overflow-hidden bg-muted/20">
+    <aside className="w-80 flex-none border-r border-border/50 flex flex-col overflow-hidden bg-muted/20" data-tour="workspace-suggestions">
 
       {/* Header — fixed, slightly elevated */}
       <div className="px-4 pt-3.5 pb-3 border-b border-border/40 shrink-0 space-y-2.5 bg-background">

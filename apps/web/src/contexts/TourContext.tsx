@@ -11,7 +11,13 @@ export type TourStepId =
   | "click_job"
   | "vacancy_overview"
   | "vacancy_improve"
-  | "cv_upload";
+  | "cv_upload"
+  | "cv_analyzed"
+  | "cv_edit"
+  | "workspace_form"
+  | "workspace_ats"
+  | "workspace_suggestions"
+  | "workspace_check_impact";
 
 export interface TourStep {
   id: TourStepId;
@@ -110,6 +116,59 @@ export const TOUR_STEPS: TourStep[] = [
     position: "left",
     advance: "button",
   },
+  {
+    id: "cv_analyzed",
+    target: "[data-tour='cv-selector-area']",
+    title: "Analyzing your CV…",
+    content: "Hold tight — we're scoring your CV against this job description. Results will appear in a moment.",
+    position: "left",
+    advance: "dom_watch",
+    watchFor: "[data-tour='edit-cv-btn']",
+    watchMode: "appear",
+  },
+  {
+    id: "cv_edit",
+    target: "[data-tour='edit-cv-btn']",
+    title: "CV scored!",
+    content: "Your CV has been matched against the job. Click Edit CV to open the full editor and apply AI-powered improvements.",
+    position: "left",
+    advance: "dom_watch",
+    watchFor: "[data-tour='workspace-cv-form']",
+    watchMode: "appear",
+    forced: true,
+  },
+  {
+    id: "workspace_form",
+    target: null,
+    title: "CV Editor",
+    content: "This is the structured CV editor. Click any field to update your personal info, work experience, education, skills, and more. All changes update the ATS preview in real time.",
+    position: "center",
+    advance: "button",
+  },
+  {
+    id: "workspace_ats",
+    target: "[data-tour='workspace-ats-btn']",
+    title: "ATS Preview",
+    content: "This live preview shows exactly how an ATS system reads your CV. Hover over any area to magnify it. It updates instantly as you type.",
+    position: "bottom",
+    advance: "button",
+  },
+  {
+    id: "workspace_suggestions",
+    target: "[data-tour='workspace-suggestions']",
+    title: "AI Suggestions",
+    content: "AI-powered improvements tailored to this specific job. Accept suggestions to apply them, decline ones that don't fit, or hit Apply All to accept everything at once.",
+    position: "right",
+    advance: "button",
+  },
+  {
+    id: "workspace_check_impact",
+    target: "[data-tour='workspace-check-impact-btn']",
+    title: "Check Impact",
+    content: "After accepting suggestions or making edits, click Check Impact to re-score your CV — see exactly how your changes improved your match percentage before downloading.",
+    position: "bottom",
+    advance: "button",
+  },
 ];
 
 interface TourContextValue {
@@ -150,7 +209,12 @@ export function TourProvider({ children, onFinish }: { children: ReactNode; onFi
     if (!active) return null;
     const id = TOUR_STEPS[stepIndex]?.id;
     if (id === "vacancy_overview") return "overview";
-    if (id === "vacancy_improve" || id === "cv_upload") return "improve";
+    if (
+      id === "vacancy_improve" || id === "cv_upload" ||
+      id === "cv_analyzed" || id === "cv_edit" ||
+      id === "workspace_form" || id === "workspace_ats" ||
+      id === "workspace_suggestions" || id === "workspace_check_impact"
+    ) return "improve";
     return null;
   }, [active, stepIndex]);
 

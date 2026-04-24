@@ -43,12 +43,11 @@ interface VacancyPanelProps {
 export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
   const { active: tourActive, current: tourStep, tabHint } = useTour();
   // Prevent Radix from closing the sheet when the user clicks the tour tooltip (outside the panel)
-  const tourLockOpen = tourActive && (
-    tourStep?.id === "click_job" ||
-    tourStep?.id === "vacancy_overview" ||
-    tourStep?.id === "vacancy_improve" ||
-    tourStep?.id === "cv_upload"
-  );
+  const tourLockOpen = tourActive && [
+    "click_job", "vacancy_overview", "vacancy_improve", "cv_upload",
+    "cv_analyzed", "cv_edit", "workspace_form", "workspace_ats",
+    "workspace_suggestions", "workspace_check_impact",
+  ].includes(tourStep?.id ?? "");
 
   const {
     detail,
@@ -199,6 +198,7 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
                         disabled={multiCVResults.some(
                           (e) => e.cv.url === selectedCV?.url && e.loading,
                         )}
+                        data-tour="analyze-cv-btn"
                       >
                         Analyze CV
                       </Button>
