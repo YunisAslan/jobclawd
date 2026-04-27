@@ -1,6 +1,6 @@
 """
 Service: orchestrates multi-source scraping, scoring, and result filtering.
-Wraps the scraping pipeline with a PostgreSQL-backed cache (TTL = 1 hour).
+Wraps the scraping pipeline with a PostgreSQL-backed cache (TTL = 24 hours).
 """
 import asyncio
 import json

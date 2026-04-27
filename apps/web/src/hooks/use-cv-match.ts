@@ -2,6 +2,7 @@ import { useState } from "react";
 import { cvMatchService } from "@/services/cv-match.service";
 import { documentService } from "@/services/document.service";
 import { analyticsEventsService } from "@/services/analytics-events.service";
+import { useTour } from "@/contexts/TourContext";
 import type { CVData, CVMatchAnalysis, CVSuggestion, CVSuggestionsResponse } from "@/types";
 
 interface CVMatchState {
@@ -39,6 +40,7 @@ interface CVMatchState {
 }
 
 export function useCVMatch() {
+  const { active: tourActive } = useTour();
   const [state, setState] = useState<CVMatchState>({
     analysis: null,
     suggestions: null,
@@ -86,7 +88,7 @@ export function useCVMatch() {
       cvName: cvName ?? s.cvName,
     }));
 
-    const bundleResult = await Promise.allSettled([cvMatchService.getBundle(jobUrl, cvUrl)]);
+    const bundleResult = await Promise.allSettled([cvMatchService.getBundle(jobUrl, cvUrl, undefined, tourActive)]);
     const bundle = bundleResult[0];
 
     setState((s) => ({
@@ -186,7 +188,7 @@ export function useCVMatch() {
   async function parseCv(cvUrl: string) {
     setState((s) => ({ ...s, loadingParse: true }));
     try {
-      const { data, cv_name } = await documentService.parseCv(cvUrl);
+      const { data, cv_name } = await documentService.parseCv(cvUrl, tourActive);
       setState((s) => ({
         ...s,
         cvData: data,

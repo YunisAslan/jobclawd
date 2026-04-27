@@ -104,6 +104,7 @@ class SearchRequest(BaseModel):
     salaryMin: Optional[str] = None
     sortBy: Optional[str] = None
     forceRefresh: bool = False
+    demo: bool = False
 
 
 class JobListing(BaseModel):
@@ -409,6 +410,7 @@ class CVMatchRequest(BaseModel):
     job_url: str
     cv_url: str
     cv_name: str = ""
+    demo: bool = False
 
 class CVMatchTextRequest(BaseModel):
     job_url: str

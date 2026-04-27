@@ -36,6 +36,7 @@ class JobsService extends APIService {
     location?: LocationValue,
     filters?: SearchFilters,
     forceRefresh?: boolean,
+    demo?: boolean,
   ): Promise<SearchResponse> {
     return this.post(ENDPOINTS.SEARCH, {
       query,
@@ -43,6 +44,7 @@ class JobsService extends APIService {
       location,
       ...filters,
       ...(forceRefresh ? { forceRefresh: true } : {}),
+      ...(demo ? { demo: true } : {}),
     }, { headers: getAuthHeader() }).then((r) => r.data);
   }
 
@@ -54,6 +56,7 @@ class JobsService extends APIService {
     forceRefresh?: boolean,
     onProgress?: (progress: SearchProgress) => void,
     onPartial?: (result: SearchResponse) => void,
+    demo?: boolean,
   ): Promise<SearchResponse> {
     const body = {
       query,
@@ -61,6 +64,7 @@ class JobsService extends APIService {
       location,
       ...filters,
       ...(forceRefresh ? { forceRefresh: true } : {}),
+      ...(demo ? { demo: true } : {}),
     };
 
     const headers: Record<string, string> = {

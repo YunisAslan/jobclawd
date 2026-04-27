@@ -29,6 +29,7 @@ _CV_DIR = Path(__file__).resolve().parent.parent / "uploads" / "cv"
 
 class _ParseRequest(BaseModel):
     cv_url: str
+    demo: bool = False
 
 class _SaveRequest(BaseModel):
     cv_url: str
@@ -50,6 +51,10 @@ async def parse_cv_endpoint(
     """Parse a PDF/DOCX CV into structured CVData JSON using LLM extraction."""
     from services.cv_parser_service import parse_cv
     from repositories.cv_parse_cache_repo import get_cv_parse, set_cv_parse
+
+    if request.demo:
+        from demo.demo_data import DEMO_CV_DATA
+        return {"data": DEMO_CV_DATA.model_dump(), "cv_name": "Demo CV"}
 
     cv_url = request.cv_url
     filename = cv_url.rstrip("/").split("/")[-1]

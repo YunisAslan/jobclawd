@@ -1,14 +1,15 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { jobsService, SearchProgress } from "@/services/jobs.service";
 import { JobListing, JobSource, LocationValue } from "@/types";
 import { useProfile } from "@/contexts/ProfileContext";
 import { extractApiError } from "@/lib/utils";
 import { FeedFilterValues } from "@/validations/feed";
+import { useTour } from "@/contexts/TourContext";
 
 /** Cache timing constants — shared with FeedResults countdown */
-export const FEED_STALE_TIME = 60 * 60 * 1000;
-export const FEED_GC_TIME = 2 * 60 * 60 * 1000;
+export const FEED_STALE_TIME = 24 * 60 * 60 * 1000;
+export const FEED_GC_TIME = 25 * 60 * 60 * 1000;
 
 /**
  * Build a stable React Query key from feed filters.
@@ -34,6 +35,7 @@ const CREDITS_KEY = ["credits"];
 export function useFeed(filters: Partial<FeedFilterValues>) {
   const { profile } = useProfile();
   const queryClient = useQueryClient();
+  const { active: tourActive } = useTour();
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
   const [panelJob, setPanelJob] = useState<JobListing | null>(null);
   const forceRefreshRef = useRef(false);
@@ -51,6 +53,13 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
 
   const hasQuery = !!filters.query?.trim();
 
+  // Separate cache key for demo (tour) vs real searches so they never collide
+  const feedQueryKey = useMemo(
+    () => [...buildQueryKey(filters), tourActive ? "__demo__" : "__live__"],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(buildQueryKey(filters)), tourActive],
+  );
+
   // Fetch credits from API
   const { data: creditsData } = useQuery({
     queryKey: CREDITS_KEY,
@@ -64,7 +73,7 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
   const outOfCredits = creditsLeft <= 0;
 
   const { data, isLoading, isFetching, isFetched, error, dataUpdatedAt } = useQuery({
-    queryKey: buildQueryKey(filters),
+    queryKey: feedQueryKey,
     queryFn: async () => {
       const shouldForce = forceRefreshRef.current;
       forceRefreshRef.current = false;
@@ -87,6 +96,8 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
           },
           shouldForce,
           (p) => setProgress(p),
+          undefined,
+          tourActive,
         );
         // Refetch credits after search (backend deducts on cache miss)
         queryClient.invalidateQueries({ queryKey: CREDITS_KEY });
@@ -105,7 +116,7 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
   });
 
   const prevKeyRef = useRef<string>("");
-  const currentKey = JSON.stringify(buildQueryKey(filters));
+  const currentKey = JSON.stringify(feedQueryKey);
   useEffect(() => {
     if (prevKeyRef.current && prevKeyRef.current !== currentKey) {
       setSkipped(new Set());
@@ -149,13 +160,13 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
   const hasScoring = profile.name.length > 0;
 
   const invalidateFeed = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: buildQueryKey(filters) });
-  }, [queryClient, filters]);
+    queryClient.invalidateQueries({ queryKey: feedQueryKey });
+  }, [queryClient, feedQueryKey]);
 
   const refreshFeed = useCallback(() => {
     forceRefreshRef.current = true;
-    queryClient.invalidateQueries({ queryKey: buildQueryKey(filters) });
-  }, [queryClient, filters]);
+    queryClient.invalidateQueries({ queryKey: feedQueryKey });
+  }, [queryClient, feedQueryKey]);
   const errorMsg = error ? extractApiError(error, "Search error") : null;
 
   return {

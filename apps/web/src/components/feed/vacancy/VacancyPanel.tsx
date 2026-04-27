@@ -145,7 +145,7 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
                     </span>
                   </div>
                 )}
-                <SheetClose className="cursor-pointer rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                <SheetClose data-tour="close-vacancy-panel" className="cursor-pointer rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                   <X className="size-4" />
                   <span className="sr-only">Close</span>
                 </SheetClose>
@@ -416,7 +416,7 @@ function MultiCVRow({
       {/* Actions */}
       {!entry.loading && (
         <div className="flex items-center gap-1.5 pt-0.5">
-          <Button size="sm" className="flex-1 gap-1.5 h-7 text-[11px]" onClick={onEdit}>
+          <Button size="sm" className="flex-1 gap-1.5 h-7 text-[11px]" onClick={onEdit} data-tour="edit-cv-btn">
             <PencilLine className="size-3" /> Edit CV
           </Button>
           <Button

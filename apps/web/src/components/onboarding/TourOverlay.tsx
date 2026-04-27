@@ -48,6 +48,9 @@ function tooltipPosition(
   if (!rect || position === "center") {
     return { position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)" };
   }
+  if (position === "top-right") {
+    return { position: "fixed", top: 16, left: window.innerWidth - TOOLTIP_W - 16 };
+  }
   const sp = { t: rect.top - PAD, l: rect.left - PAD, w: rect.width + PAD * 2, h: rect.height + PAD * 2 };
   const vw = window.innerWidth;
   const vh = window.innerHeight;
@@ -80,7 +83,7 @@ function tooltipPosition(
 }
 
 export default function TourOverlay() {
-  const { active, stepIndex, current, next: ctxNext, prev: ctxPrev, skip } = useTour();
+  const { active, stepIndex, current, next: ctxNext, prev: ctxPrev, skip, goTo: ctxGoTo } = useTour();
   const rect = useTargetRect(active && current ? current.target : null, active);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [tooltipH, setTooltipH] = useState(200);
@@ -95,8 +98,36 @@ export default function TourOverlay() {
 
   const prev = useCallback(() => {
     enteredViaBack.current = true;
+
+    // Back from click_job: skip the invisible "searching" step → go to hit_search
+    if (current?.id === "click_job") {
+      ctxGoTo(TOUR_STEPS.findIndex((s) => s.id === "hit_search"));
+      return;
+    }
+
+    // Back from vacancy_overview: close the vacancy panel first
+    if (current?.id === "vacancy_overview") {
+      (document.querySelector("[data-tour='close-vacancy-panel']") as HTMLElement | null)?.click();
+      ctxPrev();
+      return;
+    }
+
+    // Back from workspace_form: close the CV editor dialog
+    if (current?.id === "workspace_form") {
+      (document.querySelector("[data-slot='dialog-close']") as HTMLElement | null)?.click();
+      ctxPrev();
+      return;
+    }
+
+    // Back from workspace_ats: close the ATS panel (it was auto-opened on enter)
+    if (current?.id === "workspace_ats") {
+      (document.querySelector("[data-tour='close-ats-panel']") as HTMLElement | null)?.click();
+      ctxPrev();
+      return;
+    }
+
     ctxPrev();
-  }, [ctxPrev]);
+  }, [ctxPrev, ctxGoTo, current?.id]);
 
   useLayoutEffect(() => {
     if (tooltipRef.current) {
@@ -106,16 +137,27 @@ export default function TourOverlay() {
 
   // ── DOM watchers ─────────────────────────────────────────────────────────
 
-  // TYPE_SEARCH: advance when input has ≥2 chars — only if entered going forward
+  // TYPE_SEARCH: auto-fill "Marketing Manager", then advance when ≥2 chars detected
   useEffect(() => {
     if (!active || current?.id !== "type_search") return;
+
+    // Auto-fill the input if it's empty (don't overwrite user's own query)
+    const t = setTimeout(() => {
+      const el = document.querySelector("[data-tour='search-input']") as HTMLInputElement | null;
+      if (!el || el.value.trim().length >= 2) return;
+      const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+      nativeSetter?.call(el, "Marketing Manager");
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    }, 350);
+
     let called = false;
     const iv = setInterval(() => {
       if (called || enteredViaBack.current) return;
       const el = document.querySelector("[data-tour='search-input']") as HTMLInputElement | null;
       if (el && el.value.trim().length >= 2) { called = true; next(); }
     }, 300);
-    return () => clearInterval(iv);
+
+    return () => { clearTimeout(t); clearInterval(iv); };
   }, [active, current?.id, next]);
 
   // HIT_SEARCH: advance when search button becomes disabled (live) or results appear (cached)
@@ -159,6 +201,37 @@ export default function TourOverlay() {
     }, 300);
     return () => clearInterval(iv);
   }, [active, current?.id, next]);
+
+  // CV_ANALYZED: advance when edit-cv-btn appears (analysis finished)
+  useEffect(() => {
+    if (!active || current?.id !== "cv_analyzed") return;
+    let called = false;
+    const iv = setInterval(() => {
+      if (called || enteredViaBack.current) return;
+      if (document.querySelector("[data-tour='edit-cv-btn']")) { called = true; next(); }
+    }, 400);
+    return () => clearInterval(iv);
+  }, [active, current?.id, next]);
+
+  // CV_EDIT: advance when CV workspace form mounts (editor opened)
+  useEffect(() => {
+    if (!active || current?.id !== "cv_edit") return;
+    let called = false;
+    const iv = setInterval(() => {
+      if (called || enteredViaBack.current) return;
+      if (document.querySelector("[data-tour='workspace-cv-form']")) { called = true; next(); }
+    }, 400);
+    return () => clearInterval(iv);
+  }, [active, current?.id, next]);
+
+  // WORKSPACE_ATS: auto-open the ATS panel if it isn't already open
+  useEffect(() => {
+    if (!active || current?.id !== "workspace_ats") return;
+    if (!document.querySelector("[data-tour='workspace-ats-panel']")) {
+      const btn = document.querySelector("[data-tour='workspace-ats-btn']") as HTMLElement | null;
+      btn?.click();
+    }
+  }, [active, current?.id]);
 
   if (!active || !current) return null;
 
@@ -253,7 +326,7 @@ export default function TourOverlay() {
             {isForced && (
               <p className="text-xs text-primary font-medium flex items-center gap-1.5">
                 <span className="inline-block size-1.5 rounded-full bg-primary animate-pulse" />
-                {current.id === "type_search" ? "Type something to continue…" : "Click to continue…"}
+                {current.id === "cv_edit" ? "Click Edit CV or hit Next to open the editor…" : "Click to continue…"}
               </p>
             )}
 
@@ -307,6 +380,23 @@ export default function TourOverlay() {
                       next();
                     } else {
                       const btn = document.querySelector("[data-tour='view-details-btn']") as HTMLElement | null;
+                      btn?.click();
+                    }
+                  }}
+                >
+                  Next <ArrowRight className="size-3 ml-1" />
+                </Button>
+              ) : current.id === "cv_edit" ? (
+                <Button
+                  size="sm"
+                  className="h-7 text-xs px-3"
+                  onClick={() => {
+                    enteredViaBack.current = false;
+                    // If editor already open (e.g. backed in), advance directly
+                    if (document.querySelector("[data-tour='workspace-cv-form']")) {
+                      next();
+                    } else {
+                      const btn = document.querySelector("[data-tour='edit-cv-btn']") as HTMLElement | null;
                       btn?.click();
                     }
                   }}

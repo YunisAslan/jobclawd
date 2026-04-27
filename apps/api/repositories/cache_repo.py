@@ -8,7 +8,7 @@ from typing import Optional
 
 from db.database import get_db
 
-CACHE_TTL_HOURS = 1
+CACHE_TTL_HOURS = 24
 
 
 def get_cached_result(filters_hash: str) -> Optional[dict]:

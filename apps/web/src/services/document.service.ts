@@ -14,10 +14,10 @@ class DocumentService extends APIService {
     super(API_BASE_URL);
   }
 
-  async parseCv(cv_url: string): Promise<{ data: CVData; cv_name: string }> {
+  async parseCv(cv_url: string, demo?: boolean): Promise<{ data: CVData; cv_name: string }> {
     const res = await this.post(
       ENDPOINTS.DOCUMENT_PARSE,
-      { cv_url },
+      { cv_url, ...(demo ? { demo: true } : {}) },
       { headers: getAuthHeader(), timeout: 60000 },
     );
     return res.data;

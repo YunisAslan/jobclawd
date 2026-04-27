@@ -29,6 +29,10 @@ _ALLOWED_HOSTS = ["jobsearch.az", "linkedin.com", "indeed.com", "az.indeed.com"]
 
 @router.post("/search", response_model=SearchResponse)
 async def search_jobs(request: SearchRequest, email: Optional[str] = Depends(get_optional_email)):
+    if request.demo:
+        from demo.demo_data import DEMO_SEARCH_RESULT
+        return DEMO_SEARCH_RESULT
+
     sources = request.sources if request.sources else [JobSource.jobsearch, JobSource.linkedin, JobSource.indeed]
 
     # Check credits before searching (only matters for cache misses, checked after)
@@ -75,6 +79,18 @@ async def search_jobs(request: SearchRequest, email: Optional[str] = Depends(get
 @router.post("/search/stream")
 async def search_jobs_stream(request: SearchRequest, email: Optional[str] = Depends(get_optional_email)):
     """SSE endpoint that streams progress events during search."""
+    if request.demo:
+        from demo.demo_data import DEMO_SEARCH_RESULT
+
+        async def demo_stream():
+            yield f"data: {json.dumps({'stage': 'done', 'data': json.loads(DEMO_SEARCH_RESULT.model_dump_json())}, ensure_ascii=False)}\n\n"
+
+        return StreamingResponse(
+            demo_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+        )
+
     sources = request.sources if request.sources else [JobSource.jobsearch, JobSource.linkedin, JobSource.indeed]
 
     if email:

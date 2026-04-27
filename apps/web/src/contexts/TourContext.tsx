@@ -24,7 +24,7 @@ export interface TourStep {
   target: string | null;          // CSS selector for spotlight
   title: string;
   content: string;
-  position: "top" | "bottom" | "left" | "right" | "center";
+  position: "top" | "bottom" | "left" | "right" | "center" | "top-right";
   // How this step advances
   advance: "button" | "dom_watch"; // button = user clicks Next/Done, dom_watch = auto via DOM
   watchFor?: string;               // selector to appear/be-disabled for dom_watch
@@ -37,7 +37,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: "welcome",
     target: null,
     title: "Welcome to JobClawd 👋",
-    content: "Let's walk through the platform together. It takes about a minute and you'll actually search for real jobs.",
+    content: "This is a quick guided tour — purely for demonstration. We'll use example data so nothing real is searched or submitted, no credits are spent, and nothing is saved to your account. It takes about a minute.",
     position: "center",
     advance: "button",
   },
@@ -45,26 +45,25 @@ export const TOUR_STEPS: TourStep[] = [
     id: "type_search",
     target: "[data-tour='search-input']",
     title: "Search for a job",
-    content: "Type a job title to get started — e.g. \"Frontend Developer\" or \"Marketing Manager\".",
+    content: "We've pre-filled \"Marketing Manager\" for you — feel free to change it. The tour will continue automatically.",
     position: "bottom",
     advance: "dom_watch",
     watchFor: "[data-tour='search-input']",
     watchMode: "value",
-    forced: true,
   },
   {
     id: "fill_profile",
     target: "[data-tour='fill-profile-btn']",
     title: "Fill from your profile",
-    content: "This button fills the search query and all filters automatically from your saved profile — title, location, experience level.",
+    content: "In real use, this button pre-fills the query and all filters — job title, location, experience level — straight from your saved profile. No need to type anything manually.",
     position: "bottom",
     advance: "button",
   },
   {
     id: "hit_search",
     target: "[data-tour='search-btn']",
-    title: "Now search!",
-    content: "Click Search to find matching jobs across LinkedIn, Indeed, and jobsearch.az.",
+    title: "Run the search",
+    content: "Click Search to find Marketing Manager roles across LinkedIn, Indeed, and jobsearch.az — all at once. For the demo, results load instantly.",
     position: "bottom",
     advance: "dom_watch",
     watchFor: "[data-tour='search-btn']",
@@ -75,7 +74,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: "searching",
     target: "[data-tour='feed-filter']",
     title: "Searching 3 sources…",
-    content: "We're scraping LinkedIn, Indeed, and jobsearch.az simultaneously. Results take 15–30 seconds because we fetch live listings in real time.",
+    content: "In production, JobClawd scrapes all three sources in parallel — this normally takes 15–30 seconds. For this tour we're using demo results so you don't have to wait.",
     position: "bottom",
     advance: "dom_watch",
     watchFor: "[data-tour='first-job-card']",
@@ -84,8 +83,8 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "click_job",
     target: "[data-tour='first-job-card']",
-    title: "A job appeared!",
-    content: "Click the View Details button on this card to open the full vacancy — description, match score, and AI analysis.",
+    title: "Marketing Manager at GrowthBridge",
+    content: "This card shows the role, company, salary range, and your AI match score. Click View Details to open the full vacancy — description, requirements, and match breakdown.",
     position: "right",
     advance: "dom_watch",
     watchFor: "[data-tour='vacancy-panel']",
@@ -95,32 +94,32 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "vacancy_overview",
     target: "[data-tour='vacancy-overview-tab']",
-    title: "Job overview",
-    content: "Here you'll find key details — location, work mode, salary, and the full job description. The match score card shows how closely this role fits your profile.",
+    title: "Vacancy overview",
+    content: "Full details for the Marketing Manager role at GrowthBridge — location, work mode, salary, and the complete job description. The match score card breaks down how well your profile aligns.",
     position: "left",
     advance: "button",
   },
   {
     id: "vacancy_improve",
     target: "[data-tour='vacancy-improve-tab']",
-    title: "Improve your CV",
-    content: "Switch to this tab to analyze your CV against the job and get AI-powered suggestions.",
+    title: "Improve your CV for this role",
+    content: "Switch here to analyze your CV specifically against the Marketing Manager vacancy and get targeted AI suggestions.",
     position: "left",
     advance: "button",
   },
   {
     id: "cv_upload",
     target: "[data-tour='cv-selector-area']",
-    title: "Upload or select a CV",
-    content: "If you haven't added a CV yet, click Upload file to import a PDF or DOCX. Already have one? Pick it from the dropdown, then hit Analyze CV to get your match score and tailored suggestions.",
+    title: "Select your CV",
+    content: "Pick an existing CV from the dropdown or upload a new PDF/DOCX. Then click Analyze CV to score it against this Marketing Manager role.",
     position: "left",
     advance: "button",
   },
   {
     id: "cv_analyzed",
     target: "[data-tour='cv-selector-area']",
-    title: "Analyzing your CV…",
-    content: "Hold tight — we're scoring your CV against this job description. Results will appear in a moment.",
+    title: "Analyzing against the role…",
+    content: "Scoring your CV against the Marketing Manager requirements at GrowthBridge. Demo results appear instantly.",
     position: "left",
     advance: "dom_watch",
     watchFor: "[data-tour='edit-cv-btn']",
@@ -129,8 +128,8 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "cv_edit",
     target: "[data-tour='edit-cv-btn']",
-    title: "CV scored!",
-    content: "Your CV has been matched against the job. Click Edit CV to open the full editor and apply AI-powered improvements.",
+    title: "CV scored — 74% match",
+    content: "Your CV has been matched against the Marketing Manager role. Click Edit CV (or Next) to open the editor — update sections, review AI suggestions, and check your improved score.",
     position: "left",
     advance: "dom_watch",
     watchFor: "[data-tour='workspace-cv-form']",
@@ -139,33 +138,33 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "workspace_form",
-    target: null,
+    target: "[data-tour='workspace-cv-form']",
     title: "CV Editor",
-    content: "This is the structured CV editor. Click any field to update your personal info, work experience, education, skills, and more. All changes update the ATS preview in real time.",
-    position: "center",
-    advance: "button",
-  },
-  {
-    id: "workspace_ats",
-    target: "[data-tour='workspace-ats-btn']",
-    title: "ATS Preview",
-    content: "This live preview shows exactly how an ATS system reads your CV. Hover over any area to magnify it. It updates instantly as you type.",
-    position: "bottom",
+    content: "Edit any section — personal info, work experience, skills, education — to better match the Marketing Manager role. Every change updates the ATS preview on the right in real time.",
+    position: "top-right",
     advance: "button",
   },
   {
     id: "workspace_suggestions",
     target: "[data-tour='workspace-suggestions']",
     title: "AI Suggestions",
-    content: "AI-powered improvements tailored to this specific job. Accept suggestions to apply them, decline ones that don't fit, or hit Apply All to accept everything at once.",
+    content: "3 targeted suggestions for the Marketing Manager role at GrowthBridge: add HubSpot, quantify campaign results, and include OKR keywords. Accept individually or hit Apply All — each one bumps your match score.",
     position: "right",
+    advance: "button",
+  },
+  {
+    id: "workspace_ats",
+    target: "[data-tour='workspace-ats-panel']",
+    title: "ATS Preview",
+    content: "This is exactly how an Applicant Tracking System reads your CV. Hover any section to magnify it. Updates live as you type or accept suggestions.",
+    position: "left",
     advance: "button",
   },
   {
     id: "workspace_check_impact",
     target: "[data-tour='workspace-check-impact-btn']",
     title: "Check Impact",
-    content: "After accepting suggestions or making edits, click Check Impact to re-score your CV — see exactly how your changes improved your match percentage before downloading.",
+    content: "After accepting suggestions or editing sections, click Check Impact to re-score your CV against the Marketing Manager role — see exactly how many points you gained before downloading.",
     position: "bottom",
     advance: "button",
   },
@@ -180,11 +179,12 @@ interface TourContextValue {
   next: () => void;
   prev: () => void;
   skip: () => void;
+  goTo: (idx: number) => void;
 }
 
 const TourContext = createContext<TourContextValue>({
   active: false, stepIndex: 0, current: null, tabHint: null,
-  start: () => {}, next: () => {}, prev: () => {}, skip: () => {},
+  start: () => {}, next: () => {}, prev: () => {}, skip: () => {}, goTo: () => {},
 });
 
 export function TourProvider({ children, onFinish }: { children: ReactNode; onFinish: () => void }) {
@@ -202,6 +202,10 @@ export function TourProvider({ children, onFinish }: { children: ReactNode; onFi
   }, [onFinish]);
 
   const prev = useCallback(() => setStepIndex((s) => Math.max(0, s - 1)), []);
+
+  const goTo = useCallback((idx: number) => {
+    setStepIndex(Math.max(0, Math.min(idx, TOUR_STEPS.length - 1)));
+  }, []);
 
   const skip = useCallback(() => { setActive(false); onFinish(); }, [onFinish]);
 
@@ -222,7 +226,7 @@ export function TourProvider({ children, onFinish }: { children: ReactNode; onFi
     <TourContext.Provider value={{
       active, stepIndex, tabHint,
       current: active ? TOUR_STEPS[stepIndex] : null,
-      start, next, prev, skip,
+      start, next, prev, skip, goTo,
     }}>
       {children}
     </TourContext.Provider>

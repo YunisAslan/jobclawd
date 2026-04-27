@@ -79,6 +79,9 @@ async def cv_analysis_bundle(
     request: CVMatchRequest,
     email: str = Depends(get_current_email),
 ):
+    if request.demo:
+        from demo.demo_data import DEMO_CV_BUNDLE
+        return DEMO_CV_BUNDLE
     return await analyze_cv_bundle(request.job_url, request.cv_url, email=email, cv_name=request.cv_name)
 
 

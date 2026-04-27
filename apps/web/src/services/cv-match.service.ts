@@ -56,10 +56,10 @@ class CVMatchService extends APIService {
     };
   }
 
-  async getBundle(job_url: string, cv_url: string, cv_name?: string): Promise<CVAnalysisBundleResponse> {
+  async getBundle(job_url: string, cv_url: string, cv_name?: string, demo?: boolean): Promise<CVAnalysisBundleResponse> {
     const res = await this.post(
       ENDPOINTS.CV_ANALYSIS_BUNDLE,
-      { job_url, cv_url, cv_name: cv_name ?? "" },
+      { job_url, cv_url, cv_name: cv_name ?? "", ...(demo ? { demo: true } : {}) },
       { headers: getAuthHeader(), timeout: 60000 },
     );
     return res.data;

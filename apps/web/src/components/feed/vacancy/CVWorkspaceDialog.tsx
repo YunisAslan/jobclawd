@@ -363,7 +363,7 @@ export default function CVWorkspaceDialog({
 
             {/* ATS Preview panel */}
             {miniPreviewOpen && cvData && (
-              <div className="w-72 shrink-0 border-l border-border/50 bg-background flex flex-col overflow-hidden">
+              <div className="w-72 shrink-0 border-l border-border/50 bg-background flex flex-col overflow-hidden" data-tour="workspace-ats-panel">
                 <div className="flex items-center justify-between px-3 py-2 border-b border-border/40 shrink-0">
                   <div className="flex items-center gap-1.5">
                     <ScanEye className="size-3.5 text-primary" />
@@ -377,6 +377,7 @@ export default function CVWorkspaceDialog({
                     onClick={() => setMiniPreviewOpen(false)}
                     className="size-6"
                     aria-label="Close preview"
+                    data-tour="close-ats-panel"
                   >
                     <X className="size-3.5" />
                   </Button>
