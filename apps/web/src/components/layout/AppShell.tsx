@@ -57,11 +57,13 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
 
-  const handleTourFinish = useCallback(() => {
+  const handleTourFinish = useCallback((demoMode: boolean) => {
     // Remove demo search results so real searches fetch fresh data after the tour
-    queryClient.removeQueries({
-      predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === "feed" && q.queryKey.includes("__demo__"),
-    });
+    if (demoMode) {
+      queryClient.removeQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === "feed" && q.queryKey.includes("__demo__"),
+      });
+    }
   }, [queryClient]);
 
   return (

@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowRight, ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, ArrowLeft, Sparkles, Database, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useTour, TOUR_STEPS } from "@/contexts/TourContext";
 import { cn } from "@/lib/utils";
@@ -82,8 +83,12 @@ function tooltipPosition(
   return { position: "fixed", top: sp.t + sp.h + OFF, left };
 }
 
+// Number of visible tour steps (excludes mode_choice from the progress counter)
+const VISIBLE_STEPS = TOUR_STEPS.length - 1;
+
 export default function TourOverlay() {
-  const { active, stepIndex, current, next: ctxNext, prev: ctxPrev, skip, goTo: ctxGoTo } = useTour();
+  const { active, stepIndex, current, next: ctxNext, prev: ctxPrev, skip, goTo: ctxGoTo, demoMode, chooseDemoMode } = useTour();
+  const router = useRouter();
   const rect = useTargetRect(active && current ? current.target : null, active);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [tooltipH, setTooltipH] = useState(200);
@@ -119,13 +124,6 @@ export default function TourOverlay() {
       return;
     }
 
-    // Back from workspace_ats: close the ATS panel (it was auto-opened on enter)
-    if (current?.id === "workspace_ats") {
-      (document.querySelector("[data-tour='close-ats-panel']") as HTMLElement | null)?.click();
-      ctxPrev();
-      return;
-    }
-
     ctxPrev();
   }, [ctxPrev, ctxGoTo, current?.id]);
 
@@ -137,11 +135,9 @@ export default function TourOverlay() {
 
   // ── DOM watchers ─────────────────────────────────────────────────────────
 
-  // TYPE_SEARCH: auto-fill "Marketing Manager", then advance when ≥2 chars detected
+  // TYPE_SEARCH: in demo mode auto-fill "Marketing Manager" — no auto-advance, user clicks Next
   useEffect(() => {
-    if (!active || current?.id !== "type_search") return;
-
-    // Auto-fill the input if it's empty (don't overwrite user's own query)
+    if (!active || current?.id !== "type_search" || !demoMode) return;
     const t = setTimeout(() => {
       const el = document.querySelector("[data-tour='search-input']") as HTMLInputElement | null;
       if (!el || el.value.trim().length >= 2) return;
@@ -149,36 +145,8 @@ export default function TourOverlay() {
       nativeSetter?.call(el, "Marketing Manager");
       el.dispatchEvent(new Event("input", { bubbles: true }));
     }, 350);
-
-    let called = false;
-    const iv = setInterval(() => {
-      if (called || enteredViaBack.current) return;
-      const el = document.querySelector("[data-tour='search-input']") as HTMLInputElement | null;
-      if (el && el.value.trim().length >= 2) { called = true; next(); }
-    }, 300);
-
-    return () => { clearTimeout(t); clearInterval(iv); };
-  }, [active, current?.id, next]);
-
-  // HIT_SEARCH: advance when search button becomes disabled (live) or results appear (cached)
-  useEffect(() => {
-    if (!active || current?.id !== "hit_search") return;
-    let called = false;
-
-    const iv = setInterval(() => {
-      if (called || enteredViaBack.current) return;
-      if (document.querySelector("[data-tour='first-job-card']")) { called = true; next(); }
-    }, 300);
-
-    const btn = document.querySelector("[data-tour='search-btn']");
-    const mo = btn ? new MutationObserver(() => {
-      if (called || enteredViaBack.current) return;
-      if (btn.hasAttribute("disabled")) { called = true; next(); }
-    }) : null;
-    mo?.observe(btn!, { attributes: true, attributeFilter: ["disabled"] });
-
-    return () => { clearInterval(iv); mo?.disconnect(); };
-  }, [active, current?.id, next]);
+    return () => clearTimeout(t);
+  }, [active, current?.id, demoMode]);
 
   // SEARCHING: advance when first job card appears
   useEffect(() => {
@@ -213,16 +181,37 @@ export default function TourOverlay() {
     return () => clearInterval(iv);
   }, [active, current?.id, next]);
 
-  // CV_EDIT: advance when CV workspace form mounts (editor opened)
+  // CV_EDIT: advance when CV workspace form mounts (editor opened).
+  // Also listens for a click on the physical Edit CV button so the tour advances
+  // even if the user clicks the panel button instead of the tour's Next button.
   useEffect(() => {
     if (!active || current?.id !== "cv_edit") return;
     let called = false;
+
+    const editBtn = document.querySelector("[data-tour='edit-cv-btn']");
+    const handleEditClick = () => { enteredViaBack.current = false; };
+    editBtn?.addEventListener("click", handleEditClick);
+
     const iv = setInterval(() => {
       if (called || enteredViaBack.current) return;
       if (document.querySelector("[data-tour='workspace-cv-form']")) { called = true; next(); }
     }, 400);
-    return () => clearInterval(iv);
+
+    return () => {
+      clearInterval(iv);
+      editBtn?.removeEventListener("click", handleEditClick);
+    };
   }, [active, current?.id, next]);
+
+  // WORKSPACE_SUGGESTIONS: auto-trigger "Generate suggestions" on step entry if not yet loaded
+  useEffect(() => {
+    if (!active || current?.id !== "workspace_suggestions") return;
+    const t = setTimeout(() => {
+      const btn = document.querySelector("[data-tour='generate-suggestions-btn']") as HTMLElement | null;
+      btn?.click();
+    }, 200);
+    return () => clearTimeout(t);
+  }, [active, current?.id]);
 
   // WORKSPACE_ATS: auto-open the ATS panel if it isn't already open
   useEffect(() => {
@@ -233,11 +222,158 @@ export default function TourOverlay() {
     }
   }, [active, current?.id]);
 
+  // WORKSPACE_CHECK_IMPACT: auto-click Check Impact so the result modal shows on entry
+  useEffect(() => {
+    if (!active || current?.id !== "workspace_check_impact") return;
+    const t = setTimeout(() => {
+      const btn = document.querySelector("[data-tour='workspace-check-impact-btn']") as HTMLElement | null;
+      btn?.click();
+    }, 200);
+    return () => clearTimeout(t);
+  }, [active, current?.id]);
+
   if (!active || !current) return null;
 
   // While search is running, hide the overlay entirely so the user can watch
   // results stream in normally. The DOM watcher will call next() when they appear.
   if (current.id === "searching") return null;
+
+  // ── Mode choice screen ───────────────────────────────────────────────────
+
+  if (current.id === "mode_choice") {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]">
+        <div className="w-full max-w-125 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+
+          <div className="h-0.5 bg-muted" />
+
+          <div className="px-6 pt-6 pb-2">
+            <h2 className="text-lg font-bold text-foreground">{current.title}</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              How would you like to take this tour?
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 p-4">
+
+            {/* Demo option */}
+            <button
+              type="button"
+              onClick={() => chooseDemoMode(true)}
+              className="cursor-pointer group flex flex-col gap-3 rounded-xl border-2 border-border hover:border-primary/60 bg-muted/20 hover:bg-primary/5 p-4 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <div className="size-10 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
+                <Sparkles className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-foreground">Demo tour</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Pre-filled example data
+                </p>
+              </div>
+              <ul className="space-y-1 mt-auto">
+                {[
+                  "Nothing saved to your account",
+                  "No credits used",
+                  "~1 minute, risk-free",
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                    <span className="mt-0.75 size-1 rounded-full bg-muted-foreground/40 shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-1 text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                Start demo →
+              </div>
+            </button>
+
+            {/* Real data option */}
+            <button
+              type="button"
+              onClick={() => chooseDemoMode(false)}
+              className="cursor-pointer group flex flex-col gap-3 rounded-xl border-2 border-border hover:border-primary/60 bg-muted/20 hover:bg-primary/5 p-4 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <div className="size-10 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
+                <Database className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-foreground">My own data</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Your real CV & job searches
+                </p>
+              </div>
+              <ul className="space-y-1 mt-auto">
+                {[
+                  "Results saved to your account",
+                  "Uses 1 search credit",
+                  "See your actual match scores",
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                    <span className="mt-0.75 size-1 rounded-full bg-muted-foreground/40 shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-1 text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                Use my data →
+              </div>
+            </button>
+
+          </div>
+
+          <div className="flex justify-center pb-5">
+            <button
+              type="button"
+              onClick={skip}
+              className="text-xs text-muted-foreground/50 hover:text-muted-foreground underline underline-offset-2 transition-colors"
+            >
+              Skip tour
+            </button>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  // ── Tour complete screen ─────────────────────────────────────────────────
+
+  if (current.id === "tour_complete") {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]">
+        <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+          <div className="h-0.5 bg-primary" />
+          <div className="px-6 pt-7 pb-6 flex flex-col items-center text-center gap-4">
+            <div className="size-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <Sparkles className="size-7 text-primary" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-lg font-bold text-foreground">{current.title}</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">{current.content}</p>
+            </div>
+            <div className="flex flex-col gap-2 w-full pt-1">
+              <Button
+                className="w-full gap-2"
+                onClick={() => { skip(); router.push("/dashboard"); }}
+              >
+                Go to Dashboard <ArrowRight className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full text-xs text-muted-foreground"
+                onClick={skip}
+              >
+                Stay here
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Regular tour steps ───────────────────────────────────────────────────
 
   const isCenter = !current.target || current.position === "center";
   const sp = rect
@@ -245,10 +381,10 @@ export default function TourOverlay() {
     : null;
 
   const tipStyle = tooltipPosition(rect, current.position, tooltipH);
-  const isFirst = stepIndex === 0;
+
+  // stepIndex 0 = mode_choice (not shown here), so visible progress starts at index 1
+  const visibleIndex = stepIndex - 1;
   const isLast = stepIndex === TOUR_STEPS.length - 1;
-  const isForced = current.forced;
-  const showNextBtn = current.advance === "button";
 
   return (
     <>
@@ -272,19 +408,14 @@ export default function TourOverlay() {
       {/* Spotlight ring — z-[60] so it appears above Radix Sheet (z-50) */}
       {!isCenter && sp && (
         <div
-          className={cn("fixed rounded-xl pointer-events-none", isForced && "animate-pulse")}
+          className="fixed rounded-xl pointer-events-none"
           style={{
             zIndex: 60,
             top: sp.t, left: sp.l, width: sp.w, height: sp.h,
-            boxShadow: `0 0 0 2px var(--primary)${isForced ? ", 0 0 16px 2px color-mix(in srgb, var(--primary) 40%, transparent)" : ""}`,
+            boxShadow: "0 0 0 2px var(--primary)",
             transition: "top 0.3s ease, left 0.3s ease, width 0.3s ease, height 0.3s ease",
           }}
         />
-      )}
-
-      {/* Backdrop click-through for auto steps */}
-      {!isForced && !showNextBtn && (
-        <div className="fixed inset-0 cursor-pointer" style={{ zIndex: 55 }} onClick={next} />
       )}
 
       {/* Tooltip card — z-[70] so it's always above Sheet overlay (z-50) */}
@@ -296,11 +427,11 @@ export default function TourOverlay() {
       >
         <div className="bg-card border border-border rounded-xl shadow-2xl overflow-hidden">
 
-          {/* Progress bar */}
+          {/* Progress bar — counts visible steps only (excludes mode_choice) */}
           <div className="h-0.5 bg-muted">
             <div
               className="h-full bg-primary transition-all duration-500"
-              style={{ width: `${((stepIndex + 1) / TOUR_STEPS.length) * 100}%` }}
+              style={{ width: `${((visibleIndex + 1) / VISIBLE_STEPS) * 100}%` }}
             />
           </div>
 
@@ -322,65 +453,88 @@ export default function TourOverlay() {
             {/* Body */}
             <p className="text-xs text-muted-foreground leading-relaxed">{current.content}</p>
 
-            {/* Forced hint */}
-            {isForced && (
-              <p className="text-xs text-primary font-medium flex items-center gap-1.5">
-                <span className="inline-block size-1.5 rounded-full bg-primary animate-pulse" />
-                {current.id === "cv_edit" ? "Click Edit CV or hit Next to open the editor…" : "Click to continue…"}
-              </p>
-            )}
-
             {/* Navigation row */}
             <div className="flex items-center justify-between pt-3 border-t border-border/40">
-              {/* Back — always present, invisible on step 0 */}
+              {/* Back — always present, invisible on first visible step */}
               <Button
                 type="button"
                 variant="ghost"
                 onClick={prev}
                 className={cn(
                   "text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 h-auto p-0",
-                  isFirst && "invisible",
+                  false,
                 )}
               >
                 <ArrowLeft className="size-3" /> Back
               </Button>
 
-              {/* Right side */}
-              {showNextBtn ? (
-                current.id === "cv_upload" ? (
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      const btn = document.querySelector("[data-tour='analyze-cv-btn']") as HTMLElement | null;
-                      btn?.click();
-                      next();
-                    }}
-                    className="h-7 text-xs px-3"
-                  >
-                    Next <ArrowRight className="size-3 ml-1" />
-                  </Button>
-                ) : (
+              {/* Right side — every step has an explicit action */}
+              {current.id === "workspace_suggestions" ? (
+                // Apply all pending suggestions, then advance
                 <Button
                   size="sm"
-                  onClick={next}
                   className="h-7 text-xs px-3"
+                  onClick={() => {
+                    (document.querySelector("[data-tour='apply-all-btn']") as HTMLElement | null)?.click();
+                    next();
+                  }}
                 >
-                  {isLast ? "Done ✓" : <>Next <ArrowRight className="size-3 ml-1" /></>}
+                  Next <ArrowRight className="size-3 ml-1" />
                 </Button>
-                )
+              ) : current.id === "type_search" && demoMode ? (
+                // Demo: re-fill "Marketing Manager" in case the user cleared it, then advance
+                <Button
+                  size="sm"
+                  className="h-7 text-xs px-3"
+                  onClick={() => {
+                    const el = document.querySelector("[data-tour='search-input']") as HTMLInputElement | null;
+                    if (el) {
+                      const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+                      nativeSetter?.call(el, "Marketing Manager");
+                      el.dispatchEvent(new Event("input", { bubbles: true }));
+                    }
+                    next();
+                  }}
+                >
+                  Next <ArrowRight className="size-3 ml-1" />
+                </Button>
+              ) : current.id === "cv_analyzed" ? (
+                // Async wait — show spinner until analysis finishes
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Loader2 className="size-3 animate-spin" /> Analyzing…
+                </div>
+              ) : current.id === "hit_search" ? (
+                <Button
+                  size="sm"
+                  className="h-7 text-xs px-3"
+                  onClick={() => {
+                    (document.querySelector("[data-tour='search-btn']") as HTMLElement | null)?.click();
+                    next();
+                  }}
+                >
+                  Next <ArrowRight className="size-3 ml-1" />
+                </Button>
+              ) : current.id === "cv_upload" ? (
+                <Button
+                  size="sm"
+                  className="h-7 text-xs px-3"
+                  onClick={() => {
+                    (document.querySelector("[data-tour='analyze-cv-btn']") as HTMLElement | null)?.click();
+                    next();
+                  }}
+                >
+                  Next <ArrowRight className="size-3 ml-1" />
+                </Button>
               ) : current.id === "click_job" ? (
                 <Button
                   size="sm"
                   className="h-7 text-xs px-3"
                   onClick={() => {
-                    // Allow the DOM watcher to fire even if we backed into this step
                     enteredViaBack.current = false;
-                    // If panel already open (e.g. backed in), advance directly
                     if (document.querySelector("[data-tour='vacancy-overview-tab']")) {
                       next();
                     } else {
-                      const btn = document.querySelector("[data-tour='view-details-btn']") as HTMLElement | null;
-                      btn?.click();
+                      (document.querySelector("[data-tour='view-details-btn']") as HTMLElement | null)?.click();
                     }
                   }}
                 >
@@ -392,21 +546,19 @@ export default function TourOverlay() {
                   className="h-7 text-xs px-3"
                   onClick={() => {
                     enteredViaBack.current = false;
-                    // If editor already open (e.g. backed in), advance directly
                     if (document.querySelector("[data-tour='workspace-cv-form']")) {
                       next();
                     } else {
-                      const btn = document.querySelector("[data-tour='edit-cv-btn']") as HTMLElement | null;
-                      btn?.click();
+                      (document.querySelector("[data-tour='edit-cv-btn']") as HTMLElement | null)?.click();
                     }
                   }}
                 >
                   Next <ArrowRight className="size-3 ml-1" />
                 </Button>
               ) : (
-                <p className="text-xs text-muted-foreground/50 italic">
-                  {isForced ? "Action required" : "Auto-advancing…"}
-                </p>
+                <Button size="sm" onClick={next} className="h-7 text-xs px-3">
+                  {isLast ? "Done ✓" : <>Next <ArrowRight className="size-3 ml-1" /></>}
+                </Button>
               )}
             </div>
 

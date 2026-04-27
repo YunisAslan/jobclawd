@@ -236,6 +236,7 @@ export default function WorkspaceSuggestions({
                 size="sm"
                 className="gap-1.5 h-7 text-[11px] px-2.5 cursor-pointer flex-1"
                 onClick={handleApplyAll}
+                data-tour="apply-all-btn"
               >
                 <Wand2 className="size-3" />
                 Apply all ({pendingCount})
@@ -314,6 +315,7 @@ export default function WorkspaceSuggestions({
                   size="sm"
                   className="gap-1.5 mt-1"
                   onClick={onGenerateSuggestions}
+                  data-tour="generate-suggestions-btn"
                 >
                   <Sparkles className="size-3.5" />
                   Generate suggestions

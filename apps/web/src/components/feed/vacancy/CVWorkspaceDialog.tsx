@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import type { CVData, CVMatchAnalysis, CVSuggestion, CVSuggestionsResponse } from "@/types";
 import { useTour } from "@/contexts/TourContext";
+import { DEMO_BUNDLE } from "@/lib/tour-demo-data";
 import WorkspaceSuggestions from "./WorkspaceSuggestions";
 import CVStructuredEditor from "./CVStructuredEditor";
 import CVMiniPreview from "./CVMiniPreview";
@@ -533,6 +534,16 @@ function MatchScoreStrip({ cvAnalysis, loadingAnalysis }: { cvAnalysis: CVMatchA
 }
 
 function OriginalFileView({ cvUrl, fileType }: { cvUrl: string; fileType: "pdf" | "docx" | "doc" | "link" }) {
+  if (cvUrl === "__demo__") {
+    return (
+      <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-950 p-8">
+        <pre className="text-xs text-foreground leading-relaxed whitespace-pre-wrap font-mono max-w-2xl mx-auto">
+          {DEMO_BUNDLE.draft.text}
+        </pre>
+      </div>
+    );
+  }
+
   const resolved = resolveCVUrl(cvUrl);
 
   if (fileType === "pdf") {

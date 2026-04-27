@@ -7,7 +7,11 @@ import { jobsService } from "@/services/jobs.service";
 import { cvMatchService } from "@/services/cv-match.service";
 import { analyticsEventsService } from "@/services/analytics-events.service";
 import { useCVMatch } from "@/hooks/use-cv-match";
+import { useTour } from "@/contexts/TourContext";
+import { DEMO_BUNDLE } from "@/lib/tour-demo-data";
 import type { JobListing, CVLink, CVMatchAnalysis } from "@/types";
+
+const DEMO_CV: CVLink = { name: "Marketing_Resume_Demo.pdf", url: "__demo__" };
 
 export type VacancyTab = "overview" | "improve";
 
@@ -21,6 +25,8 @@ export interface MultiCVEntry {
 export function useVacancyPanel(job: JobListing | null) {
   const { profile, setProfile } = useProfile();
   const qc = useQueryClient();
+  const { active: tourActive, demoMode } = useTour();
+  const isDemo = tourActive && demoMode;
 
   const [selectedCV, setSelectedCV] = useState<CVLink | null>(null);
   const [activeTab, setActiveTab] = useState<VacancyTab>("overview");
@@ -36,8 +42,7 @@ export function useVacancyPanel(job: JobListing | null) {
   useEffect(() => {
     if (job) {
       setActiveTab("overview");
-      const firstCV = profile.cv_links?.[0] ?? null;
-      setSelectedCV(firstCV);
+      setSelectedCV(isDemo ? DEMO_CV : (profile.cv_links?.[0] ?? null));
       cvMatch.reset();
       setWorkspaceOpen(false);
       setMultiCVResults([]);
@@ -53,7 +58,9 @@ export function useVacancyPanel(job: JobListing | null) {
   }, [job?.url]);
 
   // If the profile loaded after the panel opened, selectedCV may still be null — auto-select first CV
+  // Skip in demo mode: we always want the demo CV, not the user's real CV.
   useEffect(() => {
+    if (isDemo) return;
     if (job?.url && !selectedCV && profile.cv_links?.[0]) {
       setSelectedCV(profile.cv_links[0]);
     }
@@ -81,7 +88,7 @@ export function useVacancyPanel(job: JobListing | null) {
     hydratedJobUrl.current = job.url;
     if (cachedAnalyses.entries.length === 0) return;
     setMultiCVResults(
-      cachedAnalyses.entries.map((entry) => {
+      cachedAnalyses.entries.map((entry: { cv_url: string; cv_name: string; analysis: CVMatchAnalysis }) => {
         // Prefer the real name from profile (handles old cache entries with hash names)
         const profileCV = profile.cv_links?.find((cv) => cv.url === entry.cv_url);
         return {
@@ -140,6 +147,17 @@ export function useVacancyPanel(job: JobListing | null) {
       }
       return [...prev, entry];
     });
+
+    if (isDemo) {
+      await new Promise((r) => setTimeout(r, 600));
+      setMultiCVResults((prev) =>
+        prev.map((e) =>
+          e.cv.url === cv.url ? { ...e, loading: false, analysis: DEMO_BUNDLE.analysis } : e
+        )
+      );
+      return;
+    }
+
     try {
       const bundle = await cvMatchService.getBundle(job.url, cv.url, cv.name);
       setMultiCVResults((prev) =>
@@ -161,7 +179,7 @@ export function useVacancyPanel(job: JobListing | null) {
         prev.map((e) => (e.cv.url === cv.url ? { ...e, loading: false, error: "Analysis failed. Try again." } : e))
       );
     }
-  }, [job?.url]);
+  }, [job?.url, isDemo]);
 
   const removeCVFromCompare = useCallback((cvUrl: string) => {
     setMultiCVResults((prev) => prev.filter((e) => e.cv.url !== cvUrl));

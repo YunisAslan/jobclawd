@@ -35,7 +35,8 @@ const CREDITS_KEY = ["credits"];
 export function useFeed(filters: Partial<FeedFilterValues>) {
   const { profile } = useProfile();
   const queryClient = useQueryClient();
-  const { active: tourActive } = useTour();
+  const { active: tourActive, demoMode } = useTour();
+  const isDemo = tourActive && demoMode;
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
   const [panelJob, setPanelJob] = useState<JobListing | null>(null);
   const forceRefreshRef = useRef(false);
@@ -55,9 +56,9 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
 
   // Separate cache key for demo (tour) vs real searches so they never collide
   const feedQueryKey = useMemo(
-    () => [...buildQueryKey(filters), tourActive ? "__demo__" : "__live__"],
+    () => [...buildQueryKey(filters), isDemo ? "__demo__" : "__live__"],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(buildQueryKey(filters)), tourActive],
+    [JSON.stringify(buildQueryKey(filters)), isDemo],
   );
 
   // Fetch credits from API
@@ -97,7 +98,7 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
           shouldForce,
           (p) => setProgress(p),
           undefined,
-          tourActive,
+          isDemo,
         );
         // Refetch credits after search (backend deducts on cache miss)
         queryClient.invalidateQueries({ queryKey: CREDITS_KEY });

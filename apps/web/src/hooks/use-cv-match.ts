@@ -3,6 +3,7 @@ import { cvMatchService } from "@/services/cv-match.service";
 import { documentService } from "@/services/document.service";
 import { analyticsEventsService } from "@/services/analytics-events.service";
 import { useTour } from "@/contexts/TourContext";
+import { DEMO_BUNDLE, DEMO_CV_DATA } from "@/lib/tour-demo-data";
 import type { CVData, CVMatchAnalysis, CVSuggestion, CVSuggestionsResponse } from "@/types";
 
 interface CVMatchState {
@@ -40,7 +41,8 @@ interface CVMatchState {
 }
 
 export function useCVMatch() {
-  const { active: tourActive } = useTour();
+  const { active: tourActive, demoMode } = useTour();
+  const isDemo = tourActive && demoMode;
   const [state, setState] = useState<CVMatchState>({
     analysis: null,
     suggestions: null,
@@ -88,7 +90,26 @@ export function useCVMatch() {
       cvName: cvName ?? s.cvName,
     }));
 
-    const bundleResult = await Promise.allSettled([cvMatchService.getBundle(jobUrl, cvUrl, undefined, tourActive)]);
+    if (isDemo) {
+      await new Promise((r) => setTimeout(r, 700));
+      setState((s) => ({
+        ...s,
+        analysis: DEMO_BUNDLE.analysis,
+        suggestions: DEMO_BUNDLE.suggestions,
+        loadingAnalysis: false,
+        loadingSuggestions: false,
+        loadingDraft: false,
+        draftText: DEMO_BUNDLE.draft.text,
+        originalDraftText: DEMO_BUNDLE.draft.text,
+        draftFileName: DEMO_BUNDLE.draft.file_name,
+        errorAnalysis: null,
+        errorSuggestions: null,
+        errorDraft: null,
+      }));
+      return;
+    }
+
+    const bundleResult = await Promise.allSettled([cvMatchService.getBundle(jobUrl, cvUrl, undefined, false)]);
     const bundle = bundleResult[0];
 
     setState((s) => ({
@@ -152,6 +173,21 @@ export function useCVMatch() {
       cvName: cvName ?? s.cvName,
     }));
 
+    if (isDemo) {
+      setState((s) => ({
+        ...s,
+        suggestions: DEMO_BUNDLE.suggestions,
+        loadingSuggestions: false,
+        loadingDraft: false,
+        draftText: DEMO_BUNDLE.draft.text,
+        originalDraftText: DEMO_BUNDLE.draft.text,
+        draftFileName: DEMO_BUNDLE.draft.file_name,
+        errorSuggestions: null,
+        errorDraft: null,
+      }));
+      return;
+    }
+
     const [suggestionsResult, draftResult] = await Promise.allSettled([
       cvMatchService.getSuggestions(jobUrl, cvUrl),
       cvMatchService.getDraft(cvUrl),
@@ -186,9 +222,19 @@ export function useCVMatch() {
   // ── Structured CV parsing & generation ──────────────────────────────────
 
   async function parseCv(cvUrl: string) {
+    if (isDemo) {
+      setState((s) => ({
+        ...s,
+        cvData: DEMO_CV_DATA,
+        originalCvData: DEMO_CV_DATA,
+        draftFileName: DEMO_BUNDLE.draft.file_name,
+        loadingParse: false,
+      }));
+      return;
+    }
     setState((s) => ({ ...s, loadingParse: true }));
     try {
-      const { data, cv_name } = await documentService.parseCv(cvUrl, tourActive);
+      const { data, cv_name } = await documentService.parseCv(cvUrl, false);
       setState((s) => ({
         ...s,
         cvData: data,
@@ -216,6 +262,26 @@ export function useCVMatch() {
 
   async function previewAtsScore(jobUrl: string) {
     if (!state.cvData || !state.analysis) return;
+    if (isDemo) {
+      setState((s) => ({ ...s, loadingAtsPreview: true, atsPreview: null, atsPreviewBaseline: null }));
+      await new Promise((r) => setTimeout(r, 800));
+      const improvedScore = 82;
+      const demoImproved: CVMatchAnalysis = {
+        ...DEMO_BUNDLE.analysis,
+        overall_score: improvedScore,
+        categories: DEMO_BUNDLE.analysis.categories.map((c) => ({
+          ...c,
+          score: Math.min(100, c.score + 6),
+        })),
+      };
+      setState((s) => ({
+        ...s,
+        atsPreviewBaseline: DEMO_BUNDLE.analysis.overall_score,
+        atsPreview: demoImproved,
+        loadingAtsPreview: false,
+      }));
+      return;
+    }
     const editedText = cvDataToText(state.cvData);
     // Determine which CV match categories were actually touched by accepted suggestions
     const touchedMatchCategories = new Set<string>();
@@ -295,6 +361,11 @@ export function useCVMatch() {
   /** Fetch fresh suggestions on demand (bypasses bundle cache — uses /cv-suggestions directly). */
   async function generateSuggestions(jobUrl: string, cvUrl: string) {
     setState((s) => ({ ...s, loadingSuggestions: true, errorSuggestions: null, suggestions: null }));
+    if (isDemo) {
+      await new Promise((r) => setTimeout(r, 500));
+      setState((s) => ({ ...s, suggestions: DEMO_BUNDLE.suggestions, loadingSuggestions: false }));
+      return;
+    }
     try {
       const result = await cvMatchService.getSuggestions(jobUrl, cvUrl);
       setState((s) => ({ ...s, suggestions: result, loadingSuggestions: false }));

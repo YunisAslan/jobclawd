@@ -31,9 +31,11 @@ import CVWorkspaceDialog from "./CVWorkspaceDialog";
 import { useVacancyPanel, type VacancyTab, type MultiCVEntry } from "@/hooks/use-vacancy-panel";
 import { analyticsEventsService } from "@/services/analytics-events.service";
 import { useTour } from "@/contexts/TourContext";
-import type { JobListing } from "@/types";
+import type { JobListing, CVLink } from "@/types";
 import { useLayoutEffect } from "react";
 import Link from "next/link";
+
+const DEMO_CV: CVLink = { name: "Marketing_Resume_Demo.pdf", url: "__demo__" };
 
 interface VacancyPanelProps {
   job: JobListing | null;
@@ -41,7 +43,7 @@ interface VacancyPanelProps {
 }
 
 export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
-  const { active: tourActive, current: tourStep, tabHint } = useTour();
+  const { active: tourActive, current: tourStep, tabHint, demoMode } = useTour();
   // Prevent Radix from closing the sheet when the user clicks the tour tooltip (outside the panel)
   const tourLockOpen = tourActive && [
     "click_job", "vacancy_overview", "vacancy_improve", "cv_upload",
@@ -185,7 +187,7 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
                   {/* CV selector + add to compare */}
                   <div className="space-y-2" data-tour="cv-selector-area">
                     <CVSelector
-                      cvLinks={profile.cv_links ?? []}
+                      cvLinks={tourActive && demoMode ? [DEMO_CV] : (profile.cv_links ?? [])}
                       selectedCV={selectedCV}
                       onChange={setSelectedCV}
                       onUpload={uploadCV}
