@@ -2,6 +2,11 @@
 
 import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from "react";
 
+export const TOUR_SEEN_KEY = "jc_tour_seen";
+export const hasTourBeenSeen = () => typeof window !== "undefined" && !!localStorage.getItem(TOUR_SEEN_KEY);
+export const markTourSeen = () => { if (typeof window !== "undefined") localStorage.setItem(TOUR_SEEN_KEY, "1"); };
+export const clearTourSeen = () => { if (typeof window !== "undefined") localStorage.removeItem(TOUR_SEEN_KEY); };
+
 export type TourStepId =
   | "mode_choice"
   | "type_search"
@@ -152,7 +157,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: "workspace_suggestions",
     target: "[data-tour='workspace-suggestions']",
     title: "AI Suggestions",
-    content: "3 targeted suggestions for the Marketing Manager role at GrowthBridge: add HubSpot, quantify campaign results, and include OKR keywords. Accept individually or hit Apply All — each one bumps your match score.",
+    content: "6 targeted suggestions for the Marketing Manager role at GrowthBridge: rewrite your summary, add HubSpot, quantify results, add paid media impact, OKR keywords, and cross-functional leadership. Accept individually or hit Apply All.",
     realContent: "Targeted AI suggestions for this specific role. Accept them individually or hit Apply All — each one bumps your match score.",
     position: "right",
     advance: "button",

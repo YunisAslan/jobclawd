@@ -96,6 +96,23 @@ export default function TourOverlay() {
   // True when the user navigated *back* into the current step — disables auto-advance
   const enteredViaBack = useRef(false);
 
+  // Poll DOM for async-busy signals so Next can be disabled during in-progress operations
+  const [isBusy, setIsBusy] = useState(false);
+  useEffect(() => {
+    const id = current?.id;
+    const iv = setInterval(() => {
+      if (!active || !id) { setIsBusy(false); return; }
+      if (id === "workspace_suggestions") {
+        setIsBusy(!!document.querySelector("[data-tour='workspace-suggestions'][data-loading]"));
+      } else if (id === "workspace_check_impact") {
+        setIsBusy(!!document.querySelector("[data-tour='workspace-check-impact-btn'][data-loading]"));
+      } else {
+        setIsBusy(false);
+      }
+    }, 150);
+    return () => { clearInterval(iv); setIsBusy(false); };
+  }, [active, current?.id]);
+
   const next = useCallback(() => {
     enteredViaBack.current = false;
     ctxNext();
@@ -232,6 +249,15 @@ export default function TourOverlay() {
     return () => clearTimeout(t);
   }, [active, current?.id]);
 
+  // TOUR_COMPLETE: close CV editor dialog and vacancy panel before showing the final screen
+  useEffect(() => {
+    if (!active || current?.id !== "tour_complete") return;
+    (document.querySelector("[data-slot='dialog-close']") as HTMLElement | null)?.click();
+    setTimeout(() => {
+      (document.querySelector("[data-tour='close-vacancy-panel']") as HTMLElement | null)?.click();
+    }, 150);
+  }, [active, current?.id]);
+
   if (!active || !current) return null;
 
   // While search is running, hide the overlay entirely so the user can watch
@@ -352,21 +378,12 @@ export default function TourOverlay() {
               <h2 className="text-lg font-bold text-foreground">{current.title}</h2>
               <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">{current.content}</p>
             </div>
-            <div className="flex flex-col gap-2 w-full pt-1">
-              <Button
-                className="w-full gap-2"
-                onClick={() => { skip(); router.push("/dashboard"); }}
-              >
-                Go to Dashboard <ArrowRight className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                className="w-full text-xs text-muted-foreground"
-                onClick={skip}
-              >
-                Stay here
-              </Button>
-            </div>
+            <Button
+              className="w-full gap-2 mt-1"
+              onClick={() => { skip(); if (demoMode) router.push("/dashboard/feed"); }}
+            >
+              Done <ArrowRight className="size-4" />
+            </Button>
           </div>
         </div>
       </div>
@@ -470,25 +487,36 @@ export default function TourOverlay() {
 
               {/* Right side — every step has an explicit action */}
               {current.id === "workspace_suggestions" ? (
-                // Apply all pending suggestions, then advance
+                // Apply all pending suggestions then advance; disabled while suggestions are loading
                 <Button
                   size="sm"
                   className="h-7 text-xs px-3"
+                  disabled={isBusy}
                   onClick={() => {
                     (document.querySelector("[data-tour='apply-all-btn']") as HTMLElement | null)?.click();
                     next();
                   }}
                 >
-                  Next <ArrowRight className="size-3 ml-1" />
+                  {isBusy ? <><Loader2 className="size-3 animate-spin mr-1" /> Wait…</> : <>Next <ArrowRight className="size-3 ml-1" /></>}
                 </Button>
-              ) : current.id === "type_search" && demoMode ? (
-                // Demo: re-fill "Marketing Manager" in case the user cleared it, then advance
+              ) : current.id === "workspace_check_impact" ? (
+                // Disabled while Check Impact is running
+                <Button
+                  size="sm"
+                  className="h-7 text-xs px-3"
+                  disabled={isBusy}
+                  onClick={next}
+                >
+                  {isBusy ? <><Loader2 className="size-3 animate-spin mr-1" /> Wait…</> : <>Next <ArrowRight className="size-3 ml-1" /></>}
+                </Button>
+              ) : current.id === "type_search" ? (
+                // Fill "Marketing Manager" if input is empty (demo: always refill), then advance
                 <Button
                   size="sm"
                   className="h-7 text-xs px-3"
                   onClick={() => {
                     const el = document.querySelector("[data-tour='search-input']") as HTMLInputElement | null;
-                    if (el) {
+                    if (el && (demoMode || !el.value.trim())) {
                       const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
                       nativeSetter?.call(el, "Marketing Manager");
                       el.dispatchEvent(new Event("input", { bubbles: true }));

@@ -299,6 +299,7 @@ function FeedPageInner() {
       <div className="p-6 space-y-5">
         <div data-tour="feed-filter">
           <FeedFilterForm
+            key={urlFilters.query ?? ""}
             onSubmit={onSearchSubmit}
             onChange={setLocalFilters}
             loading={loading}

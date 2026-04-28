@@ -288,6 +288,7 @@ export default function CVWorkspaceDialog({
                   disabled={loadingAtsPreview || !canCheckImpact}
                   title={!canCheckImpact ? "Edit your CV first to check impact" : undefined}
                   data-tour="workspace-check-impact-btn"
+                  data-loading={loadingAtsPreview || undefined}
                 >
                   {loadingAtsPreview ? (
                     <>

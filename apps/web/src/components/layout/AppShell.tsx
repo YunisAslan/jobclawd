@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import AppSidebar from "@/components/layout/Sidebar";
 import TourOverlay from "@/components/onboarding/TourOverlay";
-import { TourProvider, useTour } from "@/contexts/TourContext";
+import { TourProvider, useTour, hasTourBeenSeen, markTourSeen } from "@/contexts/TourContext";
 import { useAuth } from "@/contexts/AuthContext";
 
 const APP_ROUTES = ["/dashboard", "/feed", "/saved", "/applications", "/profile", "/settings"];
@@ -35,9 +35,9 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
     };
   }, [isApp]);
 
-  // Auto-start tour on every visit
+  // Auto-start tour on first visit only
   useEffect(() => {
-    if (isApp && user) {
+    if (isApp && user && !hasTourBeenSeen()) {
       const t = setTimeout(start, 800);
       return () => clearTimeout(t);
     }
@@ -58,7 +58,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
 
   const handleTourFinish = useCallback((demoMode: boolean) => {
-    // Remove demo search results so real searches fetch fresh data after the tour
+    markTourSeen();
     if (demoMode) {
       queryClient.removeQueries({
         predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === "feed" && q.queryKey.includes("__demo__"),

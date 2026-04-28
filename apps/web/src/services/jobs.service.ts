@@ -1,6 +1,7 @@
 import { APIService } from "@/services/api.service";
 import { API_BASE_URL, ENDPOINTS } from "@/lib/endpoints";
 import { SearchResponse, JobDetail, JobSource, LocationValue } from "@/types";
+import { DEMO_SEARCH_RESPONSE, DEMO_JOB_DETAIL, DEMO_JOB_URL } from "@/lib/tour-demo-data";
 
 function getAuthHeader(): Record<string, string> {
   if (typeof document === "undefined") return {};
@@ -58,6 +59,8 @@ class JobsService extends APIService {
     onPartial?: (result: SearchResponse) => void,
     demo?: boolean,
   ): Promise<SearchResponse> {
+    if (demo) return DEMO_SEARCH_RESPONSE;
+
     const body = {
       query,
       sources,
@@ -126,6 +129,7 @@ class JobsService extends APIService {
   }
 
   async getDetail(url: string): Promise<JobDetail> {
+    if (url === DEMO_JOB_URL) return DEMO_JOB_DETAIL;
     return this.post(ENDPOINTS.JOB_DETAILS, { url }).then((r) => r.data);
   }
 

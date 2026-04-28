@@ -8,7 +8,7 @@ import { cvMatchService } from "@/services/cv-match.service";
 import { analyticsEventsService } from "@/services/analytics-events.service";
 import { useCVMatch } from "@/hooks/use-cv-match";
 import { useTour } from "@/contexts/TourContext";
-import { DEMO_BUNDLE } from "@/lib/tour-demo-data";
+import { DEMO_BUNDLE, DEMO_JOB_URL } from "@/lib/tour-demo-data";
 import type { JobListing, CVLink, CVMatchAnalysis } from "@/types";
 
 const DEMO_CV: CVLink = { name: "Marketing_Resume_Demo.pdf", url: "__demo__" };
@@ -78,7 +78,7 @@ export function useVacancyPanel(job: JobListing | null) {
   const { data: cachedAnalyses } = useQuery({
     queryKey: ["cv-analyses-cache", job?.url],
     queryFn: () => cvMatchService.getCachedResults(job!.url),
-    enabled: !!job?.url,
+    enabled: !!job?.url && !isDemo,
     staleTime: Infinity,
   });
 
@@ -227,7 +227,7 @@ export function useVacancyPanel(job: JobListing | null) {
   const { data: savedCheck } = useQuery({
     queryKey: ["saved-check-single", job?.url],
     queryFn: () => savedVacanciesService.batchCheck([job!.url]),
-    enabled: !!job?.url,
+    enabled: !!job?.url && !isDemo,
     staleTime: 30_000,
   });
   const isSaved = savedCheck?.saved_urls?.includes(job?.url ?? "") ?? false;

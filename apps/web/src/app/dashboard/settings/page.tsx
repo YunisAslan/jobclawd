@@ -1,7 +1,8 @@
 import TopBar from "@/components/layout/TopBar";
 import ChangeEmailSection from "@/components/settings/ChangeEmailSection";
 import DeleteAccountSection from "@/components/settings/DeleteAccountSection";
-import { Mail, ShieldAlert } from "lucide-react";
+import TourSettingsSection from "@/components/settings/TourSettingsSection";
+import { Mail, ShieldAlert, Compass } from "lucide-react";
 
 export default function SettingsPage() {
   return (
@@ -17,6 +18,15 @@ export default function SettingsPage() {
               Manage your account preferences and integrations.
             </p>
           </div>
+
+          {/* ── Guided tour ── */}
+          <SettingsSection
+            icon={<Compass className="size-4" />}
+            title="Guided tour"
+            description="Take the interactive walkthrough to learn how JobClawd works."
+          >
+            <TourSettingsSection />
+          </SettingsSection>
 
           {/* ── Email address ── */}
           <SettingsSection
