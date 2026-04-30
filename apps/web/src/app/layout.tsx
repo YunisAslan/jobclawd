@@ -21,6 +21,7 @@ import { FeedUrlProvider } from "@/contexts/FeedUrlContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { TooltipProvider } from "@/components/ui/Tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { CreditsProvider } from "@/contexts/CreditsContext";
 import QueryProvider from "@/components/providers/QueryProvider";
 import { Toaster } from "sonner";
 
@@ -53,7 +54,8 @@ export default function RootLayout({
           <AuthProvider>
             <ThemeProvider>
               <TooltipProvider delayDuration={200}>
-                <ProfileProvider>
+                <CreditsProvider>
+                  <ProfileProvider>
                   <SidebarShellProvider>
                     <FeedUrlProvider>
                       <AppShell>{children}</AppShell>
@@ -61,6 +63,7 @@ export default function RootLayout({
                     <Toaster position="top-center" richColors />
                   </SidebarShellProvider>
                 </ProfileProvider>
+                  </CreditsProvider>
               </TooltipProvider>
             </ThemeProvider>
           </AuthProvider>

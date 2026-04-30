@@ -167,11 +167,6 @@ async def search_jobs_stream(request: SearchRequest, email: Optional[str] = Depe
     )
 
 
-@router.get("/credits")
-async def get_user_credits(email: str = Depends(get_current_email)):
-    return get_credits(email)
-
-
 @router.post("/job-details", response_model=JobDetailResponse)
 async def get_job_details(request: JobDetailRequest):
     if not any(host in request.url for host in _ALLOWED_HOSTS):

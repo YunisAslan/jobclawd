@@ -16,6 +16,7 @@ from models.schemas import (
     CVSuggestionsResponse,
 )
 from repositories import cv_analysis_cache_repo
+from repositories.credits_repo import use_credits
 from services.cv_analysis_bundle_service import analyze_cv_bundle
 from services.cv_analysis_shared import gather_job_context
 from services.cv_document_service import build_cv_export, extract_cv_draft, infer_cv_filename
@@ -25,12 +26,16 @@ from utils.auth_utils import get_current_email
 
 router = APIRouter(tags=["cv-analysis"])
 
+_ERR_NO_CREDITS = "Not enough credits. Purchase more to continue."
+
 
 @router.post("/cv-match", response_model=CVMatchResponse)
 async def cv_match(
     request: CVMatchRequest,
     email: str = Depends(get_current_email),
 ):
+    if not use_credits(email, 2):
+        raise HTTPException(status_code=402, detail=_ERR_NO_CREDITS)
     result = await compute_cv_match(request.job_url, request.cv_url)
     return result
 
@@ -40,6 +45,8 @@ async def cv_match_preview(
     request: CVMatchTextRequest,
     email: str = Depends(get_current_email),
 ):
+    if not use_credits(email, 2):
+        raise HTTPException(status_code=402, detail=_ERR_NO_CREDITS)
     job_context = await gather_job_context(request.job_url)
     if not job_context:
         raise HTTPException(status_code=400, detail="Could not fetch job details.")
@@ -82,6 +89,13 @@ async def cv_analysis_bundle(
     if request.demo:
         from demo.demo_data import DEMO_CV_BUNDLE
         return DEMO_CV_BUNDLE
+
+    # Only charge on a cache miss (same logic as search)
+    cached = cv_analysis_cache_repo.get_cv_analysis(email, request.cv_url, request.job_url)
+    if not cached:
+        if not use_credits(email, 5):  # bundle = analysis (2) + suggestions (3)
+            raise HTTPException(status_code=402, detail=_ERR_NO_CREDITS)
+
     return await analyze_cv_bundle(request.job_url, request.cv_url, email=email, cv_name=request.cv_name)
 
 
@@ -90,6 +104,8 @@ async def cv_suggestions(
     request: CVSuggestionRequest,
     email: str = Depends(get_current_email),
 ):
+    if not use_credits(email, 3):
+        raise HTTPException(status_code=402, detail=_ERR_NO_CREDITS)
     result = await generate_cv_suggestions(request.job_url, request.cv_url)
     return result
 

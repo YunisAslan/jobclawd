@@ -3,12 +3,12 @@
 import Image from "next/image";
 import logo from "@/assets/logo/jobclawd-logo.svg";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { usePathname } from "next/navigation";
-import { Search, Bookmark, User, Settings, LogOut, BarChart2 } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
+import { Search, Bookmark, User, Settings, LogOut, BarChart2, Zap, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSidebarShell } from "@/contexts/SidebarShellContext";
 import { useFeedUrl } from "@/contexts/FeedUrlContext";
+import { useCredits } from "@/contexts/CreditsContext";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/Tooltip";
 import { Button } from "@/components/ui/Button";
@@ -97,12 +97,36 @@ function NavItem({
   return inner;
 }
 
+function CreditBar({ credits, maxCredits }: { credits: number; maxCredits: number }) {
+  const pct = maxCredits > 0 ? Math.min(100, Math.round((credits / maxCredits) * 100)) : 0;
+  const isLow = pct <= 20;
+  const isMid = pct > 20 && pct <= 50;
+
+  return (
+    <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+      <div
+        className={cn(
+          "h-full rounded-full transition-all duration-500",
+          isLow ? "bg-destructive" : isMid ? "bg-amber-500" : "bg-primary",
+        )}
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  );
+}
+
 export default function AppSidebar() {
   const { open } = useSidebarShell();
   const { resolved: theme } = useTheme();
   const { logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const collapsed = !open;
+  const { credits, maxCredits, isLoading } = useCredits();
+
+  const hasCredits = credits !== null;
+  const pct = hasCredits && maxCredits ? Math.min(100, Math.round((credits! / maxCredits) * 100)) : 0;
+  const isLow = pct <= 20 && hasCredits;
 
   function handleLogout() {
     logout();
@@ -169,6 +193,74 @@ export default function AppSidebar() {
           />
         ))}
       </nav>
+
+      {/* Credits + Upgrade */}
+      <div className="px-2 pb-2 space-y-1">
+        {/* Credit widget — expanded */}
+        {!collapsed && !isLoading && hasCredits && (
+          <div className="px-3 py-2.5 rounded-lg bg-muted/40">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <Zap className={cn("size-3.5 shrink-0", isLow ? "text-destructive" : "text-primary")} />
+                <span className="text-xs font-medium text-foreground">Credits</span>
+              </div>
+              <span className={cn("text-xs font-semibold tabular-nums", isLow ? "text-destructive" : "text-foreground")}>
+                {credits}
+                {maxCredits ? <span className="text-muted-foreground font-normal"> / {maxCredits}</span> : null}
+              </span>
+            </div>
+            <CreditBar credits={credits!} maxCredits={maxCredits ?? credits!} />
+            {isLow && <p className="text-xs text-destructive mt-1.5 font-medium">Running low</p>}
+          </div>
+        )}
+
+        {/* Credit icon — collapsed */}
+        {collapsed && hasCredits && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href="/dashboard/billing"
+                className={cn(
+                  "flex items-center justify-center w-full px-3 py-2.5 rounded-lg transition-colors duration-150",
+                  isLow
+                    ? "text-destructive hover:bg-destructive/10"
+                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                )}
+              >
+                <Zap className="size-4.5 shrink-0" />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>
+              {credits} credits remaining
+            </TooltipContent>
+          </Tooltip>
+        )}
+
+        {/* Upgrade button */}
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href="/dashboard/billing"
+                className="flex items-center justify-center w-full px-3 py-2.5 rounded-lg text-primary/70 hover:text-primary transition-colors duration-150"
+              >
+                <Sparkles className="size-4.5 shrink-0" />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>
+              Get more credits
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <Link
+            href="/dashboard/billing"
+            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium w-full border border-dashed border-primary/30 text-primary/70 hover:border-primary/60 hover:text-primary transition-colors duration-150"
+          >
+            <Sparkles className="size-4 shrink-0" />
+            <span className="whitespace-nowrap overflow-hidden">Get more credits</span>
+          </Link>
+        )}
+      </div>
 
       {/* Logout footer */}
       <div className="border-t border-sidebar-border p-2">

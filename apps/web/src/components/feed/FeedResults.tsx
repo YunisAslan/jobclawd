@@ -77,8 +77,11 @@ function useCacheCountdown(dataUpdatedAt?: number) {
   if (!dataUpdatedAt) return null;
   const remaining = Math.max(0, FEED_STALE_TIME - (now - dataUpdatedAt));
   if (remaining <= 0) return null;
-  const mins = Math.floor(remaining / 60_000);
-  const secs = Math.floor((remaining % 60_000) / 1000);
+  const totalSecs = Math.floor(remaining / 1000);
+  const hours = Math.floor(totalSecs / 3600);
+  const mins = Math.floor((totalSecs % 3600) / 60);
+  const secs = totalSecs % 60;
+  if (hours > 0) return `${hours}h ${mins}m`;
   return `${mins}m ${secs.toString().padStart(2, "0")}s`;
 }
 

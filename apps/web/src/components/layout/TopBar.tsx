@@ -29,6 +29,7 @@ import {
   User,
   Settings,
   LogOut,
+  CreditCard,
 } from "lucide-react";
 
 interface TopBarProps {
@@ -140,13 +141,7 @@ export default function TopBar({ title, action, className }: TopBarProps) {
               >
                 <div className="size-7 rounded-full flex items-center justify-center bg-primary text-primary-foreground text-[11px] font-bold overflow-hidden relative">
                   {avatarUrl ? (
-                    <Image
-                      src={avatarUrl}
-                      alt=""
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
+                    <Image src={avatarUrl} alt="" fill className="object-cover" unoptimized />
                   ) : (
                     initials
                   )}
@@ -170,6 +165,13 @@ export default function TopBar({ title, action, className }: TopBarProps) {
                 <Link href="/dashboard/profile" className="cursor-pointer">
                   <User className="size-4 mr-2" />
                   Profile
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/billing" className="cursor-pointer">
+                  <CreditCard className="size-4 mr-2" />
+                  Billing & Credits
                 </Link>
               </DropdownMenuItem>
 
