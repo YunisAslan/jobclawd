@@ -239,6 +239,38 @@
   100% { transform: scale(1.6);  opacity: 0; }
 }
 
+@keyframes star-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.15; }
+}
+
+@keyframes fill-bar {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
+@keyframes marquee-x {
+  from { transform: translateX(0); }
+  to   { transform: translateX(calc(-100% - var(--gap))); }
+}
+
+@keyframes marquee-y {
+  from { transform: translateY(0); }
+  to   { transform: translateY(calc(-100% - var(--gap))); }
+}
+
+@layer utilities {
+  .animate-marquee {
+    animation: marquee-x var(--duration, 40s) linear infinite;
+  }
+  .animate-marquee-reverse {
+    animation: marquee-x var(--duration, 40s) linear infinite reverse;
+  }
+  .animate-marquee-vertical {
+    animation: marquee-y var(--duration, 40s) linear infinite;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -247,6 +279,7 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-body);
+    scroll-behavior: smooth;
   }
 
   input:-webkit-autofill,
