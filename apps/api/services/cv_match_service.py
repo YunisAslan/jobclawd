@@ -24,7 +24,7 @@ You are a CV-to-job match analyzer. You compare a candidate's CV against a job l
 Analyze across these 4 categories:
 1. **skills** — Compare technical/professional skills mentioned in the CV vs those required/mentioned in the job.
 2. **experience** — Compare years of experience, seniority level, and domain relevance.
-3. **education** — Compare educational qualifications, degrees, and certifications.
+3. **fit** — Evaluate the candidate's overall profile alignment: industry background, career trajectory, seniority level, and general suitability beyond listed skills.
 4. **keywords** — Check for important keywords, tools, technologies, and industry terms from the job that appear (or are missing) in the CV.
 
 For each category, provide:
@@ -43,7 +43,7 @@ Return JSON only:
   "categories": [
     {"category": "skills", "score": 80, "matched": ["Python", "SQL"], "missing": ["Kubernetes"], "reasoning": "..."},
     {"category": "experience", "score": 70, "matched": ["3+ years backend"], "missing": ["team lead experience"], "reasoning": "..."},
-    {"category": "education", "score": 60, "matched": ["CS degree"], "missing": [], "reasoning": "..."},
+    {"category": "fit", "score": 60, "matched": ["senior-level background"], "missing": ["industry-specific experience"], "reasoning": "..."},
     {"category": "keywords", "score": 75, "matched": ["REST API", "CI/CD"], "missing": ["Terraform"], "reasoning": "..."}
   ],
   "summary": "..."

@@ -73,7 +73,7 @@ export default function ScoreImpactModal({
   const catLabels: Record<string, string> = {
     skills: "Skills",
     experience: "Experience",
-    education: "Education",
+    fit: "Fit",
     keywords: "Keywords",
   };
 

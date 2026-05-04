@@ -72,11 +72,11 @@ export const DEMO_BUNDLE: CVAnalysisBundleResponse = {
           "Solid experience managing campaigns, with some gaps in data-focused marketing.",
       },
       {
-        category: "education",
+        category: "fit",
         score: 82,
-        matched: ["Marketing degree", "Business management"],
+        matched: ["Strong career trajectory", "Relevant seniority level", "Industry alignment"],
         missing: [],
-        reasoning: "Educational background aligns well with the role requirements.",
+        reasoning: "Overall profile and career progression aligns well with a senior marketing role.",
       },
     ],
     summary:

@@ -19,7 +19,7 @@ interface CVMatchResultsProps {
 const categoryLabels: Record<string, string> = {
   skills: "Skills",
   experience: "Experience",
-  education: "Education",
+  fit: "Fit",
   keywords: "Keywords",
 };
 

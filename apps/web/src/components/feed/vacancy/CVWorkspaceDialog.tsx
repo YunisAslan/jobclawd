@@ -481,7 +481,7 @@ export default function CVWorkspaceDialog({
 /* ── Sub-components ── */
 
 function MatchScoreStrip({ cvAnalysis, loadingAnalysis }: { cvAnalysis: CVMatchAnalysis | null; loadingAnalysis: boolean }) {
-  const catLabels: Record<string, string> = { skills: "Skills", experience: "Exp", education: "Edu", keywords: "KW" };
+  const catLabels: Record<string, string> = { skills: "Skills", experience: "Exp", fit: "Fit", keywords: "KW" };
 
   return (
     <div className="px-6 py-3 border-b border-border/40 shrink-0 bg-muted/20 flex items-center gap-4">
