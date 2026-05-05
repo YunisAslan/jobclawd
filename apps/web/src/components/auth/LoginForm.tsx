@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import logo from "@/assets/logo/jobclawd-logo.svg";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
@@ -14,22 +14,23 @@ import { Icons } from "@/components/Icons";
 import { authService } from "@/services/auth.service";
 import { extractApiError } from "@/lib/utils";
 import { API_BASE_URL } from "@/lib/endpoints";
+import { platformStatsService, type PlatformStats } from "@/services/platform-stats.service";
 
 const FEATURES = [
   {
     icon: <BarChart3 className="size-3.5 text-primary" />,
     title: "Multi-platform job search",
-    desc: "Search LinkedIn, Indeed, and Jobsearch.az from one workflow",
+    desc: "Search 10+ job platforms simultaneously from one workflow",
   },
   {
     icon: <FileText className="size-3.5 text-primary" />,
     title: "CV matching workspace",
-    desc: "Upload your resume and compare it against real vacancies",
+    desc: "Upload your CV once — every vacancy is scored against it with ATS keyword analysis",
   },
   {
     icon: <Sparkles className="size-3.5 text-primary" />,
     title: "Actionable CV suggestions",
-    desc: "Get practical improvements before you send an application",
+    desc: "Get ATS-optimized edits that increase your chances of landing an interview",
   },
 ];
 
@@ -46,6 +47,11 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
+  const [stats, setStats] = useState<PlatformStats | null>(null);
+
+  useEffect(() => {
+    platformStatsService.getStats().then(setStats).catch(() => {});
+  }, []);
 
   const sendMutation = useMutation({
     mutationFn: (addr: string) => authService.sendMagicLink(addr),
@@ -85,13 +91,13 @@ function LoginForm() {
             className="rounded-2xl mb-10 brightness-0 invert"
           />
           <h2 className="text-[2.1rem] font-bold text-white dark:text-foreground leading-tight mb-4">
-            Land your next
+            More interviews,
             <br />
-            job, faster.
+            less effort.
           </h2>
           <p className="text-muted-foreground text-sm leading-relaxed mb-12 max-w-68">
-            JobClawd brings major job platforms into one search flow, helps you understand each
-            vacancy faster, and improves the CV you want to send.
+            JobClawd searches 10+ job platforms at once, scores every role against your CV, and
+            generates ATS-optimized edits that increase your chances of getting invited to interview.
           </p>
           <div className="space-y-5">
             {FEATURES.map((f) => (
@@ -110,17 +116,18 @@ function LoginForm() {
           </div>
         </div>
 
-        <div className="relative z-10 border-t border-sidebar-border pt-7 grid grid-cols-3 gap-4">
+        <div className="relative z-10 border-t border-sidebar-border pt-7 grid grid-cols-4 gap-3">
           {[
-            { label: "Job boards", value: "3+" },
-            { label: "Search flow", value: "1" },
-            { label: "CV upgrade", value: "Built-in" },
+            { label: "CV analyses",   value: stats?.total_analyses },
+            { label: "Suggestions",   value: stats?.suggestions_applied },
+            { label: "CVs compared",  value: stats?.cvs_compared },
+            { label: "Jobs searched", value: stats?.searched_jobs },
           ].map((s) => (
             <div key={s.label}>
-              <p className="text-white dark:text-foreground font-bold text-2xl leading-none mb-1">
-                {s.value}
+              <p className="text-white dark:text-foreground font-bold text-lg leading-none mb-1">
+                {s.value != null ? `${s.value}+` : "—"}
               </p>
-              <p className="text-muted-foreground text-xs">{s.label}</p>
+              <p className="text-muted-foreground text-[11px] leading-snug">{s.label}</p>
             </div>
           ))}
         </div>
@@ -229,13 +236,13 @@ function LoginForm() {
 
             <p className="text-xs text-muted-foreground text-center mt-8 leading-relaxed">
               By continuing, you agree to our{" "}
-              <span className="underline underline-offset-2 cursor-default hover:text-foreground transition-colors">
+              <Link href="/terms" className="underline underline-offset-2 hover:text-foreground transition-colors">
                 Terms of Service
-              </span>{" "}
+              </Link>{" "}
               and{" "}
-              <span className="underline underline-offset-2 cursor-default hover:text-foreground transition-colors">
+              <Link href="/privacy" className="underline underline-offset-2 hover:text-foreground transition-colors">
                 Privacy Policy
-              </span>
+              </Link>
               .
             </p>
           </div>

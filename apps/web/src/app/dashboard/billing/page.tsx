@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Zap, Sparkles, Loader2, CreditCard, Search, FileText, TrendingUp } from "lucide-react";
+import { Zap, Sparkles, Loader2, CreditCard, Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import TopBar from "@/components/layout/TopBar";
@@ -11,12 +11,11 @@ import { creditsService, type CreditPlan } from "@/services/credits.service";
 import { useCredits } from "@/contexts/CreditsContext";
 import { cn } from "@/lib/utils";
 
-// What a given credit count translates to per operation
 function planCapabilities(credits: number) {
   return [
-    { icon: Search, label: "Fresh searches", count: Math.floor(credits / 1) },
-    { icon: FileText, label: "CV analyses", count: Math.floor(credits / 2) },
-    { icon: TrendingUp, label: "Suggestion runs", count: Math.floor(credits / 3) },
+    { label: "Fresh searches", count: Math.floor(credits / 1) },
+    { label: "CV analyses", count: Math.floor(credits / 2) },
+    { label: "Suggestion runs", count: Math.floor(credits / 3) },
   ];
 }
 
@@ -84,12 +83,11 @@ function PlanCard({
         </div>
       </div>
 
-      {/* What you can do */}
       <ul className="space-y-2.5 mb-6 flex-1">
-        {capabilities.map(({ icon: Icon, label, count }) => (
+        {capabilities.map(({ label, count }) => (
           <li key={label} className="flex items-center gap-2.5">
             <div className="flex items-center justify-center size-5 rounded-md bg-primary/10 shrink-0">
-              <Icon className="size-3 text-primary" />
+              <Check className="size-3 text-primary" />
             </div>
             <span className="text-sm text-muted-foreground">
               Up to{" "}
