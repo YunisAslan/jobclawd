@@ -218,6 +218,15 @@ CREATE TABLE IF NOT EXISTS apply_click_events (
 );
 CREATE INDEX IF NOT EXISTS idx_apply_click_events_user ON apply_click_events (user_email);
 
+CREATE TABLE IF NOT EXISTS search_events (
+  id           SERIAL PRIMARY KEY,
+  user_email   TEXT NOT NULL,
+  query        TEXT,
+  result_count INTEGER NOT NULL DEFAULT 0,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_search_events_user ON search_events (user_email);
+
 -- Email change verification requests (one pending request per user at a time)
 CREATE TABLE IF NOT EXISTS email_change_requests (
   id          SERIAL PRIMARY KEY,

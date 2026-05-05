@@ -264,6 +264,13 @@ class StatsResponse(BaseModel):
     cv_performance: list[CVPerformanceEntry]
 
 
+class PlatformStatsResponse(BaseModel):
+    total_analyses: int
+    suggestions_applied: int
+    cvs_compared: int
+    searched_jobs: int
+
+
 # ---------- Analytics event request models ----------
 
 class CvAnalyzedEventRequest(BaseModel):
@@ -323,7 +330,7 @@ class SourceBreakdownEntry(BaseModel):
 class AnalyticsResponse(BaseModel):
     # KPIs
     total_analyses: int
-    total_apply_clicks: int
+    total_searched_jobs: int
     total_suggestions_applied: int
     total_saved: int
     avg_match_score: float

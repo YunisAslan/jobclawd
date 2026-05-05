@@ -20,6 +20,7 @@ from services.job_detail_service import get_enhanced_job_detail
 from services.search_service import run_search
 from repositories import profile_repo
 from repositories.credits_repo import get_credits, use_credit
+from repositories.analytics_events_repo import insert_search_event
 from utils.auth_utils import get_optional_email, get_current_email
 
 router = APIRouter()
@@ -69,9 +70,10 @@ async def search_jobs(request: SearchRequest, email: Optional[str] = Depends(get
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Search error: {e}")
 
-    # Deduct credit only on cache miss (actual scraping)
+    # Deduct credit and record search event on cache miss (actual scraping)
     if email and not result.cached:
         use_credit(email)
+        insert_search_event(email, request.query, result.total)
 
     return result
 
@@ -137,9 +139,10 @@ async def search_jobs_stream(request: SearchRequest, email: Optional[str] = Depe
                 progress_cb=progress_cb,
                 event_cb=event_cb,
             )
-            # Deduct credit on cache miss
+            # Deduct credit and record search event on cache miss
             if email and not result.cached:
                 use_credit(email)
+                insert_search_event(email, request.query, result.total)
             await progress_queue.put({"stage": "done", "data": json.loads(result.model_dump_json())})
         except Exception as e:
             await progress_queue.put({"stage": "error", "message": str(e)})

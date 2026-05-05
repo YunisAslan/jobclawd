@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import {
-  Search, MousePointerClick, Wand2, Layers, Bookmark,
+  Search, ScanSearch, Wand2, Layers, Bookmark,
   TrendingUp, BarChart2, Target, ArrowUpDown, ListOrdered,
   Globe, Sparkles,
 } from "lucide-react";
@@ -204,13 +204,13 @@ export default function AnalyticsPage() {
                   label="Total analyses"
                   value={data?.total_analyses ?? 0}
                   tone="primary"
-                  icon={<Search className="size-5" />}
+                  icon={<ScanSearch className="size-5" />}
                 />
                 <StatsCard
-                  label="Apply clicks"
-                  value={data?.total_apply_clicks ?? 0}
+                  label="Searched jobs"
+                  value={data?.total_searched_jobs ?? 0}
                   tone="secondary"
-                  icon={<MousePointerClick className="size-5" />}
+                  icon={<Search className="size-5" />}
                 />
                 <StatsCard
                   label="Suggestions applied"

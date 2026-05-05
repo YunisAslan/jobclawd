@@ -1,11 +1,12 @@
 """
 Repository: aggregate analytics queries for the analytics dashboard.
-All queries are scoped to a single user_email.
+All queries are scoped to a single user_email, except get_platform_stats which is global.
 """
 from db.database import get_db
 from utils.title_normalizer import normalize_titles
 from models.schemas import (
     AnalyticsResponse,
+    PlatformStatsResponse,
     CVAnalyticsEntry,
     ScoreDistributionEntry,
     TopJobTitleEntry,
@@ -53,11 +54,12 @@ def get_analytics(email: str) -> AnalyticsResponse:
             (email,),
         ).fetchone()["cnt"]
 
-        # ── KPI: apply clicks ──────────────────────────────────────────────
-        total_apply_clicks = conn.execute(
-            "SELECT COUNT(*) AS cnt FROM apply_click_events WHERE user_email = %s",
+        # ── KPI: searched jobs (sum of fresh search result counts) ────────
+        searched_row = conn.execute(
+            "SELECT COALESCE(SUM(result_count), 0) AS total FROM search_events WHERE user_email = %s",
             (email,),
-        ).fetchone()["cnt"]
+        ).fetchone()
+        total_searched_jobs = int(searched_row["total"] if searched_row else 0)
 
         # ── KPI: suggestions applied ───────────────────────────────────────
         total_suggestions = conn.execute(
@@ -168,16 +170,11 @@ def get_analytics(email: str) -> AnalyticsResponse:
             (email,),
         ).fetchall()
 
-    # ── Analysis-to-apply ratio ────────────────────────────────────────────
-    analysis_to_apply_ratio = (
-        round((total_apply_clicks / total_analyses) * 100, 1)
-        if total_analyses > 0
-        else 0.0
-    )
+    analysis_to_apply_ratio = 0.0
 
     return AnalyticsResponse(
         total_analyses=total_analyses,
-        total_apply_clicks=total_apply_clicks,
+        total_searched_jobs=total_searched_jobs,
         total_suggestions_applied=total_suggestions,
         total_saved=total_saved,
         avg_match_score=avg_match_score,
@@ -210,4 +207,31 @@ def get_analytics(email: str) -> AnalyticsResponse:
             for r in trend_rows
         ],
         analysis_to_apply_ratio=analysis_to_apply_ratio,
+    )
+
+
+def get_platform_stats() -> PlatformStatsResponse:
+    """Aggregate counts across all users — used by the public landing page."""
+    with get_db() as conn:
+        total_analyses = conn.execute(
+            "SELECT COUNT(*) AS cnt FROM cv_analysis_events"
+        ).fetchone()["cnt"]
+
+        suggestions_applied = conn.execute(
+            "SELECT COUNT(*) AS cnt FROM suggestion_events"
+        ).fetchone()["cnt"]
+
+        cvs_compared = conn.execute(
+            "SELECT COUNT(DISTINCT cv_url) AS cnt FROM cv_analysis_events WHERE cv_url IS NOT NULL AND cv_url <> ''"
+        ).fetchone()["cnt"]
+
+        searched_jobs = conn.execute(
+            "SELECT COALESCE(SUM(result_count), 0) AS total FROM search_events"
+        ).fetchone()["total"]
+
+    return PlatformStatsResponse(
+        total_analyses=int(total_analyses),
+        suggestions_applied=int(suggestions_applied),
+        cvs_compared=int(cvs_compared),
+        searched_jobs=int(searched_jobs),
     )

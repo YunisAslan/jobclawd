@@ -16,6 +16,7 @@ import {
   TrendingUp,
   FileText,
   CheckCircle2,
+  Check,
   ArrowRight,
   Star,
   GitCompare,
@@ -1008,9 +1009,9 @@ function LogoStrip() {
 
 function StepSearchPreview() {
   const jobs = [
-    { title: "Product Manager", company: "PASHA Bank", location: "Baku · Hybrid", score: 88, high: true },
-    { title: "Senior PM", company: "Kapital Bank", location: "Remote", score: 71, high: false },
-    { title: "Program Manager", company: "ABB", location: "Baku · On-site", score: 54, high: false },
+    { title: "Product Manager", company: "Stripe", location: "Remote", score: 88, high: true },
+    { title: "Marketing Manager", company: "Shopify", location: "Remote", score: 71, high: false },
+    { title: "Program Manager", company: "Notion", location: "Remote", score: 54, high: false },
   ];
   return (
     <div className="space-y-2.5">
@@ -1024,7 +1025,6 @@ function StepSearchPreview() {
       <div className="flex flex-wrap gap-1">
         {[
           { label: "Remote", icon: "🌍" },
-          { label: "LinkedIn · Indeed", icon: "🔗" },
           { label: "Senior", icon: "⭐" },
         ].map(({ label, icon }) => (
           <span key={label} className="inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full border border-border bg-muted/40 text-muted-foreground">
@@ -1066,7 +1066,7 @@ function StepScorePreview() {
   ];
   return (
     <div className="space-y-3">
-      {/* Overall */}
+      {/* Overall score circle */}
       <div className="flex items-center gap-3">
         <div className="relative size-14 shrink-0">
           <svg className="size-14 -rotate-90" viewBox="0 0 36 36">
@@ -1100,22 +1100,28 @@ function StepScorePreview() {
 function StepSuggestPreview() {
   return (
     <div className="space-y-2">
-      {/* Suggestion diff */}
-      <div className="rounded-lg border border-border/60 bg-background p-2 space-y-1.5">
-        <div className="flex items-center gap-1">
-          <span className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-px text-[9px] font-semibold bg-red-50 text-red-600 border border-red-200 dark:bg-red-950/40 dark:border-red-900 dark:text-red-400">
-            <span className="size-1 rounded-full bg-red-500" /> High · Keywords
-          </span>
-        </div>
+      {/* Suggestion card */}
+      <div className="rounded-lg border border-border/60 bg-background p-2.5 space-y-2">
+      
+        {/* Diff */}
         <div className="rounded border overflow-hidden text-[10px] font-mono">
-          <div className="flex gap-1.5 px-2 py-1 bg-red-50 dark:bg-red-950/30">
-            <span className="text-red-400 shrink-0">−</span>
-            <span className="text-red-600/80 line-through dark:text-red-400/80">JavaScript, Python</span>
+          <div className="flex gap-1.5 px-2 py-1.5 bg-red-50 dark:bg-red-950/30">
+            <span className="text-red-400 font-bold shrink-0 mt-0.5">−</span>
+            <span className="text-red-600/80 line-through dark:text-red-400/80 leading-snug">Managed a team and worked on product improvements</span>
           </div>
-          <div className="flex gap-1.5 px-2 py-1 bg-emerald-50 dark:bg-emerald-950/30">
-            <span className="text-emerald-500 shrink-0">+</span>
-            <span className="text-emerald-700/90 dark:text-emerald-400/90">TypeScript, JavaScript, Python</span>
+          <div className="flex gap-1.5 px-2 py-1.5 bg-emerald-50 dark:bg-emerald-950/30">
+            <span className="text-emerald-500 font-bold shrink-0 mt-0.5">+</span>
+            <span className="text-emerald-700/90 dark:text-emerald-400/90 leading-snug">Led cross-functional team of 8, improving delivery velocity by <strong>34%</strong> via Agile &amp; OKR alignment</span>
           </div>
+        </div>
+        {/* Apply / Decline buttons */}
+        <div className="flex items-center gap-2 pointer-events-none">
+          <Button size="sm" className="flex-1 gap-1.5 h-7 text-[11px]">
+            <Check className="size-3.5" /> Apply
+          </Button>
+          <Button size="sm" variant="outline" className="flex-1 gap-1.5 h-7 text-[11px]">
+            Decline
+          </Button>
         </div>
       </div>
       {/* Score impact */}
@@ -1216,28 +1222,37 @@ function HowItWorks() {
   );
 }
 
-/* ─── Feature card — same Card/CardContent as dashboard ──────── */
+/* ─── Feature card ────────────────────────────────────────────── */
 function FeatureCard({
   icon: Icon,
   title,
   desc,
   large,
+  highlight,
   children,
 }: {
   icon: React.ElementType;
   title: string;
   desc: string;
   large?: boolean;
+  highlight?: boolean;
   children?: React.ReactNode;
 }) {
   return (
-    <Card className="gap-0 py-0 h-full transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
-      <CardContent className={cn("space-y-3", large ? "px-6 pt-6 pb-6" : "px-5 pt-5 pb-5")}>
+    <Card className="gap-0 py-0 h-full border-border/50 overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+      {highlight && (
+        <div className="h-0.5 w-full bg-linear-to-r from-transparent via-primary/60 to-transparent shrink-0" />
+      )}
+      <CardContent className={cn(
+        "space-y-3 h-full",
+        large ? "px-6 pt-5 pb-6" : "px-5 pt-5 pb-5",
+        highlight && "bg-primary/2",
+      )}>
         <div className="flex items-center justify-center size-9 rounded-lg bg-primary/10 border border-primary/15">
           <Icon className="size-4 text-primary" />
         </div>
         <div>
-          <h3 className={cn("font-semibold text-foreground mb-1", large ? "text-base" : "text-sm")}>
+          <h3 className={cn("font-semibold text-foreground mb-1.5", large ? "text-base" : "text-sm")}>
             {title}
           </h3>
           <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
@@ -1269,27 +1284,29 @@ function Features() {
         <div className="lg:col-span-2">
           <FeatureCard
             large
+            highlight
             icon={LayoutGrid}
-            title="Multi-source job feed"
-            desc="JobClawd pulls listings from multiple job platforms into a single unified feed. Every result is ranked by AI match score so the best fits always appear first."
-          ></FeatureCard>
+            title="One Feed. Every Job."
+            desc="Stop platform-hopping. Search 10+ job platforms simultaneously — every result ranked by how well it matches your CV."
+          />
         </div>
 
         <FeatureCard
           icon={Zap}
-          title="AI Match Scoring"
-          desc="Each vacancy gets a 0–100 score relative to your CV. High Match, Needs Review, and Low Match labels make prioritisation instant."
+          title="Know Before You Apply"
+          desc="Every vacancy gets an instant 0–100 match score. Spend your time on jobs you'll actually land — not ones that will reject you."
         />
 
         <FeatureCard
+          highlight
           icon={FileText}
-          title="CV Suggestions"
-          desc="Upload your CV and get 8–14 targeted, job-specific improvement recommendations. Accept, reject, or tweak each suggestion."
+          title="Fix What's Costing You"
+          desc="Get 8–14 targeted edits per role — missing keywords, weak bullets, wrong framing. Accept in one click, export, apply."
         >
           <div className="space-y-1.5">
             {[
               "Add 'TypeScript' to skills section",
-              "Quantify team leadership (lead 5→12 engineers)",
+              "Quantify impact: led 5 → 12 engineers",
               "Mirror 'distributed systems' from JD",
             ].map((s) => (
               <div key={s} className="flex items-start gap-2 text-[11px] text-muted-foreground">
@@ -1302,20 +1319,20 @@ function Features() {
 
         <FeatureCard
           icon={TrendingUp}
-          title="Check Impact"
-          desc="Edit your CV, then run Check Impact to see exactly how your score changes before you send — no guesswork."
+          title="See Your Score Live"
+          desc="Edit your CV, hit Check Impact. Your new match score appears instantly — before recruiters ever see it."
         />
 
         <FeatureCard
           icon={GitCompare}
-          title="Multi-CV Comparison"
-          desc="Score several CV versions against a single vacancy side-by-side. Find which version resonates best with each job."
+          title="Find Your Winning CV"
+          desc="Run multiple CV versions against any vacancy. See which scores highest — then apply with confidence."
         />
 
         <FeatureCard
           icon={BarChart2}
-          title="Analytics Dashboard"
-          desc="Track activity trends, score distributions, and source performance over time. Understand where your best opportunities come from."
+          title="Track What's Working"
+          desc="Spot trends in scores, top sources, and activity over time. Double down on what gets you interviews."
         />
       </div>
     </section>
@@ -1323,22 +1340,35 @@ function Features() {
 }
 
 /* ─── Stats strip ─────────────────────────────────────────────── */
-const STATS = [
-  { value: 9, suffix: "+ platforms", label: "Job platforms searched simultaneously" },
-  { value: 100, prefix: "0–", label: "Match score range per CV & vacancy" },
-  { value: 14, prefix: "8–", label: "Tailored CV suggestions per job" },
-  { value: 7, suffix: "-day cache", label: "Results cached for effortless re-runs" },
-];
+import { platformStatsService } from "@/services/platform-stats.service";
 
 function Stats() {
+  const [stats, setStats] = useState<{
+    total_analyses: number;
+    suggestions_applied: number;
+    cvs_compared: number;
+    searched_jobs: number;
+  } | null>(null);
+
+  useEffect(() => {
+    platformStatsService.getStats().then(setStats).catch(() => {});
+  }, []);
+
+  const items = [
+    { value: stats?.total_analyses ?? 0,      suffix: "+", label: "CV analyses run" },
+    { value: stats?.suggestions_applied ?? 0, suffix: "+", label: "Suggestions applied" },
+    { value: stats?.cvs_compared ?? 0,        suffix: "+", label: "CVs compared" },
+    { value: stats?.searched_jobs ?? 0,       suffix: "+", label: "Jobs searched" },
+  ];
+
   return (
     <section className="py-20 border-y border-border/50 bg-muted/20">
       <div className="max-w-5xl mx-auto px-6">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 sm:gap-4 text-center">
-          {STATS.map(({ value, prefix, suffix, label }) => (
+          {items.map(({ value, suffix, label }) => (
             <div key={label}>
               <p className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
-                <NumberTicker value={value} prefix={prefix} suffix={suffix} />
+                <NumberTicker value={value} suffix={suffix} />
               </p>
               <p className="text-xs text-muted-foreground mt-2 leading-snug">{label}</p>
             </div>
@@ -1518,7 +1548,7 @@ export default function LandingPage() {
 
           {/* Trust line */}
           <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground flex-wrap">
-            {["Free to start", "No card required"].map((t) => (
+            {["Free to start", "No card required", "Get job-ready in 2 mins"].map((t) => (
               <span key={t} className="flex items-center gap-1.5">
                 <CheckCircle2 className="size-3 text-success shrink-0" />
                 {t}

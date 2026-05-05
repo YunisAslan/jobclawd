@@ -354,7 +354,7 @@ export interface SourceBreakdownEntry {
 
 export interface AnalyticsResponse {
   total_analyses: number;
-  total_apply_clicks: number;
+  total_searched_jobs: number;
   total_suggestions_applied: number;
   total_saved: number;
   avg_match_score: number;

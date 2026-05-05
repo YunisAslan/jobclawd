@@ -59,6 +59,21 @@ def insert_apply_click_event(
         )
 
 
+def insert_search_event(
+    user_email: str,
+    query: str,
+    result_count: int,
+) -> None:
+    with get_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO search_events (user_email, query, result_count)
+            VALUES (%s, %s, %s)
+            """,
+            (user_email, query, result_count),
+        )
+
+
 def insert_impact_check_event(
     user_email: str,
     cv_name: str,
