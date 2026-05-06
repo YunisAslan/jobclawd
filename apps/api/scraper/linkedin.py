@@ -99,6 +99,26 @@ def _log_meta_trace(job: JobListing, field_sources: dict, *, context: str) -> No
     )
 
 
+async def _detect_linkedin_block(page) -> str | None:
+    """Return a block reason string if LinkedIn is blocking us, else None."""
+    try:
+        title = (await page.title()).lower()
+        url = page.url.lower()
+        content = await page.evaluate("document.body?.innerText?.slice(0, 500) || ''")
+        content_lower = content.lower()
+        if "captcha" in title or "captcha" in content_lower:
+            return "captcha"
+        if "authwall" in url or "login" in url or "uas/login" in url:
+            return "login_wall"
+        if "security verification" in content_lower or "verify you're human" in content_lower:
+            return "captcha"
+        if "we're sorry" in content_lower and "robot" in content_lower:
+            return "bot_blocked"
+    except Exception:
+        pass
+    return None
+
+
 async def scrape_linkedin(
     query: str,
     location: Optional[LocationFilter] = None,
@@ -108,6 +128,8 @@ async def scrape_linkedin(
     date_posted: Optional[str] = None,
     sort_by: Optional[str] = None,
 ) -> list[JobListing]:
+    from services.admin_log_service import alog, log_scraper_start, log_scraper_done, log_captcha, log_bot_blocked, log_login_wall, log_timeout, log_scraper_error
+    log_scraper_start("linkedin", query)
     context = None
     try:
         browser = await get_browser()
@@ -221,9 +243,24 @@ async def scrape_linkedin(
 
         try:
             await page.goto(base_url, wait_until="domcontentloaded", timeout=25000)
+            block = await _detect_linkedin_block(page)
+            if block == "captcha":
+                log_captcha("linkedin", query, base_url)
+                return []
+            if block == "login_wall":
+                log_login_wall("linkedin", query)
+                return []
+            if block == "bot_blocked":
+                log_bot_blocked("linkedin", query, "Anti-bot page shown")
+                return []
             await page.wait_for_selector(".job-search-card", timeout=5000)
             await page.wait_for_timeout(_INITIAL_RESULTS_WAIT_MS)
-        except Exception:
+        except Exception as e:
+            err = str(e).lower()
+            if "timeout" in err:
+                log_timeout("linkedin", query)
+            else:
+                log_scraper_error("linkedin", query, str(e))
             return []
 
         jobs: list[JobListing] = []
@@ -459,9 +496,11 @@ async def scrape_linkedin(
                 context="final",
             )
 
+        log_scraper_done("linkedin", query, len(jobs))
         return jobs
 
-    except Exception:
+    except Exception as e:
+        log_scraper_error("linkedin", query, str(e))
         return []
     finally:
         try:

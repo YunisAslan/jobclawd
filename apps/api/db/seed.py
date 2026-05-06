@@ -15,9 +15,18 @@ def seed_data(conn):
     Idempotent — safe to call on every startup.
     """
     filters = [
-        ("source", "jobsearch", "Jobsearch"),
         ("source", "linkedin", "LinkedIn"),
         ("source", "indeed", "Indeed"),
+        ("source", "glassdoor", "Glassdoor"),
+        ("source", "wellfound", "Wellfound"),
+        ("source", "ziprecruiter", "ZipRecruiter"),
+        ("source", "remoteok", "RemoteOK"),
+        ("source", "simplify", "Simplify"),
+        ("source", "dice", "Dice"),
+        ("source", "jobgether", "Jobgether"),
+        ("source", "remoteco", "Remote.co"),
+        ("source", "weworkremotely", "We Work Remotely"),
+        ("source", "jobsearch", "Jobsearch"),
         ("work_mode", "remote", "Remote"),
         ("work_mode", "hybrid", "Hybrid"),
         ("work_mode", "onsite", "On-site"),

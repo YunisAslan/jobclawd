@@ -2,7 +2,7 @@ import React from "react";
 import { JobSource } from "@/types";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
-import { Linkedin, Search } from "lucide-react";
+import { Linkedin, Search, Building2, Rocket, Globe, Code2, Briefcase, Sparkles } from "lucide-react";
 
 function IndeedIcon({ className }: { className?: string }) {
   return (
@@ -36,6 +36,51 @@ const SOURCE_CONFIG: Record<
     label: "INDEED",
     className: "bg-[#2557a7] text-white",
     icon: IndeedIcon,
+  },
+  glassdoor: {
+    label: "GLASSDOOR",
+    className: "bg-[#0CAA41] text-white",
+    icon: Building2,
+  },
+  wellfound: {
+    label: "WELLFOUND",
+    className: "bg-black text-white",
+    icon: Rocket,
+  },
+  ziprecruiter: {
+    label: "ZIPRECRUITER",
+    className: "bg-[#1F7A29] text-white",
+    icon: Briefcase,
+  },
+  remoteok: {
+    label: "REMOTEOK",
+    className: "bg-[#FF4742] text-white",
+    icon: Globe,
+  },
+  simplify: {
+    label: "SIMPLIFY",
+    className: "bg-[#7C3AED] text-white",
+    icon: Sparkles,
+  },
+  dice: {
+    label: "DICE",
+    className: "bg-[#E1261C] text-white",
+    icon: Code2,
+  },
+  jobgether: {
+    label: "JOBICY",
+    className: "bg-[#0E7C66] text-white",
+    icon: Globe,
+  },
+  remoteco: {
+    label: "REMOTE.CO",
+    className: "bg-[#2D7DD2] text-white",
+    icon: Globe,
+  },
+  weworkremotely: {
+    label: "WWR",
+    className: "bg-[#EE2A24] text-white",
+    icon: Globe,
   },
 };
 

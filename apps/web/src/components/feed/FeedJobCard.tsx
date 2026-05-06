@@ -7,7 +7,6 @@ import SourceBadge from "@/components/ui/SourceBadge";
 import SaveToggleButton from "@/components/ui/SaveToggleButton";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -141,26 +140,31 @@ export default function FeedJobCard({
   const isHigh = job.match_level === "high";
   const experienceChip = !job.seniority_str && !job.experience_years_str ? job.experience_str : null;
 
+  const salaryBadge = job.badges?.includes("Salary Listed");
+
   return (
     <Card
       className={cn(
-        "gap-0 py-0 transition-all duration-200 overflow-hidden hover:shadow-md hover:-translate-y-0.5",
+        "gap-0 py-0 transition-all duration-200 overflow-hidden hover:shadow-md hover:-translate-y-0.5 flex flex-col",
         isHigh && "border-match-high/30",
       )}
     >
-      <CardContent className="px-4 pt-4 pb-4 space-y-3.5">
+      <CardContent className="px-4 pt-4 pb-4 flex flex-col flex-1 gap-0">
+        {/* Top row: avatar + info + score */}
         <div className="flex items-start gap-3">
           <CompanyAvatar company={job.company} logoUrl={job.logo_url} />
-          <div className="flex-1 min-w-0 pr-8">
-            <h3 className="font-semibold text-sm leading-snug line-clamp-2 text-foreground mb-1.5 pr-8">
+          <div className="flex-1 min-w-0">
+            {/* Title — always 2 lines */}
+            <h3 className="font-semibold text-sm leading-snug line-clamp-2 text-foreground mb-1.5 pr-2">
               {job.title}
             </h3>
+            {/* Company · date · source */}
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs text-muted-foreground font-medium">{job.company}</span>
+              <span className="text-xs text-muted-foreground font-medium truncate max-w-35">{job.company}</span>
               {job.date_posted && (
                 <>
                   <span className="text-muted-foreground/30 text-xs select-none">•</span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground shrink-0">
                     {formatDate(job.date_posted)}
                   </span>
                 </>
@@ -168,111 +172,90 @@ export default function FeedJobCard({
               <span className="text-muted-foreground/30 text-xs select-none">•</span>
               <SourceBadge source={job.source} />
             </div>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              {job.location_str && (
+            {/* Location — always one line, fixed height */}
+            <div className="h-5 flex items-center mt-1">
+              {job.location_str ? (
                 <span className="inline-flex items-center gap-1">
                   <MapPin className="size-3 text-muted-foreground/60 shrink-0" />
-                  <span className="text-xs text-muted-foreground/70 truncate">
+                  <span className="text-xs text-muted-foreground/70 truncate max-w-55">
                     {job.location_str}
                   </span>
                 </span>
+              ) : (
+                <span className="text-xs text-muted-foreground/30">—</span>
               )}
             </div>
-            {(job.seniority_str || job.experience_years_str || experienceChip || job.job_type_str || job.salary_str || job.work_mode_str) && (
-              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                {job.seniority_str && (
-                  <MetaChip
-                    className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 border border-border/60 rounded-md px-1.5 py-0.5"
-                    icon={<GraduationCap className="size-2.5" />}
-                    source={job.seniority_src}
-                  >
-                    {job.seniority_str}
-                  </MetaChip>
-                )}
-                {job.experience_years_str && (
-                  <MetaChip
-                    className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 border border-border/60 rounded-md px-1.5 py-0.5"
-                    icon={<GraduationCap className="size-2.5" />}
-                    source={job.experience_years_src}
-                  >
-                    {job.experience_years_str}
-                  </MetaChip>
-                )}
-                {experienceChip && (
-                  <MetaChip
-                    className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 border border-border/60 rounded-md px-1.5 py-0.5"
-                    icon={<GraduationCap className="size-2.5" />}
-                    source={job.experience_src}
-                  >
-                    {experienceChip}
-                  </MetaChip>
-                )}
-                {job.job_type_str && (
-                  <MetaChip
-                    className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 border border-border/60 rounded-md px-1.5 py-0.5"
-                    icon={<Briefcase className="size-2.5" />}
-                    source={job.job_type_src}
-                  >
-                    {job.job_type_str}
-                  </MetaChip>
-                )}
-                {job.salary_str && (
-                  <MetaChip
-                    className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-500/8 border border-emerald-500/20 rounded-md px-1.5 py-0.5"
-                    icon={<Banknote className="size-2.5" />}
-                    source={job.salary_src}
-                  >
-                    {job.salary_str}
-                  </MetaChip>
-                )}
-                {job.work_mode_str && (
-                  <MetaChip
-                    className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 border border-border/60 rounded-md px-1.5 py-0.5"
-                    icon={<Laptop className="size-2.5" />}
-                    source={job.work_mode_src}
-                  >
-                    {job.work_mode_str}
-                  </MetaChip>
-                )}
-              </div>
-            )}
-            {/* Intelligence badges */}
-            {job.badges && job.badges.length > 0 && (
-              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                {job.badges?.map((badge, i) => {
-                  if (badge === "Email Apply" || badge === "Easy Apply" || badge === "External" || badge === "Direct" || badge === "Auto-Apply Ready" || badge === "Quick Apply") return null;
-                  return (
-                    <span
-                      key={i}
-                      className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/40 border border-border/50 rounded-md px-1.5 py-0.5"
-                    >
-                      {badge === "Salary Listed" && <ShieldCheck className="size-2.5 text-emerald-500" />}
-                      {badge}
-                    </span>
-                  );
-                })}
-              </div>
-            )}
+            {/* Meta chips — single row, no wrap, overflow hidden */}
+            <div className="h-6 flex items-center gap-1.5 mt-1.5 overflow-y-hidden overflow-x-scroll scrollbar-none">
+              {job.seniority_str && (
+                <MetaChip
+                  className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 border border-border/60 rounded-md px-1.5 py-0.5 shrink-0"
+                  icon={<GraduationCap className="size-2.5" />}
+                  source={job.seniority_src}
+                >
+                  {job.seniority_str}
+                </MetaChip>
+              )}
+              {job.experience_years_str && (
+                <MetaChip
+                  className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 border border-border/60 rounded-md px-1.5 py-0.5 shrink-0"
+                  icon={<GraduationCap className="size-2.5" />}
+                  source={job.experience_years_src}
+                >
+                  {job.experience_years_str}
+                </MetaChip>
+              )}
+              {experienceChip && (
+                <MetaChip
+                  className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 border border-border/60 rounded-md px-1.5 py-0.5 shrink-0"
+                  icon={<GraduationCap className="size-2.5" />}
+                  source={job.experience_src}
+                >
+                  {experienceChip}
+                </MetaChip>
+              )}
+              {job.job_type_str && (
+                <MetaChip
+                  className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 border border-border/60 rounded-md px-1.5 py-0.5 shrink-0"
+                  icon={<Briefcase className="size-2.5" />}
+                  source={job.job_type_src}
+                >
+                  {job.job_type_str}
+                </MetaChip>
+              )}
+              {job.work_mode_str && (
+                <MetaChip
+                  className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 border border-border/60 rounded-md px-1.5 py-0.5 shrink-0"
+                  icon={<Laptop className="size-2.5" />}
+                  source={job.work_mode_src}
+                >
+                  {job.work_mode_str}
+                </MetaChip>
+              )}
+              {job.salary_str && !/^\$?0(\.0+)?(\/\w+)?$/.test(job.salary_str.trim()) && (
+                <MetaChip
+                  className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-500/8 border border-emerald-500/20 rounded-md px-1.5 py-0.5 shrink-0"
+                  icon={<Banknote className="size-2.5" />}
+                  source={job.salary_src}
+                >
+                  {job.salary_str}
+                </MetaChip>
+              )}
+              {salaryBadge && !job.salary_str && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-500/8 border border-emerald-500/20 rounded-md px-1.5 py-0.5 shrink-0">
+                  <ShieldCheck className="size-2.5" />
+                  Salary Listed
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex flex-col items-end gap-2 shrink-0">
             <MatchScore score={job.match_score} level={job.match_level} />
           </div>
         </div>
 
-        {job.match_flags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {job.match_flags.map((flag, i) => (
-              <Badge
-                key={i}
-                className="bg-warning/8 text-warning border border-warning/25 hover:bg-warning/8 gap-1 text-[11px] py-0.5 font-medium"
-              >
-                {flag}
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        <div className="flex items-center gap-2 pt-0.5">
+        {/* Action buttons — always at the bottom */}
+        <div className="flex items-center gap-2 mt-3.5">
           <Button onClick={onDetails} size="sm" className="flex-1 h-8 text-xs font-medium gap-1.5" {...(detailsTourTarget ? { "data-tour": detailsTourTarget } : {})}>
             <Eye className="size-3.5" />
             View Details

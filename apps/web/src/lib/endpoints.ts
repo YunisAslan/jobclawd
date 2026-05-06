@@ -64,4 +64,9 @@ export const ENDPOINTS = {
   ANALYTICS_SUGGESTION_APPLIED: "/api/analytics/suggestion-applied",
   ANALYTICS_IMPACT_CHECKED: "/api/analytics/impact-checked",
   ANALYTICS_APPLY_CLICKED: "/api/analytics/apply-clicked",
+
+  // Admin
+  ADMIN_LOGIN: "/api/admin/login",
+  ADMIN_LOGS: "/api/admin/logs",
+  ADMIN_LOGS_SOURCES: "/api/admin/logs/sources",
 } as const;

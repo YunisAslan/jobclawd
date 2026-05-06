@@ -11,6 +11,15 @@ from models.schemas import JobListing, JobSource, SearchResponse, LocationFilter
 from scraper.search import scrape_search
 from scraper.linkedin import scrape_linkedin
 from scraper.indeed import scrape_indeed
+from scraper.glassdoor import scrape_glassdoor
+from scraper.wellfound import scrape_wellfound
+from scraper.ziprecruiter import scrape_ziprecruiter
+from scraper.remoteok import scrape_remoteok
+from scraper.simplify import scrape_simplify
+from scraper.dice import scrape_dice
+from scraper.jobgether import scrape_jobgether
+from scraper.remoteco import scrape_remoteco
+from scraper.weworkremotely import scrape_weworkremotely
 from db.database import get_db
 from services.cache_service import make_cache_key
 from repositories.cache_repo import get_cached_result, set_cached_result
@@ -216,8 +225,10 @@ async def run_search(
     cache_key = make_cache_key(filters_dict)
 
     # ── Cache HIT ────────────────────────────────────────────────────────────
+    from services.admin_log_service import log_cache_hit, log_cache_miss
     cached = get_cached_result(cache_key) if not force_refresh else None
     if cached is not None:
+        log_cache_hit(query)
         # Merge any metadata that was enriched in the background since last cache write
         if "jobs" in cached:
             cached["jobs"] = merge_metadata_into_jobs(cached["jobs"])
@@ -318,6 +329,8 @@ async def _run_uncached_search(
     event_cb=None,
 ) -> SearchResponse:
     """Run the shared search pipeline and return an unpersonalized base response."""
+    from services.admin_log_service import log_cache_miss, log_ai_filter
+    log_cache_miss(query)
     import time
     t_total = time.perf_counter()
     timings: dict[str, float] = {}
@@ -357,7 +370,13 @@ async def _run_uncached_search(
     tasks: list[asyncio.Task] = []
 
     async def _run_scraper(source_name: str, coro):
-        return source_name, await coro
+        try:
+            result = await asyncio.wait_for(coro, timeout=60)
+        except asyncio.TimeoutError:
+            from services.admin_log_service import log_scraper_error
+            log_scraper_error(source_name, query, "timeout after 60s")
+            result = []
+        return source_name, result
 
     for shard in location_shards:
         if JobSource.jobsearch in sources:
@@ -392,6 +411,114 @@ async def _run_uncached_search(
                 scrape_indeed(
                     query,
                     shard,
+                    work_modes=work_modes,
+                    experience=experience,
+                    job_types=job_types,
+                    date_posted=date_posted,
+                    sort_by=sort_by,
+                ),
+            )))
+        if JobSource.glassdoor in sources:
+            tasks.append(asyncio.create_task(_run_scraper(
+                "glassdoor",
+                scrape_glassdoor(
+                    query, shard,
+                    work_modes=work_modes,
+                    experience=experience,
+                    job_types=job_types,
+                    date_posted=date_posted,
+                    sort_by=sort_by,
+                ),
+            )))
+        if JobSource.wellfound in sources:
+            tasks.append(asyncio.create_task(_run_scraper(
+                "wellfound",
+                scrape_wellfound(
+                    query, shard,
+                    work_modes=work_modes,
+                    experience=experience,
+                    job_types=job_types,
+                    date_posted=date_posted,
+                    sort_by=sort_by,
+                ),
+            )))
+        if JobSource.ziprecruiter in sources:
+            tasks.append(asyncio.create_task(_run_scraper(
+                "ziprecruiter",
+                scrape_ziprecruiter(
+                    query, shard,
+                    work_modes=work_modes,
+                    experience=experience,
+                    job_types=job_types,
+                    date_posted=date_posted,
+                    sort_by=sort_by,
+                ),
+            )))
+        if JobSource.remoteok in sources:
+            tasks.append(asyncio.create_task(_run_scraper(
+                "remoteok",
+                scrape_remoteok(
+                    query, shard,
+                    work_modes=work_modes,
+                    experience=experience,
+                    job_types=job_types,
+                    date_posted=date_posted,
+                    sort_by=sort_by,
+                ),
+            )))
+        if JobSource.simplify in sources:
+            tasks.append(asyncio.create_task(_run_scraper(
+                "simplify",
+                scrape_simplify(
+                    query, shard,
+                    work_modes=work_modes,
+                    experience=experience,
+                    job_types=job_types,
+                    date_posted=date_posted,
+                    sort_by=sort_by,
+                ),
+            )))
+        if JobSource.dice in sources:
+            tasks.append(asyncio.create_task(_run_scraper(
+                "dice",
+                scrape_dice(
+                    query, shard,
+                    work_modes=work_modes,
+                    experience=experience,
+                    job_types=job_types,
+                    date_posted=date_posted,
+                    sort_by=sort_by,
+                ),
+            )))
+        if JobSource.jobgether in sources:
+            tasks.append(asyncio.create_task(_run_scraper(
+                "jobgether",
+                scrape_jobgether(
+                    query, shard,
+                    work_modes=work_modes,
+                    experience=experience,
+                    job_types=job_types,
+                    date_posted=date_posted,
+                    sort_by=sort_by,
+                ),
+            )))
+        if JobSource.remoteco in sources:
+            tasks.append(asyncio.create_task(_run_scraper(
+                "remoteco",
+                scrape_remoteco(
+                    query, shard,
+                    work_modes=work_modes,
+                    experience=experience,
+                    job_types=job_types,
+                    date_posted=date_posted,
+                    sort_by=sort_by,
+                ),
+            )))
+        if JobSource.weworkremotely in sources:
+            tasks.append(asyncio.create_task(_run_scraper(
+                "weworkremotely",
+                scrape_weworkremotely(
+                    query, shard,
                     work_modes=work_modes,
                     experience=experience,
                     job_types=job_types,
@@ -512,6 +639,7 @@ async def _run_uncached_search(
         date_posted=date_posted,
     )
     timings["ai_filter"] = time.perf_counter() - t0
+    log_ai_filter(query, len(all_jobs), len(visible), timings["ai_filter"])
 
     # ── Final metadata merge for filtered results ────────────────
     t0 = time.perf_counter()

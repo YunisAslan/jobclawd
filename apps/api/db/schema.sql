@@ -262,3 +262,18 @@ CREATE TABLE IF NOT EXISTS email_revert_tokens (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_revert_tokens_token ON email_revert_tokens (token);
+
+-- Admin system logs (self-healing monitor)
+CREATE TABLE IF NOT EXISTS admin_logs (
+  id         SERIAL PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  level      TEXT NOT NULL DEFAULT 'INFO',   -- INFO | SUCCESS | WARNING | ERROR | CRITICAL
+  source     TEXT NOT NULL DEFAULT 'system', -- scraper name or component
+  event      TEXT NOT NULL DEFAULT '',       -- short event type slug
+  message    TEXT NOT NULL,
+  details    JSONB
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_logs_created ON admin_logs (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_admin_logs_level   ON admin_logs (level);
+CREATE INDEX IF NOT EXISTS idx_admin_logs_source  ON admin_logs (source);

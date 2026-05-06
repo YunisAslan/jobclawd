@@ -24,6 +24,7 @@ from routers import cv_analysis_router
 from routers import document_router
 from routers import analytics_events_router
 from routers import credits_router
+from routers import admin as admin_router
 from scraper import shutdown_browser
 from db.database import init_db
 
@@ -99,6 +100,7 @@ app.include_router(cv_analysis_router.router, prefix="/api")
 app.include_router(document_router.router, prefix="/api")
 app.include_router(analytics_events_router.router, prefix="/api")
 app.include_router(credits_router.router, prefix="/api")
+app.include_router(admin_router.router, prefix="/api")
 
 
 @app.get("/health")

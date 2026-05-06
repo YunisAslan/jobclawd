@@ -196,22 +196,27 @@ export default function MatchScoreBreakdown({ job }: MatchScoreBreakdownProps) {
         </div>
       )}
 
-      {/* Match flags */}
-      {job.match_flags.length > 0 && (
-        <div className="space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground">Signals</p>
-          <div className="flex flex-wrap gap-1.5">
-            {job.match_flags.map((flag, i) => (
-              <Badge
-                key={i}
-                className="bg-warning/8 text-warning border border-warning/25 hover:bg-warning/8 gap-1 text-[11px] py-0.5 font-medium"
-              >
-                {flag}
-              </Badge>
-            ))}
+      {/* Match flags — skip noise-only flags about missing/unclear data */}
+      {(() => {
+        const _NOISE = /unclear|mismatch|missing|not found|unknown/i;
+        const meaningful = job.match_flags.filter((f) => !_NOISE.test(f));
+        if (!meaningful.length) return null;
+        return (
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">Signals</p>
+            <div className="flex flex-wrap gap-1.5">
+              {meaningful.map((flag, i) => (
+                <Badge
+                  key={i}
+                  className="bg-warning/8 text-warning border border-warning/25 hover:bg-warning/8 gap-1 text-[11px] py-0.5 font-medium"
+                >
+                  {flag}
+                </Badge>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

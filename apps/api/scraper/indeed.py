@@ -328,6 +328,8 @@ async def scrape_indeed(
     date_posted: Optional[str] = None,
     sort_by: Optional[str] = None,
 ) -> list[JobListing]:
+    from services.admin_log_service import log_scraper_start, log_scraper_done, log_scraper_error, log_cloudflare
+    log_scraper_start("indeed", query)
     context = None
     try:
         browser = await get_browser()
@@ -424,18 +426,27 @@ async def scrape_indeed(
 
         print(f"[Indeed] Search URL: {base_url}")
 
+        # Warm up with homepage visit to get CF cookies
+        try:
+            await page.goto(INDEED_BASE, wait_until="domcontentloaded", timeout=15000)
+            await page.wait_for_timeout(1500)
+        except Exception:
+            pass
+
         for offset in range(0, 200, 10):
             url = f"{base_url}&start={offset}"
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=30000)
                 await page.wait_for_timeout(3000)
 
-                # Check for Cloudflare challenge and wait if needed
                 page_title = await page.title()
-                if "moment" in page_title.lower() or "verify" in page_title.lower():
-                    print(f"[Indeed] Cloudflare challenge detected, waiting...")
-                    await page.wait_for_timeout(5000)
+                current_url = page.url
+                if any(kw in page_title.lower() for kw in ("moment", "just a moment", "cloudflare", "verify you", "checking your")) or "challenge" in current_url:
+                    log_cloudflare("indeed", query)
+                    await page.wait_for_timeout(8000)
                     page_title = await page.title()
+                    if any(kw in page_title.lower() for kw in ("moment", "just a moment", "cloudflare", "verify")):
+                        break  # CF didn't clear
 
             except Exception as e:
                 print(f"[Indeed] Navigation error at offset={offset}: {e}")
@@ -749,9 +760,11 @@ async def scrape_indeed(
                 context="search-card",
             )
 
+        log_scraper_done("indeed", query, len(jobs))
         return jobs
 
-    except Exception:
+    except Exception as e:
+        log_scraper_error("indeed", query, str(e))
         return []
     finally:
         try:

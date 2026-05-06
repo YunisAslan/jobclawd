@@ -85,7 +85,20 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
           filters.query ?? "",
           (filters.sources?.length
             ? filters.sources
-            : ["jobsearch", "linkedin", "indeed"]) as JobSource[],
+            : [
+                "linkedin",
+                "indeed",
+                "glassdoor",
+                "wellfound",
+                "ziprecruiter",
+                "remoteok",
+                "simplify",
+                "dice",
+                "jobgether",
+                "remoteco",
+                "weworkremotely",
+                "jobsearch",
+              ]) as JobSource[],
           (filters.location as LocationValue) ?? undefined,
           {
             workModes: filters.workModes,

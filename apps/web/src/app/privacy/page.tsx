@@ -10,7 +10,7 @@ export const metadata = {
   description: "How JobClawd collects, uses, and protects your personal data.",
 };
 
-const LAST_UPDATED = "May 5, 2025";
+const LAST_UPDATED = "May 6, 2025";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -106,6 +106,7 @@ export default function PrivacyPage() {
               <li><strong className="text-foreground">OpenAI</strong> — for AI-powered CV analysis and suggestion generation. Data sent to OpenAI is subject to their privacy policy.</li>
               <li><strong className="text-foreground">Google OAuth</strong> — for optional sign-in with Google.</li>
               <li><strong className="text-foreground">Gmail / SMTP</strong> — for sending magic link emails.</li>
+              <li><strong className="text-foreground">Job Platforms</strong> — We display information aggregated from publicly available job listings found on third-party websites. We respect the robots.txt protocols of these platforms where applicable and focus on providing a service that enhances the visibility of these listings for job seekers.</li>
             </ul>
             <p>
               We do not control these third parties and are not responsible for their privacy practices.

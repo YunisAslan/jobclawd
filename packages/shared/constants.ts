@@ -15,7 +15,20 @@ export type MatchLevel = (typeof MATCH_LEVELS)[number];
 export const APPLICATION_STATUSES = ["sent", "replied", "rejected", "withdrawn", "drafted", "waiting_input", "open_manually", "failed"] as const;
 export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
 
-export const JOB_SOURCES = ["jobsearch", "linkedin", "indeed"] as const;
+export const JOB_SOURCES = [
+  "linkedin",
+  "indeed",
+  "glassdoor",
+  "wellfound",
+  "ziprecruiter",
+  "remoteok",
+  "simplify",
+  "dice",
+  "jobgether",
+  "remoteco",
+  "weworkremotely",
+  "jobsearch",
+] as const;
 export type JobSource = (typeof JOB_SOURCES)[number];
 
 export const SALARY_PERIODS = ["annual", "monthly", "hourly"] as const;

@@ -25,7 +25,22 @@ from utils.auth_utils import get_optional_email, get_current_email
 
 router = APIRouter()
 
-_ALLOWED_HOSTS = ["jobsearch.az", "linkedin.com", "indeed.com", "az.indeed.com"]
+_ALLOWED_HOSTS = [
+    "jobsearch.az",
+    "linkedin.com",
+    "indeed.com",
+    "az.indeed.com",
+    "glassdoor.com",
+    "wellfound.com",
+    "ziprecruiter.com",
+    "remoteok.com",
+    "remoteok.io",
+    "simplify.jobs",
+    "dice.com",
+    "jobgether.com",
+    "remote.co",
+    "weworkremotely.com",
+]
 
 
 @router.post("/search", response_model=SearchResponse)
@@ -34,7 +49,20 @@ async def search_jobs(request: SearchRequest, email: Optional[str] = Depends(get
         from demo.demo_data import DEMO_SEARCH_RESULT
         return DEMO_SEARCH_RESULT
 
-    sources = request.sources if request.sources else [JobSource.jobsearch, JobSource.linkedin, JobSource.indeed]
+    sources = request.sources if request.sources else [
+        JobSource.linkedin,
+        JobSource.indeed,
+        JobSource.glassdoor,
+        JobSource.wellfound,
+        JobSource.ziprecruiter,
+        JobSource.remoteok,
+        JobSource.simplify,
+        JobSource.dice,
+        JobSource.jobgether,
+        JobSource.remoteco,
+        JobSource.weworkremotely,
+        JobSource.jobsearch,
+    ]
 
     # Check credits before searching (only matters for cache misses, checked after)
     if email:
@@ -93,7 +121,20 @@ async def search_jobs_stream(request: SearchRequest, email: Optional[str] = Depe
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
         )
 
-    sources = request.sources if request.sources else [JobSource.jobsearch, JobSource.linkedin, JobSource.indeed]
+    sources = request.sources if request.sources else [
+        JobSource.linkedin,
+        JobSource.indeed,
+        JobSource.glassdoor,
+        JobSource.wellfound,
+        JobSource.ziprecruiter,
+        JobSource.remoteok,
+        JobSource.simplify,
+        JobSource.dice,
+        JobSource.jobgether,
+        JobSource.remoteco,
+        JobSource.weworkremotely,
+        JobSource.jobsearch,
+    ]
 
     if email:
         credits = get_credits(email)

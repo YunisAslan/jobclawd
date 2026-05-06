@@ -10,7 +10,7 @@ export const metadata = {
   description: "The terms and conditions governing use of the JobClawd platform.",
 };
 
-const LAST_UPDATED = "May 5, 2025";
+const LAST_UPDATED = "May 6, 2025";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -127,6 +127,11 @@ export default function TermsPage() {
               <li>Impersonate any person or entity, or misrepresent your affiliation with any person or entity.</li>
               <li>Attempt to gain unauthorised access to any part of the Platform or its infrastructure.</li>
             </ul>
+            <p>
+              You acknowledge that the Platform operates as an aggregator of publicly accessible
+              information. While we strive to comply with the terms of use of third-party platforms,
+              we act solely as a search tool for the convenience of the User.
+            </p>
           </Section>
 
           <Section title="7. Third-Party Job Listings">

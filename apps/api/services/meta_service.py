@@ -11,6 +11,22 @@ CATEGORY_MAP = {
     "sort": "sort_options",
 }
 
+# Display order for the Source filter dropdown (jobsearch last)
+SOURCE_ORDER = [
+    "linkedin",
+    "indeed",
+    "glassdoor",
+    "wellfound",
+    "ziprecruiter",
+    "remoteok",
+    "simplify",
+    "dice",
+    "jobgether",
+    "remoteco",
+    "weworkremotely",
+    "jobsearch",
+]
+
 
 def get_all_filters() -> MetaFiltersResponse:
     with get_db() as conn:
@@ -41,6 +57,10 @@ def get_all_filters() -> MetaFiltersResponse:
         )
         for cr in countries_rows
     ]
+
+    # Enforce explicit display order for sources (jobsearch last)
+    sources_index = {v: i for i, v in enumerate(SOURCE_ORDER)}
+    buckets["sources"].sort(key=lambda o: sources_index.get(o.value, len(SOURCE_ORDER)))
 
     return MetaFiltersResponse(
         sources=buckets["sources"],

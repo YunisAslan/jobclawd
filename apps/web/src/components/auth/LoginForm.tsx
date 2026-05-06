@@ -91,9 +91,9 @@ function LoginForm() {
             className="rounded-2xl mb-10 brightness-0 invert"
           />
           <h2 className="text-[2.1rem] font-bold text-white dark:text-foreground leading-tight mb-4">
-            More interviews,
+            Apply smarter.
             <br />
-            less effort.
+            Get hired faster.
           </h2>
           <p className="text-muted-foreground text-sm leading-relaxed mb-12 max-w-68">
             JobClawd searches 10+ job platforms at once, scores every role against your CV, and

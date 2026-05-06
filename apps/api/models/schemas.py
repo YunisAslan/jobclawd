@@ -56,6 +56,15 @@ class JobSource(str, Enum):
     jobsearch = "jobsearch"
     linkedin = "linkedin"
     indeed = "indeed"
+    glassdoor = "glassdoor"
+    wellfound = "wellfound"
+    ziprecruiter = "ziprecruiter"
+    remoteok = "remoteok"
+    simplify = "simplify"
+    dice = "dice"
+    jobgether = "jobgether"
+    remoteco = "remoteco"
+    weworkremotely = "weworkremotely"
 
 
 # ---------- Sub-models ----------
@@ -95,7 +104,20 @@ class UserProfile(BaseModel):
 
 class SearchRequest(BaseModel):
     query: str
-    sources: list[JobSource] = [JobSource.jobsearch, JobSource.linkedin, JobSource.indeed]
+    sources: list[JobSource] = [
+        JobSource.linkedin,
+        JobSource.indeed,
+        JobSource.glassdoor,
+        JobSource.wellfound,
+        JobSource.ziprecruiter,
+        JobSource.remoteok,
+        JobSource.simplify,
+        JobSource.dice,
+        JobSource.jobgether,
+        JobSource.remoteco,
+        JobSource.weworkremotely,
+        JobSource.jobsearch,
+    ]
     location: Optional[LocationFilter] = None
     workModes: Optional[list[str]] = None
     experience: Optional[list[str]] = None
