@@ -128,6 +128,18 @@ class JobsService extends APIService {
     return result;
   }
 
+  async loadPage(
+    cacheKey: string,
+    page: number,
+    sortBy?: string,
+  ): Promise<SearchResponse> {
+    return this.post(
+      ENDPOINTS.SEARCH_PAGE,
+      { cache_key: cacheKey, page, page_size: 30, sort_by: sortBy },
+      { headers: getAuthHeader() },
+    ).then((r) => r.data);
+  }
+
   async getDetail(url: string): Promise<JobDetail> {
     if (url === DEMO_JOB_URL) return DEMO_JOB_DETAIL;
     return this.post(ENDPOINTS.JOB_DETAILS, { url }).then((r) => r.data);

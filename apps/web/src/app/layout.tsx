@@ -27,7 +27,7 @@ import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "JobClawd - Job Application Automation",
-  description: "Automate your job search across jobsearch.az, LinkedIn, and Indeed.",
+  description: "Search 10+ job boards simultaneously — AI scores every vacancy against your CV.",
 };
 
 export default function RootLayout({

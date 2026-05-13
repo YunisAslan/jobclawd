@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { SearchProgress } from "@/services/jobs.service";
 
 const STAGE_CONFIG: Record<string, { label: string; detail: string; order: number }> = {
-  scraping: { label: "Searching job sources", detail: "Scanning LinkedIn, Indeed, Glassdoor, RemoteOK, WeWorkRemotely, Dice, and more...", order: 0 },
+  scraping: { label: "Searching job sources", detail: "Scanning LinkedIn, Indeed, Glassdoor, ZipRecruiter, RemoteOK, Simplify, Dice, WeWorkRemotely, Remotive, Jobgether, and more...", order: 0 },
   found: { label: "Positions found", detail: "Collecting results from all sources", order: 1 },
   analyzing: { label: "Extracting metadata", detail: "Parsing salary, work mode, apply method...", order: 2 },
   filtering: { label: "Scoring and ranking", detail: "Matching against your profile", order: 3 },

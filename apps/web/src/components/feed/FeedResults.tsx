@@ -42,6 +42,10 @@ interface FeedResultsProps {
   savePending?: string | null;
   onDetails: (job: JobListing) => void;
   onHideCompany?: (company: string) => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
+  totalAll?: number;
 }
 
 
@@ -189,6 +193,10 @@ export default function FeedResults({
   savePending,
   onDetails,
   onHideCompany,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
+  totalAll = 0,
 }: FeedResultsProps) {
   const cacheCountdown = useCacheCountdown(dataUpdatedAt);
   const totalVisible = highMatch.length + needsReview.length;
@@ -281,7 +289,9 @@ export default function FeedResults({
       <div className="flex flex-wrap items-center justify-between gap-y-1.5 border-b border-border/40 pb-2.5">
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span>
-            {totalVisible} position{totalVisible !== 1 ? "s" : ""} found
+            {hasMore && totalAll > 0
+              ? `${totalVisible} of ${totalAll} position${totalAll !== 1 ? "s" : ""} loaded`
+              : `${totalVisible} position${totalVisible !== 1 ? "s" : ""} found`}
           </span>
           {activeFilterCount > 0 && (
             <span className="flex items-center gap-1.5 text-primary/80">
@@ -326,6 +336,28 @@ export default function FeedResults({
               </div>
             </section>
           ),
+      )}
+
+      {(hasMore || loadingMore) && (
+        <div className="flex justify-center pt-2 pb-1">
+          <Button
+            variant="outline"
+            onClick={onLoadMore}
+            disabled={loadingMore || !hasMore}
+            className="gap-2 min-w-36"
+          >
+            {loadingMore ? (
+              <>
+                <RefreshCw className="size-3.5 animate-spin" />
+                Loading…
+              </>
+            ) : (
+              <>
+                Load more jobs
+              </>
+            )}
+          </Button>
+        </div>
       )}
     </div>
   );

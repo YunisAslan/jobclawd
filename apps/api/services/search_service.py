@@ -77,12 +77,18 @@ def _reset_scores(jobs: list[JobListing]) -> None:
         job.match_flags = []
 
 
+PAGE_SIZE = 30
+
+
 def _finalize_response(
     base_response: SearchResponse,
     *,
     profile: Optional[UserProfile],
     sort_by: Optional[str],
     cached: bool,
+    page: int = 1,
+    page_size: int = PAGE_SIZE,
+    cache_key: Optional[str] = None,
 ) -> SearchResponse:
     jobs = _clone_jobs(base_response.jobs)
     _reset_scores(jobs)
@@ -92,14 +98,49 @@ def _finalize_response(
 
     _sort_jobs(jobs, sort_by)
 
+    total_all = len(jobs)
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_jobs = jobs[start:end]
+
     response = SearchResponse(
-        jobs=jobs,
-        total=len(jobs),
+        jobs=page_jobs,
+        total=len(page_jobs),
         query=base_response.query,
         currency=base_response.currency,
+        has_more=end < total_all,
+        cache_key=cache_key,
+        total_all=total_all,
     )
     response.cached = cached
     return response
+
+
+async def get_search_page(
+    cache_key: str,
+    page: int,
+    page_size: int = PAGE_SIZE,
+    profile: Optional[UserProfile] = None,
+    sort_by: Optional[str] = None,
+) -> Optional[SearchResponse]:
+    """Return a paginated slice from a cached search result, or None if expired."""
+    cached = get_cached_result(cache_key)
+    if cached is None:
+        return None
+
+    if "jobs" in cached:
+        cached["jobs"] = merge_metadata_into_jobs(cached["jobs"])
+
+    base_response = SearchResponse(**cached)
+    return _finalize_response(
+        base_response,
+        profile=profile,
+        sort_by=sort_by,
+        cached=True,
+        page=page,
+        page_size=page_size,
+        cache_key=cache_key,
+    )
 
 
 def _job_has_core_metadata(job: JobListing) -> bool:
@@ -237,6 +278,7 @@ async def run_search(
             profile=profile,
             sort_by=sort_by,
             cached=True,
+            cache_key=cache_key,
         )
 
     # ── In-flight dedupe for identical cold searches ────────────────────────
@@ -249,6 +291,7 @@ async def run_search(
                 profile=profile,
                 sort_by=sort_by,
                 cached=True,
+                cache_key=cache_key,
             )
 
         task = asyncio.create_task(
@@ -283,6 +326,7 @@ async def run_search(
             profile=profile,
             sort_by=sort_by,
             cached=False,
+            cache_key=cache_key,
         )
 
     base_response = await _run_uncached_search(
@@ -307,6 +351,7 @@ async def run_search(
         profile=profile,
         sort_by=sort_by,
         cached=False,
+        cache_key=cache_key,
     )
 
 

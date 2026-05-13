@@ -936,30 +936,22 @@ function HeroInteractiveDemo() {
 /* ─── Sources marquee ─────────────────────────────────────────── */
 const PLATFORM_ROWS: { name: string; accent: string }[][] = [
   [
-    { name: "jobsearch.az", accent: "bg-amber-400" },
     { name: "LinkedIn", accent: "bg-blue-500" },
     { name: "Indeed", accent: "bg-indigo-500" },
     { name: "Glassdoor", accent: "bg-green-500" },
-    { name: "Monster", accent: "bg-violet-500" },
-    { name: "Stepstone", accent: "bg-orange-500" },
-  ],
-  [
-    { name: "CareerBuilder", accent: "bg-blue-400" },
-    { name: "SimplyHired", accent: "bg-red-400" },
+    { name: "Simplify", accent: "bg-violet-500" },
     { name: "ZipRecruiter", accent: "bg-green-400" },
-    { name: "Workday", accent: "bg-cyan-500" },
-    { name: "Hired", accent: "bg-pink-500" },
-    { name: "Jora", accent: "bg-teal-500" },
   ],
   [
-    { name: "Seek", accent: "bg-sky-500" },
-    { name: "Snagajob", accent: "bg-yellow-500" },
-    { name: "Otta", accent: "bg-rose-500" },
-    { name: "Greenhouse", accent: "bg-lime-500" },
+    { name: "RemoteOK", accent: "bg-teal-500" },
+    { name: "Dice", accent: "bg-orange-500" },
+    { name: "WeWorkRemotely", accent: "bg-sky-500" },
+    { name: "Remotive", accent: "bg-rose-500" },
+    { name: "Jobgether", accent: "bg-pink-500" },
   ],
 ];
 
-const ROW_DURATIONS = ["[--duration:72s]", "[--duration:76s]", "[--duration:84s]"];
+const ROW_DURATIONS = ["[--duration:30s]", "[--duration:34s]"];
 
 function PlatformChip({ name, accent }: { name: string; accent: string }) {
   return (

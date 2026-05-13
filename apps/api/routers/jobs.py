@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse
 
 from models.schemas import (
     SearchRequest,
+    SearchPageRequest,
     SearchResponse,
     JobDetailRequest,
     JobDetailResponse,
@@ -17,7 +18,8 @@ from models.schemas import (
     UserProfile,
 )
 from services.job_detail_service import get_enhanced_job_detail
-from services.search_service import run_search
+from services.search_service import run_search, get_search_page
+from services.enrichment_service import merge_metadata_into_jobs
 from repositories import profile_repo
 from repositories.credits_repo import get_credits, use_credit
 from repositories.analytics_events_repo import insert_search_event
@@ -203,6 +205,29 @@ async def search_jobs_stream(request: SearchRequest, email: Optional[str] = Depe
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.post("/search/page", response_model=SearchResponse)
+async def get_jobs_page(request: SearchPageRequest, email: Optional[str] = Depends(get_optional_email)):
+    """Return a paginated slice from an existing cached search. No credit deduction."""
+    profile: UserProfile | None = None
+    raw = profile_repo.get_profile(email) if email else None
+    if raw:
+        try:
+            profile = UserProfile(**raw)
+        except Exception:
+            profile = None
+
+    result = await get_search_page(
+        cache_key=request.cache_key,
+        page=request.page,
+        page_size=request.page_size,
+        profile=profile,
+        sort_by=request.sort_by,
+    )
+    if result is None:
+        raise HTTPException(status_code=404, detail="Search results expired. Please search again.")
+    return result
 
 
 @router.post("/job-details", response_model=JobDetailResponse)

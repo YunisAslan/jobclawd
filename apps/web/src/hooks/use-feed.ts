@@ -42,6 +42,13 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
   const forceRefreshRef = useRef(false);
   const [progress, setProgress] = useState<SearchProgress | null>(null);
 
+  // Pagination
+  const [extraJobs, setExtraJobs] = useState<JobListing[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [cacheKey, setCacheKey] = useState<string | null>(null);
+  const [nextPage, setNextPage] = useState(2);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   const normalizedSalaryMin = (() => {
     const raw = filters.salaryMin?.replace(/,/g, "");
     if (!raw) return undefined;
@@ -132,15 +139,44 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
   useEffect(() => {
     if (prevKeyRef.current && prevKeyRef.current !== currentKey) {
       setSkipped(new Set());
+      setExtraJobs([]);
+      setHasMore(false);
+      setCacheKey(null);
+      setNextPage(2);
     }
     prevKeyRef.current = currentKey;
   }, [currentKey]);
+
+  // Sync pagination state from the initial search response
+  useEffect(() => {
+    if (data) {
+      setHasMore(data.has_more ?? false);
+      setCacheKey(data.cache_key ?? null);
+      setExtraJobs([]);
+      setNextPage(2);
+    }
+  }, [data]);
+
+  const loadMore = useCallback(async () => {
+    if (!cacheKey || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const result = await jobsService.loadPage(cacheKey, nextPage, filters.sortBy);
+      setExtraJobs((prev) => [...prev, ...result.jobs]);
+      setNextPage((p) => p + 1);
+      setHasMore(result.has_more ?? false);
+    } catch {
+      // non-fatal — user can retry
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [cacheKey, loadingMore, hasMore, nextPage, filters.sortBy]);
 
   const handleSkip = (url: string) => {
     setSkipped((prev) => new Set([...prev, url]));
   };
 
-  const realJobs = data?.jobs ?? [];
+  const realJobs = [...(data?.jobs ?? []), ...extraJobs];
 
   // ── DEV: inject a dummy vacancy so CV workspace can be tested without a real search ──
   const jobs: JobListing[] =
@@ -201,5 +237,9 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
     dataUpdatedAt,
     invalidateFeed,
     refreshFeed,
+    hasMore,
+    loadMore,
+    loadingMore,
+    totalAll: data?.total_all ?? 0,
   };
 }

@@ -199,6 +199,10 @@ function FeedPageInner() {
     dataUpdatedAt,
     invalidateFeed,
     refreshFeed,
+    hasMore,
+    loadMore,
+    loadingMore,
+    totalAll,
   } = useFeed(urlFilters);
 
   const { profile } = useProfile();
@@ -330,6 +334,10 @@ function FeedPageInner() {
             onToggleSave={handleToggleSave}
             savePending={savePendingUrl}
             onDetails={(job) => setPanelJob(job)}
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            onLoadMore={loadMore}
+            totalAll={totalAll}
           />
         </div>
       </div>

@@ -9,6 +9,7 @@ export const ENDPOINTS = {
   // Jobs
   SEARCH: "/api/search",
   SEARCH_STREAM: "/api/search/stream",
+  SEARCH_PAGE: "/api/search/page",
   JOB_DETAILS: "/api/job-details",
 
   // Apply

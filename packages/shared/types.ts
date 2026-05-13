@@ -111,6 +111,9 @@ export interface SearchResponse {
   total: number;
   query: string;
   cached?: boolean;
+  has_more?: boolean;
+  cache_key?: string;
+  total_all?: number;
 }
 
 // ── Job Detail ──

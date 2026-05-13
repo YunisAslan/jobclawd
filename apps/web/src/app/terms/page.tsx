@@ -66,7 +66,7 @@ export default function TermsPage() {
               JobClawd is a job search and CV optimization platform that:
             </p>
             <ul className="list-disc pl-5 space-y-1.5">
-              <li>Aggregates job listings from third-party job boards (LinkedIn, Indeed, jobsearch.az, and others).</li>
+              <li>Aggregates job listings from third-party job boards (LinkedIn, Indeed, Glassdoor, ZipRecruiter, RemoteOK, Simplify, Dice, WeWorkRemotely, Remotive, Jobgether, and others).</li>
               <li>Uses AI to score job vacancies against your CV, identify missing ATS keywords, and provide suggestions designed to increase your chances of getting invited to interview.</li>
               <li>Provides a CV editor with ATS-optimized PDF export — structured so applicant tracking systems can parse it correctly.</li>
               <li>Helps you track saved jobs and applications.</li>

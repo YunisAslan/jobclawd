@@ -168,6 +168,16 @@ class SearchResponse(BaseModel):
     query: str
     currency: str = "USD"
     cached: bool = False
+    has_more: bool = False
+    cache_key: Optional[str] = None
+    total_all: int = 0
+
+
+class SearchPageRequest(BaseModel):
+    cache_key: str
+    page: int = 2
+    page_size: int = 30
+    sort_by: Optional[str] = None
 
 
 # ---------- Job Detail ----------
