@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     curl \
+    wget \
+    gnupg \
     ca-certificates \
     # Playwright browser deps
     libnss3 \
@@ -45,8 +47,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY apps/api/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install playwright browsers (skip system deps, already installed above)
-RUN playwright install chromium
+# Install browser: Google Chrome on amd64, Debian chromium on arm64 (Apple Silicon).
+# patchright works best with a full real browser (not chromium-headless-shell).
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then \
+        wget -qO- https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg && \
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] https://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
+        apt-get update && apt-get install -y --no-install-recommends google-chrome-stable; \
+    else \
+        apt-get update && apt-get install -y --no-install-recommends chromium; \
+    fi \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install patchright's bundled chromium-headless-shell as fallback
+RUN python -m patchright install chromium
 
 COPY apps/api/ .
 

@@ -43,7 +43,7 @@ import {
   Monitor,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/Accordion";
 import LandingFooter from "@/components/layout/LandingFooter";
 import { Marquee } from "@/registry/magicui/marquee";
 import CVStructuredEditor from "@/components/feed/vacancy/CVStructuredEditor";
@@ -953,9 +953,7 @@ const PLATFORM_ROWS: { name: string; accent: string }[][] = [
   ],
   [
     { name: "Seek", accent: "bg-sky-500" },
-    { name: "Remote.co", accent: "bg-emerald-500" },
     { name: "Snagajob", accent: "bg-yellow-500" },
-    { name: "Wellfound", accent: "bg-purple-500" },
     { name: "Otta", accent: "bg-rose-500" },
     { name: "Greenhouse", accent: "bg-lime-500" },
   ],

@@ -18,13 +18,11 @@ def seed_data(conn):
         ("source", "linkedin", "LinkedIn"),
         ("source", "indeed", "Indeed"),
         ("source", "glassdoor", "Glassdoor"),
-        ("source", "wellfound", "Wellfound"),
         ("source", "ziprecruiter", "ZipRecruiter"),
         ("source", "remoteok", "RemoteOK"),
         ("source", "simplify", "Simplify"),
         ("source", "dice", "Dice"),
-        ("source", "jobgether", "Jobgether"),
-        ("source", "remoteco", "Remote.co"),
+        ("source", "jobgether", "Jobicy"),
         ("source", "weworkremotely", "We Work Remotely"),
         ("source", "jobsearch", "Jobsearch"),
         ("work_mode", "remote", "Remote"),
@@ -61,6 +59,15 @@ def seed_data(conn):
     conn.execute(
         "UPDATE filter_options SET label = 'Mid-Level' "
         "WHERE category = 'experience' AND value = 'mid'"
+    )
+    # Rename Jobgether display label to Jobicy (underlying API source).
+    conn.execute(
+        "UPDATE filter_options SET label = 'Jobicy' "
+        "WHERE category = 'source' AND value = 'jobgether'"
+    )
+    # Remove discontinued sources.
+    conn.execute(
+        "DELETE FROM filter_options WHERE category = 'source' AND value IN ('remoteco', 'wellfound')"
     )
 
     # Only fetch from external API once (when countries table is empty)

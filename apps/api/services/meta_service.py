@@ -16,13 +16,11 @@ SOURCE_ORDER = [
     "linkedin",
     "indeed",
     "glassdoor",
-    "wellfound",
     "ziprecruiter",
     "remoteok",
     "simplify",
     "dice",
     "jobgether",
-    "remoteco",
     "weworkremotely",
     "jobsearch",
 ]

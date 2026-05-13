@@ -12,14 +12,13 @@ from scraper.search import scrape_search
 from scraper.linkedin import scrape_linkedin
 from scraper.indeed import scrape_indeed
 from scraper.glassdoor import scrape_glassdoor
-from scraper.wellfound import scrape_wellfound
 from scraper.ziprecruiter import scrape_ziprecruiter
 from scraper.remoteok import scrape_remoteok
 from scraper.simplify import scrape_simplify
 from scraper.dice import scrape_dice
 from scraper.jobgether import scrape_jobgether
-from scraper.remoteco import scrape_remoteco
 from scraper.weworkremotely import scrape_weworkremotely
+from scraper.remotive import scrape_remotive
 from db.database import get_db
 from services.cache_service import make_cache_key
 from repositories.cache_repo import get_cached_result, set_cached_result
@@ -430,18 +429,6 @@ async def _run_uncached_search(
                     sort_by=sort_by,
                 ),
             )))
-        if JobSource.wellfound in sources:
-            tasks.append(asyncio.create_task(_run_scraper(
-                "wellfound",
-                scrape_wellfound(
-                    query, shard,
-                    work_modes=work_modes,
-                    experience=experience,
-                    job_types=job_types,
-                    date_posted=date_posted,
-                    sort_by=sort_by,
-                ),
-            )))
         if JobSource.ziprecruiter in sources:
             tasks.append(asyncio.create_task(_run_scraper(
                 "ziprecruiter",
@@ -502,10 +489,10 @@ async def _run_uncached_search(
                     sort_by=sort_by,
                 ),
             )))
-        if JobSource.remoteco in sources:
+        if JobSource.weworkremotely in sources:
             tasks.append(asyncio.create_task(_run_scraper(
-                "remoteco",
-                scrape_remoteco(
+                "weworkremotely",
+                scrape_weworkremotely(
                     query, shard,
                     work_modes=work_modes,
                     experience=experience,
@@ -514,11 +501,12 @@ async def _run_uncached_search(
                     sort_by=sort_by,
                 ),
             )))
-        if JobSource.weworkremotely in sources:
+        if JobSource.remotive in sources:
             tasks.append(asyncio.create_task(_run_scraper(
-                "weworkremotely",
-                scrape_weworkremotely(
-                    query, shard,
+                "remotive",
+                scrape_remotive(
+                    query,
+                    location=shard,
                     work_modes=work_modes,
                     experience=experience,
                     job_types=job_types,

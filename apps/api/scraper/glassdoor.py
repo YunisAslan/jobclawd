@@ -7,7 +7,6 @@ Returns [] on any failure rather than raising.
 from typing import Optional
 from urllib.parse import quote_plus
 
-from playwright_stealth import Stealth
 from scraper import get_browser
 from models.schemas import JobListing, JobSource, LocationFilter
 from scraper._common import (
@@ -53,7 +52,6 @@ async def scrape_glassdoor(
             lambda route: route.abort(),
         )
         page = await context.new_page()
-        await Stealth().apply_stealth_async(page)
 
         q = normalize_query(query)
         loc_label = resolve_location_label(location) or "United States"

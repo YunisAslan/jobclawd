@@ -2,7 +2,7 @@ import React from "react";
 import { JobSource } from "@/types";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
-import { Linkedin, Search, Building2, Rocket, Globe, Code2, Briefcase, Sparkles } from "lucide-react";
+import { Linkedin, Search, Building2, Globe, Code2, Briefcase, Sparkles } from "lucide-react";
 
 function IndeedIcon({ className }: { className?: string }) {
   return (
@@ -42,11 +42,6 @@ const SOURCE_CONFIG: Record<
     className: "bg-[#0CAA41] text-white",
     icon: Building2,
   },
-  wellfound: {
-    label: "WELLFOUND",
-    className: "bg-black text-white",
-    icon: Rocket,
-  },
   ziprecruiter: {
     label: "ZIPRECRUITER",
     className: "bg-[#1F7A29] text-white",
@@ -72,14 +67,14 @@ const SOURCE_CONFIG: Record<
     className: "bg-[#0E7C66] text-white",
     icon: Globe,
   },
-  remoteco: {
-    label: "REMOTE.CO",
-    className: "bg-[#2D7DD2] text-white",
-    icon: Globe,
-  },
   weworkremotely: {
     label: "WWR",
     className: "bg-[#EE2A24] text-white",
+    icon: Globe,
+  },
+  remotive: {
+    label: "REMOTIVE",
+    className: "bg-[#6D28D9] text-white",
     icon: Globe,
   },
 };

@@ -57,14 +57,13 @@ class JobSource(str, Enum):
     linkedin = "linkedin"
     indeed = "indeed"
     glassdoor = "glassdoor"
-    wellfound = "wellfound"
     ziprecruiter = "ziprecruiter"
     remoteok = "remoteok"
     simplify = "simplify"
     dice = "dice"
     jobgether = "jobgether"
-    remoteco = "remoteco"
     weworkremotely = "weworkremotely"
+    remotive = "remotive"
 
 
 # ---------- Sub-models ----------
@@ -108,14 +107,13 @@ class SearchRequest(BaseModel):
         JobSource.linkedin,
         JobSource.indeed,
         JobSource.glassdoor,
-        JobSource.wellfound,
         JobSource.ziprecruiter,
         JobSource.remoteok,
         JobSource.simplify,
         JobSource.dice,
         JobSource.jobgether,
-        JobSource.remoteco,
         JobSource.weworkremotely,
+        JobSource.remotive,
         JobSource.jobsearch,
     ]
     location: Optional[LocationFilter] = None

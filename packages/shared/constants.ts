@@ -19,14 +19,13 @@ export const JOB_SOURCES = [
   "linkedin",
   "indeed",
   "glassdoor",
-  "wellfound",
   "ziprecruiter",
   "remoteok",
   "simplify",
   "dice",
   "jobgether",
-  "remoteco",
   "weworkremotely",
+  "remotive",
   "jobsearch",
 ] as const;
 export type JobSource = (typeof JOB_SOURCES)[number];

@@ -1,9 +1,9 @@
 """LinkedIn job scraper — non-fatal, returns [] on any error."""
 
+import asyncio
 from urllib.parse import quote_plus, urlsplit, urlunsplit
 from typing import Optional
 
-from playwright_stealth import Stealth
 from scraper import get_browser
 from models.schemas import JobListing, JobSource, LocationFilter
 from db.database import get_db
@@ -16,7 +16,8 @@ _INITIAL_RESULTS_WAIT_MS = 1200
 _SCROLL_PAUSE_MS = 350
 _MAX_SCROLL_ROUNDS = 12
 _STALL_ROUNDS_BEFORE_STOP = 3
-_SYNC_DETAIL_ENRICH_LIMIT = 40
+_SYNC_DETAIL_ENRICH_LIMIT = 15
+_DETAIL_ENRICH_TIMEOUT_S = 30
 
 
 def _normalize_linkedin_job_url(url: str) -> str:
@@ -149,7 +150,6 @@ async def scrape_linkedin(
         )
 
         page = await context.new_page()
-        await Stealth().apply_stealth_async(page)
 
         encoded_query = quote_plus(query)
         target_location = "Worldwide"
@@ -451,10 +451,13 @@ async def scrape_linkedin(
         if ai_candidates:
             print(f"[LinkedIn] AI extracting from {len(ai_candidates)} card titles...")
             try:
-                ai_results = await extract_metadata_ai_batch(
-                    ai_candidates,
-                    source="linkedin",
-                    context="search-card",
+                ai_results = await asyncio.wait_for(
+                    extract_metadata_ai_batch(
+                        ai_candidates,
+                        source="linkedin",
+                        context="search-card",
+                    ),
+                    timeout=15,
                 )
                 for item_id, meta in ai_results.items():
                     idx = ai_index_map.get(item_id)
@@ -463,6 +466,8 @@ async def scrape_linkedin(
                     _merge_missing_fields_with_source(
                         jobs[idx], meta, job_field_sources[idx], "openai"
                     )
+            except asyncio.TimeoutError:
+                print(f"[LinkedIn] AI card extraction timed out after 15s — using card-level metadata only")
             except Exception as e:
                 print(f"[LinkedIn] AI card extraction error: {e}")
 
@@ -476,8 +481,9 @@ async def scrape_linkedin(
         if detail_candidates:
             print(f"[LinkedIn] Enriching {len(detail_candidates)} jobs via detail pages...")
             try:
-                detail_results = await fetch_metadata_for_urls(
-                    [url for _, url in detail_candidates]
+                detail_results = await asyncio.wait_for(
+                    fetch_metadata_for_urls([url for _, url in detail_candidates]),
+                    timeout=_DETAIL_ENRICH_TIMEOUT_S,
                 )
                 for idx, url in detail_candidates:
                     meta = detail_results.get(url)
@@ -486,6 +492,8 @@ async def scrape_linkedin(
                     _merge_missing_fields_with_source(
                         jobs[idx], meta, job_field_sources[idx], "detail-page"
                     )
+            except asyncio.TimeoutError:
+                print(f"[LinkedIn] Detail enrichment timed out after {_DETAIL_ENRICH_TIMEOUT_S}s — returning {len(jobs)} jobs with card-level metadata")
             except Exception as e:
                 print(f"[LinkedIn] Detail enrichment error: {e}")
 

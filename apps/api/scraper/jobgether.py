@@ -8,7 +8,6 @@ import httpx
 
 from models.schemas import JobListing, JobSource, LocationFilter
 from scraper._common import (
-    basic_text_match,
     date_posted_cutoff,
     location_includes_remote,
     normalize_query,
@@ -16,6 +15,14 @@ from scraper._common import (
 )
 from utils.job_meta_extractor import extract_all as extract_meta
 from utils.job_meta_extractor import primary_experience_value
+
+
+# Words that appear in almost every tech job title — not useful as search signals
+_NOISE = frozenset({
+    "developer", "engineer", "dev", "software", "job", "jobs",
+    "senior", "junior", "lead", "mid", "staff", "principal",
+    "manager", "specialist", "consultant", "analyst",
+})
 
 
 JOBICY_API = "https://jobicy.com/api/v2/remote-jobs"
@@ -26,44 +33,42 @@ _HEADERS = {
     "Accept": "application/json",
 }
 
-_GENERIC = {"developer", "engineer", "dev", "job", "jobs", "remote",
-            "senior", "junior", "lead", "mid", "staff", "principal",
-            "software", "full", "stack", "fullstack", "backend", "frontend"}
-
-_INDUSTRIES = ["engineering", "design", "marketing", "sales"]
-
-# Map common query keywords to Jobicy industry slugs
+# Map common query keywords to Jobicy industry slugs to fetch
 _INDUSTRY_MAP = {
-    "design": "design",
-    "ux": "design",
-    "ui": "design",
-    "marketing": "marketing",
-    "sales": "sales",
-    "account": "sales",
-    "data": "engineering",
-    "ml": "engineering",
-    "ai": "engineering",
-    "devops": "engineering",
-    "cloud": "engineering",
-    "security": "engineering",
+    "design": ["design"],
+    "ux": ["design"],
+    "ui": ["design"],
+    "marketing": ["marketing"],
+    "sales": ["sales"],
 }
+_DEFAULT_INDUSTRIES = ["engineering"]
 
 
-def _query_specific_tokens(q: str) -> list[str]:
-    tokens = [t for t in re.split(r"[\s,/&\-+]+", q.lower()) if len(t) >= 3]
-    specific = [t for t in tokens if t not in _GENERIC]
-    return specific[:3] if specific else tokens[:2]
+def _jobicy_match(q: str, *texts: str) -> bool:
+    """Stricter match for Jobicy: prefer specific tokens; fall back to any token only when
+    all query tokens are noise words (e.g. pure 'software engineer' query)."""
+    q_lower = q.lower().strip()
+    if not q_lower:
+        return True
+    haystack = " ".join((t or "").lower() for t in texts)
+    tokens = [t for t in re.split(r"[\s,/&\-+]+", q_lower) if len(t) >= 2]
+    specific = [t for t in tokens if t not in _NOISE]
+    # If there are specific tokens, ALL of them must appear (AND logic for precision)
+    if specific:
+        return all(tok in haystack for tok in specific[:2])
+    # Pure noise query — fall back to OR matching on all tokens
+    return any(tok in haystack for tok in tokens)
 
 
 def _pick_industries(q: str) -> list[str]:
     q_lower = q.lower()
-    for kw, ind in _INDUSTRY_MAP.items():
+    for kw, inds in _INDUSTRY_MAP.items():
         if kw in q_lower:
-            inds = [ind]
-            if ind != "engineering":
-                inds.append("engineering")
-            return inds
-    return ["engineering"]
+            result = list(inds)
+            if "engineering" not in result:
+                result.append("engineering")
+            return result
+    return _DEFAULT_INDUSTRIES
 
 
 async def _fetch_industry(client: httpx.AsyncClient, industry: str) -> list[dict]:
@@ -93,7 +98,6 @@ async def scrape_jobgether(
     try:
         q = normalize_query(query)
         cutoff = date_posted_cutoff(date_posted)
-        specific_tokens = _query_specific_tokens(q)
         industries = _pick_industries(q)
 
         raw_items: list[dict] = []
@@ -128,13 +132,7 @@ async def scrape_jobgether(
                 seen_urls.add(url)
 
                 description = item.get("jobDescription") or item.get("jobExcerpt") or ""
-                combined = f"{title} {company} {description}"
-
-                # Require at least one specific token to match (avoid false positives)
-                if specific_tokens:
-                    if not any(tok in combined.lower() for tok in specific_tokens):
-                        continue
-                elif not basic_text_match(q, title, company, description):
+                if not _jobicy_match(q, title, company, description):
                     continue
 
                 date_raw = item.get("pubDate") or ""

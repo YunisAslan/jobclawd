@@ -1,21 +1,20 @@
-"""ZipRecruiter scraper — public job search.
+"""ZipRecruiter scraper — uses FlareSolverr to bypass Cloudflare Bot Management.
 
-Best-effort: ZipRecruiter uses Cloudflare and aggressive bot protection.
-Returns [] on any failure rather than raising.
+Strategy: Fetch the search page through FlareSolverr, then parse the embedded
+JSON-LD ItemList (20 jobs per page). Company / location are extracted from the
+structured URL pattern: /c/{Company}/Job/{Title}/-in-{Loc}?jid={id}
 """
 
+import json
+import re
 from typing import Optional
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, unquote, urlparse
 
-from playwright_stealth import Stealth
-from scraper import get_browser
 from models.schemas import JobListing, JobSource, LocationFilter
+from scraper import _flaresolverr
 from scraper._common import (
     basic_text_match,
-    date_posted_cutoff,
     normalize_query,
-    parse_iso_date,
-    relative_to_iso,
     resolve_location_label,
 )
 from utils.job_meta_extractor import extract_all as extract_meta
@@ -23,6 +22,48 @@ from utils.job_meta_extractor import primary_experience_value
 
 
 ZIP_BASE = "https://www.ziprecruiter.com"
+
+_JSON_LD_RE = re.compile(
+    r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+    re.S | re.I,
+)
+
+# /c/{COMPANY}/Job/{TITLE}/-in-{LOCATION}?jid={ID}
+_URL_RE = re.compile(
+    r"/c/([^/]+)/Job/([^/?]+)(?:/-in-([^/?]+))?"
+)
+
+
+def _parse_url_meta(url: str) -> dict:
+    """Extract company / location / jid from a ZipRecruiter job URL."""
+    try:
+        parsed = urlparse(url)
+        m = _URL_RE.search(parsed.path)
+        if not m:
+            return {}
+        company_slug, _title_slug, loc_slug = m.groups()
+        company = unquote(company_slug or "").replace("-", " ").strip()
+        location = unquote(loc_slug or "").replace("-", " ").strip() if loc_slug else ""
+        return {"company": company, "location": location}
+    except Exception:
+        return {}
+
+
+def _parse_jsonld_jobs(html: str) -> list[dict]:
+    """Find the ItemList block of jobs in the page's JSON-LD scripts."""
+    jobs: list[dict] = []
+    for block in _JSON_LD_RE.findall(html):
+        try:
+            data = json.loads(block.strip())
+        except Exception:
+            continue
+        if isinstance(data, dict) and data.get("@type") == "ItemList":
+            for item in data.get("itemListElement", []) or []:
+                if isinstance(item, dict) and item.get("name") and item.get("url"):
+                    jobs.append(item)
+        elif isinstance(data, dict) and data.get("@type") == "JobPosting":
+            jobs.append({"name": data.get("title", ""), "url": data.get("url", "")})
+    return jobs
 
 
 async def scrape_ziprecruiter(
@@ -34,33 +75,19 @@ async def scrape_ziprecruiter(
     date_posted: Optional[str] = None,
     sort_by: Optional[str] = None,
 ) -> list[JobListing]:
-    from services.admin_log_service import log_scraper_start, log_scraper_done, log_scraper_error, log_captcha, log_bot_blocked, log_cloudflare, log_timeout
-    log_scraper_start("ziprecruiter", query)
-    context = None
-    try:
-        browser = await get_browser()
-        context = await browser.new_context(
-            user_agent=(
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/131.0.0.0 Safari/537.36"
-            ),
-            locale="en-US",
-            viewport={"width": 1280, "height": 800},
-        )
-        await context.route(
-            "**/*.{png,jpg,jpeg,gif,webp,woff,woff2,ttf,otf}",
-            lambda route: route.abort(),
-        )
-        page = await context.new_page()
-        await Stealth().apply_stealth_async(page)
+    from services.admin_log_service import log_scraper_start, log_scraper_done, log_scraper_error
 
+    log_scraper_start("ziprecruiter", query)
+
+    if not _flaresolverr.is_enabled():
+        log_scraper_done("ziprecruiter", query, 0)
+        return []
+
+    try:
         q = normalize_query(query)
         loc_label = resolve_location_label(location) or "United States"
 
         params = [f"search={quote_plus(q)}", f"location={quote_plus(loc_label)}"]
-
-        # Date posted: days=1|3|5|10
         if date_posted in ("1d", "today", "past-24h"):
             params.append("days=1")
         elif date_posted == "3d":
@@ -69,272 +96,89 @@ async def scrape_ziprecruiter(
             params.append("days=5")
         elif date_posted in ("1m", "past-month"):
             params.append("days=10")
-
-        # Work modes — ZipRecruiter uses refine_by_location_type=remote
         if work_modes and "remote" in [w.lower() for w in work_modes]:
             params.append("refine_by_location_type=only_remote")
 
-        # Job type filter — ZipRecruiter uses refine_by_employment=employment_type%3Aall+employment_type%3Afull_time, etc
-        if job_types:
-            jt_codes = []
-            for jt in job_types:
-                j = jt.lower()
-                if j == "full-time":
-                    jt_codes.append("employment_type:employment_type:full_time")
-                elif j == "part-time":
-                    jt_codes.append("employment_type:employment_type:part_time")
-                elif j == "contract":
-                    jt_codes.append("employment_type:employment_type:contract")
-                elif j == "internship":
-                    jt_codes.append("employment_type:employment_type:internship")
-            if jt_codes:
-                params.append(f"refine_by_employment={quote_plus('+'.join(jt_codes))}")
-
         url = f"{ZIP_BASE}/jobs-search?{'&'.join(params)}"
-
-        captured_jobs: list[dict] = []
-
-        async def _capture(response):
-            try:
-                if response.status != 200:
-                    return
-                ct = response.headers.get("content-type", "")
-                if "json" not in ct:
-                    return
-                data = await response.json()
-                if not isinstance(data, dict):
-                    return
-                for key in ("jobs", "data", "results", "hits", "jobResults"):
-                    val = data.get(key)
-                    if isinstance(val, list) and val and isinstance(val[0], dict):
-                        if any(k in val[0] for k in ("title", "name", "position")):
-                            captured_jobs.extend(val)
-                            break
-            except Exception:
-                pass
-
-        page.on("response", _capture)
-
-        try:
-            await page.goto(url, wait_until="domcontentloaded", timeout=25000)
-            await page.wait_for_timeout(5000)
-        except Exception:
+        html = await _flaresolverr.fetch_html(url, max_timeout=60000)
+        if not html:
             log_scraper_done("ziprecruiter", query, 0)
             return []
 
-        # Cloudflare check
-        page_title = await page.title()
-        if any(kw in page_title.lower() for kw in ("just a moment", "cloudflare", "checking")):
+        raw_jobs = _parse_jsonld_jobs(html)
+        if not raw_jobs:
             log_scraper_done("ziprecruiter", query, 0)
             return []
 
-        cutoff = date_posted_cutoff(date_posted)
         results: list[JobListing] = []
         seen: set[str] = set()
 
-        if captured_jobs:
-            for item in captured_jobs:
-                try:
-                    title = (item.get("title") or item.get("name") or item.get("position") or "").strip()
-                    if not title:
-                        continue
-                    job_id = item.get("id") or item.get("jobId") or ""
-                    job_url = (
-                        item.get("url") or item.get("applyUrl") or item.get("jobUrl") or
-                        (f"{ZIP_BASE}/jobs/{job_id}" if job_id else "")
-                    )
-                    if not job_url or job_url in seen:
-                        continue
-                    if not job_url.startswith("http"):
-                        job_url = f"{ZIP_BASE}{job_url}"
-                    seen.add(job_url)
-
-                    company = (item.get("hiring_company") or item.get("company") or item.get("employer") or "N/A")
-                    if isinstance(company, dict):
-                        company = company.get("name") or "N/A"
-                    company = str(company).strip()
-
-                    location_str = (item.get("location") or item.get("city") or "").strip()
-
-                    date_raw = item.get("posted_time") or item.get("datePosted") or item.get("postedDate") or ""
-                    date_iso = parse_iso_date(date_raw)
-                    if not date_iso and date_raw:
-                        iso_str = relative_to_iso(date_raw)
-                        if iso_str:
-                            date_iso = parse_iso_date(iso_str)
-                    if cutoff and date_iso and date_iso < cutoff:
-                        continue
-
-                    lc = str(item).lower()
-                    work_mode_str = None
-                    if "remote" in lc:
-                        work_mode_str = "Remote"
-                    elif "hybrid" in lc:
-                        work_mode_str = "Hybrid"
-
-                    salary_text = item.get("salary_interval") or item.get("salary") or ""
-                    if isinstance(salary_text, dict):
-                        salary_text = ""
-                    salary_text = str(salary_text).strip() if salary_text else ""
-
-                    combined_text = f"{title} {company} {location_str}"
-                    if not basic_text_match(q, title, company, combined_text):
-                        continue
-
-                    meta = extract_meta(combined_text)
-                    logo_url = item.get("hiring_company", {}).get("logo") if isinstance(item.get("hiring_company"), dict) else None
-
-                    results.append(
-                        JobListing(
-                            title=title,
-                            company=company,
-                            url=job_url,
-                            date_posted=(date_iso.isoformat() if date_iso else date_raw),
-                            source=JobSource.ziprecruiter,
-                            logo_url=logo_url,
-                            location_str=location_str,
-                            description_snippet=None,
-                            salary_str=salary_text or meta.get("salary_str"),
-                            salary_src="structured" if salary_text else ("regex" if meta.get("salary_str") else None),
-                            work_mode_str=work_mode_str,
-                            work_mode_src="rule" if work_mode_str else None,
-                            job_type_str=meta.get("job_type_str"),
-                            job_type_src="rule" if meta.get("job_type_str") else None,
-                            seniority_str=meta.get("seniority_str"),
-                            seniority_src="rule" if meta.get("seniority_str") else None,
-                            experience_str=primary_experience_value(meta.get("seniority_str"), meta.get("experience_years_str")),
-                            experience_src="rule" if meta.get("seniority_str") or meta.get("experience_years_str") else None,
-                        )
-                    )
-                except Exception:
-                    continue
-
-        if not results:
-            # DOM fallback — single JS eval (fast, no per-element round-trips)
+        for item in raw_jobs:
             try:
-                dom_cards = await page.evaluate("""() => {
-                    const cards = Array.from(document.querySelectorAll(
-                        'article.job_result, li[class*="job"], div[class*="job_card"]'
-                    ));
-                    if (!cards.length) {
-                        // Fallback: look for any link containing /jobs/
-                        return Array.from(document.querySelectorAll('a[href*="/jobs/"]'))
-                            .filter(a => a.pathname.split('/').filter(Boolean).length >= 2)
-                            .slice(0, 50)
-                            .map(a => ({
-                                href: a.href,
-                                title: a.innerText.trim().split('\\n')[0],
-                                company: 'N/A',
-                                location: '',
-                                fullText: (a.closest('li, article') || a.parentElement || a).innerText.trim().substring(0, 800),
-                                logoUrl: null,
-                                salaryText: '',
-                            }));
-                    }
-                    return cards.slice(0, 50).map(card => {
-                        const link = card.querySelector('a[href*="/jobs/"], a.job_link');
-                        const titleEl = card.querySelector('h2, h3, [class*="job_title"]');
-                        const companyEl = card.querySelector('a.t_org_link, [class*="hiring_company"] a, [class*="company"]');
-                        const locEl = card.querySelector('.location, [class*="location"]');
-                        const salEl = card.querySelector('.compensation, [class*="salary"]');
-                        const img = card.querySelector('img');
-                        const dateEl = card.querySelector('time, [class*="posted"]');
-                        return {
-                            href: link ? link.href : '',
-                            title: (titleEl || link || card).innerText.trim().split('\\n')[0],
-                            company: companyEl ? companyEl.innerText.trim() : 'N/A',
-                            location: locEl ? locEl.innerText.trim() : '',
-                            fullText: card.innerText.trim().substring(0, 800),
-                            logoUrl: img ? img.src : null,
-                            salaryText: salEl ? salEl.innerText.trim() : '',
-                            dateStr: dateEl ? (dateEl.getAttribute('datetime') || dateEl.innerText.trim()) : '',
-                        };
-                    });
-                }""")
-            except Exception:
-                dom_cards = []
-
-            for card in (dom_cards or []):
-                try:
-                    href = card.get("href") or ""
-                    if not href:
-                        continue
-                    full_url = href if href.startswith("http") else f"{ZIP_BASE}{href}"
-                    if full_url in seen:
-                        continue
-                    seen.add(full_url)
-
-                    title = (card.get("title") or "").strip()
-                    if not title:
-                        continue
-
-                    company = (card.get("company") or "N/A").strip()
-                    location_str = (card.get("location") or "").strip()
-                    full_text = (card.get("fullText") or "").strip()
-                    salary_text = (card.get("salaryText") or "").strip()
-                    logo_url = card.get("logoUrl") or None
-
-                    if not basic_text_match(q, title, company, full_text):
-                        continue
-
-                    date_raw = card.get("dateStr") or ""
-                    date_iso = parse_iso_date(date_raw)
-                    if not date_iso and date_raw:
-                        iso_str = relative_to_iso(date_raw)
-                        if iso_str:
-                            date_iso = parse_iso_date(iso_str)
-                    if cutoff and date_iso and date_iso < cutoff:
-                        continue
-
-                    lc = full_text.lower()
-                    work_mode_str = None
-                    if "remote" in lc:
-                        work_mode_str = "Remote"
-                    elif "hybrid" in lc:
-                        work_mode_str = "Hybrid"
-
-                    meta = extract_meta(full_text or title)
-
-                    results.append(
-                        JobListing(
-                            title=title,
-                            company=company,
-                            url=full_url,
-                            date_posted=(date_iso.isoformat() if date_iso else date_raw),
-                            source=JobSource.ziprecruiter,
-                            logo_url=logo_url,
-                            location_str=location_str,
-                            description_snippet=(full_text[:1500] if full_text else None),
-                            salary_str=salary_text or meta.get("salary_str"),
-                            salary_src="structured" if salary_text else ("regex" if meta.get("salary_str") else None),
-                            work_mode_str=work_mode_str,
-                            work_mode_src="rule" if work_mode_str else None,
-                            job_type_str=meta.get("job_type_str"),
-                            job_type_src="rule" if meta.get("job_type_str") else None,
-                            seniority_str=meta.get("seniority_str"),
-                            seniority_src="rule" if meta.get("seniority_str") else None,
-                            experience_str=primary_experience_value(meta.get("seniority_str"), meta.get("experience_years_str")),
-                            experience_src="rule" if meta.get("seniority_str") or meta.get("experience_years_str") else None,
-                        )
-                    )
-                except Exception:
+                title = (item.get("name") or "").strip()
+                job_url = (item.get("url") or "").strip()
+                if not title or not job_url or job_url in seen:
                     continue
+                seen.add(job_url)
+
+                meta = _parse_url_meta(job_url)
+                company = meta.get("company") or "N/A"
+                location_str = meta.get("location") or ""
+
+                lc_all = f"{title} {location_str}".lower()
+                if "remote" in lc_all:
+                    work_mode_str: Optional[str] = "Remote"
+                    if not location_str:
+                        location_str = "Remote"
+                elif "hybrid" in lc_all:
+                    work_mode_str = "Hybrid"
+                else:
+                    work_mode_str = None
+
+                combined = f"{title} {company} {location_str}"
+                if not basic_text_match(q, title, company, combined):
+                    continue
+
+                text_meta = extract_meta(combined)
+
+                results.append(JobListing(
+                    title=title,
+                    company=company,
+                    url=job_url,
+                    date_posted="",
+                    source=JobSource.ziprecruiter,
+                    logo_url=None,
+                    location_str=location_str,
+                    description_snippet=None,
+                    salary_str=text_meta.get("salary_str"),
+                    salary_src="regex" if text_meta.get("salary_str") else None,
+                    work_mode_str=work_mode_str or text_meta.get("work_mode_str"),
+                    work_mode_src="rule" if (work_mode_str or text_meta.get("work_mode_str")) else None,
+                    job_type_str=text_meta.get("job_type_str"),
+                    job_type_src="rule" if text_meta.get("job_type_str") else None,
+                    seniority_str=text_meta.get("seniority_str"),
+                    seniority_src="rule" if text_meta.get("seniority_str") else None,
+                    experience_str=primary_experience_value(text_meta.get("seniority_str"), text_meta.get("experience_years_str")),
+                    experience_src="rule" if text_meta.get("seniority_str") or text_meta.get("experience_years_str") else None,
+                ))
+            except Exception:
+                continue
+
+        if job_types:
+            jt_set = {jt.lower().replace("-", "") for jt in job_types}
+            results = [
+                j for j in results
+                if not j.job_type_str or j.job_type_str.lower().replace("-", "") in jt_set
+            ]
 
         if sort_by == "job-title-ascending":
             results.sort(key=lambda j: j.title.lower())
         elif sort_by == "job-title-descending":
             results.sort(key=lambda j: j.title.lower(), reverse=True)
-        else:
-            results.sort(key=lambda j: j.date_posted, reverse=True)
 
         log_scraper_done("ziprecruiter", query, len(results))
         return results
+
     except Exception as e:
         log_scraper_error("ziprecruiter", query, str(e))
         return []
-    finally:
-        try:
-            if context:
-                await context.close()
-        except Exception:
-            pass
