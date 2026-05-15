@@ -6,14 +6,20 @@ import { cn } from "@/lib/utils";
 import { SearchProgress } from "@/services/jobs.service";
 
 const STAGE_CONFIG: Record<string, { label: string; detail: string; order: number }> = {
-  scraping: { label: "Searching job sources", detail: "Scanning LinkedIn, Indeed, Glassdoor, ZipRecruiter, RemoteOK, Simplify, Dice, WeWorkRemotely, Remotive, Jobgether, and more...", order: 0 },
-  found: { label: "Positions found", detail: "Collecting results from all sources", order: 1 },
-  analyzing: { label: "Extracting metadata", detail: "Parsing salary, work mode, apply method...", order: 2 },
-  filtering: { label: "Scoring and ranking", detail: "Matching against your profile", order: 3 },
+  scraping: {
+    label: "Searching job sources",
+    detail: "Scanning LinkedIn, Indeed, Glassdoor, ZipRecruiter, Dice, Simplify, RemoteOK, Jobicy, Remotive, WWR and more…",
+    order: 0,
+  },
+  found: { label: "Positions found", detail: "Deduplicating across sources", order: 1 },
+  analyzing: { label: "Extracting metadata", detail: "Parsing salary, work mode, seniority…", order: 2 },
+  filtering: { label: "Scoring and ranking", detail: "Matching each role against your CV", order: 3 },
 };
 
-const SLOW_THRESHOLD_MS = 15_000;
-const TIMEOUT_THRESHOLD_MS = 60_000;
+// Thresholds relaxed: streaming UX (LiveSearchPanel + BottomStreamingIndicator)
+// keeps users engaged, so we don't need to apologise after 15s.
+const SLOW_THRESHOLD_MS = 25_000;
+const TIMEOUT_THRESHOLD_MS = 75_000;
 
 function useElapsedTime(running: boolean) {
   const [startTime] = useState(() => Date.now());
@@ -173,7 +179,7 @@ export default function FeedLoadingProgress({ progress }: FeedLoadingProgressPro
           )}
           {isSlow && !isTimeout && (
             <p className="text-[11px] text-muted-foreground/40 text-center px-4 animate-in fade-in duration-700">
-              Scraping multiple sources takes a moment — we&apos;re parsing and scoring each vacancy for you.
+              Results will start streaming in shortly — first jobs typically arrive within a few seconds.
             </p>
           )}
         </div>

@@ -11,6 +11,20 @@ import { useTour } from "@/contexts/TourContext";
 export const FEED_STALE_TIME = 24 * 60 * 60 * 1000;
 export const FEED_GC_TIME = 25 * 60 * 60 * 1000;
 
+/** Default source set when the user hasn't picked any in filters. */
+export const DEFAULT_SOURCES: JobSource[] = [
+  "linkedin",
+  "indeed",
+  "glassdoor",
+  "ziprecruiter",
+  "remoteok",
+  "simplify",
+  "dice",
+  "jobgether",
+  "weworkremotely",
+  "jobsearch",
+];
+
 /**
  * Build a stable React Query key from feed filters.
  * Arrays are sorted so ["az","tr"] and ["tr","az"] produce identical keys.
@@ -49,6 +63,17 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
   const [nextPage, setNextPage] = useState(2);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  // Streaming progress (per-source completion)
+  const [completedSources, setCompletedSources] = useState<Set<string>>(new Set());
+  const [searchStartedAt, setSearchStartedAt] = useState<number | null>(null);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+
+  // Resolve the effective source list (used both for the request and the UI panel)
+  const selectedSources = useMemo(
+    () => ((filters.sources?.length ? filters.sources : DEFAULT_SOURCES) as JobSource[]),
+    [filters.sources],
+  );
+
   const normalizedSalaryMin = (() => {
     const raw = filters.salaryMin?.replace(/,/g, "");
     if (!raw) return undefined;
@@ -86,24 +111,13 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
       const shouldForce = forceRefreshRef.current;
       forceRefreshRef.current = false;
       setProgress(null);
+      setCompletedSources(new Set());
+      setSearchStartedAt(Date.now());
 
       try {
         const result = await jobsService.searchStream(
           filters.query ?? "",
-          (filters.sources?.length
-            ? filters.sources
-            : [
-                "linkedin",
-                "indeed",
-                "glassdoor",
-                "ziprecruiter",
-                "remoteok",
-                "simplify",
-                "dice",
-                "jobgether",
-                "weworkremotely",
-                "jobsearch",
-              ]) as JobSource[],
+          selectedSources,
           (filters.location as LocationValue) ?? undefined,
           {
             workModes: filters.workModes,
@@ -115,7 +129,27 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
           },
           shouldForce,
           (p) => setProgress(p),
-          undefined,
+          // onPartial: stream jobs into the React Query cache as each scraper
+          // finishes, and track per-source completion so the live progress
+          // panel can light up chips as each scraper returns. Final `done`
+          // event overwrites with the complete response (cache_key, has_more,
+          // total_all set).
+          (partial, source) => {
+            queryClient.setQueryData(feedQueryKey, (prev: typeof partial | undefined) => ({
+              ...partial,
+              cache_key: partial.cache_key ?? prev?.cache_key,
+              has_more: partial.has_more ?? prev?.has_more ?? false,
+              total_all: partial.total_all ?? prev?.total_all ?? partial.total ?? 0,
+            }));
+            if (source) {
+              setCompletedSources((prev) => {
+                if (prev.has(source)) return prev;
+                const next = new Set(prev);
+                next.add(source);
+                return next;
+              });
+            }
+          },
           isDemo,
         );
         // Refetch credits after search (backend deducts on cache miss)
@@ -143,6 +177,9 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
       setHasMore(false);
       setCacheKey(null);
       setNextPage(2);
+      setCompletedSources(new Set());
+      setSearchStartedAt(null);
+      setLoadMoreError(null);
     }
     prevKeyRef.current = currentKey;
   }, [currentKey]);
@@ -158,15 +195,21 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
   }, [data]);
 
   const loadMore = useCallback(async () => {
+    // Hard guard: nothing to load.
     if (!cacheKey || loadingMore || !hasMore) return;
     setLoadingMore(true);
+    setLoadMoreError(null);
     try {
       const result = await jobsService.loadPage(cacheKey, nextPage, filters.sortBy);
       setExtraJobs((prev) => [...prev, ...result.jobs]);
       setNextPage((p) => p + 1);
       setHasMore(result.has_more ?? false);
-    } catch {
-      // non-fatal — user can retry
+    } catch (err) {
+      // Surface the error so the UI can show a retry affordance instead of
+      // appearing dead. The most common cause is the 24h cache expiring —
+      // backend returns 404 and the user needs to run a fresh search.
+      const msg = extractApiError(err, "Couldn't load more results. Tap to retry.");
+      setLoadMoreError(msg);
     } finally {
       setLoadingMore(false);
     }
@@ -240,6 +283,11 @@ export function useFeed(filters: Partial<FeedFilterValues>) {
     hasMore,
     loadMore,
     loadingMore,
+    loadMoreError,
     totalAll: data?.total_all ?? 0,
+    // Live streaming progress
+    selectedSources,
+    completedSources,
+    searchStartedAt,
   };
 }

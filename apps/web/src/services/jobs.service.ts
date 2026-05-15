@@ -56,7 +56,7 @@ class JobsService extends APIService {
     filters?: SearchFilters,
     forceRefresh?: boolean,
     onProgress?: (progress: SearchProgress) => void,
-    onPartial?: (result: SearchResponse) => void,
+    onPartial?: (result: SearchResponse, source?: string) => void,
     demo?: boolean,
   ): Promise<SearchResponse> {
     if (demo) return DEMO_SEARCH_RESPONSE;
@@ -111,7 +111,7 @@ class JobsService extends APIService {
           if (event.stage === "done") {
             result = event.data as SearchResponse;
           } else if (event.stage === "partial") {
-            onPartial?.(event.data as SearchResponse);
+            onPartial?.(event.data as SearchResponse, event.source as string | undefined);
           } else if (event.stage === "error") {
             throw new Error(event.message || "Search failed");
           } else if (onProgress) {

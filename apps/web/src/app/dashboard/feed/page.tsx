@@ -202,7 +202,12 @@ function FeedPageInner() {
     hasMore,
     loadMore,
     loadingMore,
+    loadMoreError,
     totalAll,
+    selectedSources,
+    completedSources,
+    searchStartedAt,
+    jobs: allFeedJobs,
   } = useFeed(urlFilters);
 
   const { profile } = useProfile();
@@ -336,8 +341,13 @@ function FeedPageInner() {
             onDetails={(job) => setPanelJob(job)}
             hasMore={hasMore}
             loadingMore={loadingMore}
+            loadMoreError={loadMoreError}
             onLoadMore={loadMore}
             totalAll={totalAll}
+            selectedSources={selectedSources}
+            completedSources={completedSources}
+            searchStartedAt={searchStartedAt}
+            allJobs={allFeedJobs}
           />
         </div>
       </div>
