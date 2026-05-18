@@ -21,6 +21,10 @@ export const ENDPOINTS = {
   ANALYTICS: "/api/analytics",
   PLATFORM_STATS: "/api/public/platform-stats",
 
+  // Public SEO (no auth required)
+  PUBLIC_JOB_SITEMAP: "/api/public/job-sitemap",
+  PUBLIC_JOB_DETAIL: "/api/job-details",
+
   // Meta
   META_FILTERS: "/api/meta/filters",
 

@@ -1,6 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
-import logo from "@/assets/logo/jobclawd-logo.svg";
+import { JobClawdLogo } from "@/assets/JobClawdLogo";
 import { Button } from "@/components/ui/Button";
 import { ArrowLeft } from "lucide-react";
 import LandingFooter from "@/components/layout/LandingFooter";
@@ -27,11 +26,8 @@ export default function TermsPage() {
       {/* Nav */}
       <header className="border-b border-border/40 bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <Image src={logo} alt="JobClawd" width={22} height={22} className="dark:brightness-0 dark:invert opacity-80 shrink-0" />
-            <span className="font-bold text-base tracking-tight">
-              Job<span className="text-primary">Clawd</span>
-            </span>
+          <Link href="/">
+            <JobClawdLogo size={20} className="text-foreground opacity-90" />
           </Link>
           <Button asChild variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1.5">
             <Link href="/">

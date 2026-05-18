@@ -1,7 +1,5 @@
 "use client";
 
-import Image from "next/image";
-import logo from "@/assets/logo/jobclawd-logo.svg";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Search, Bookmark, User, Settings, LogOut, BarChart2, Zap, Sparkles } from "lucide-react";
@@ -12,7 +10,8 @@ import { useCredits } from "@/contexts/CreditsContext";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/Tooltip";
 import { Button } from "@/components/ui/Button";
-import { useTheme } from "@/contexts/ThemeContext";
+import { JobClawdLogo } from "@/assets/JobClawdLogo";
+import { JobClawdMiniLogo } from "@/assets/JobClawdMiniLogo";
 
 const NAV_ITEMS = [
   {
@@ -117,7 +116,6 @@ function CreditBar({ credits, maxCredits }: { credits: number; maxCredits: numbe
 
 export default function AppSidebar() {
   const { open } = useSidebarShell();
-  const { resolved: theme } = useTheme();
   const { logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -162,22 +160,12 @@ export default function AppSidebar() {
       )}
     >
       {/* Logo */}
-      <div className="flex items-center h-14.25 shrink-0 border-b border-sidebar-border px-3 gap-3">
-        <Image
-          src={logo}
-          alt="JobClawd"
-          width={34}
-          height={34}
-          className={cn("shrink-0", theme === "dark" ? "brightness-0 invert" : "")}
-        />
-        <span
-          className={cn(
-            "font-bold text-lg tracking-tight text-sidebar-foreground dark:text-foreground whitespace-nowrap overflow-hidden transition-all duration-200",
-            collapsed ? "w-0 opacity-0" : "w-auto opacity-100",
-          )}
-        >
-          Job<span className="text-sidebar-primary">Clawd</span>
-        </span>
+      <div className="flex items-center justify-center h-14.25 shrink-0 border-b border-sidebar-border px-3">
+        {collapsed ? (
+          <JobClawdMiniLogo size={21} className="text-sidebar-foreground dark:text-foreground" />
+        ) : (
+          <JobClawdLogo size={20} className="ml-2.5 text-sidebar-foreground dark:text-foreground w-full" />
+        )}
       </div>
 
       {/* Nav */}

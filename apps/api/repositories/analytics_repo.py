@@ -7,6 +7,8 @@ from utils.title_normalizer import normalize_titles
 from models.schemas import (
     AnalyticsResponse,
     PlatformStatsResponse,
+    JobSitemapResponse,
+    SitemapJobEntry,
     CVAnalyticsEntry,
     ScoreDistributionEntry,
     TopJobTitleEntry,
@@ -207,6 +209,32 @@ def get_analytics(email: str) -> AnalyticsResponse:
             for r in trend_rows
         ],
         analysis_to_apply_ratio=analysis_to_apply_ratio,
+    )
+
+
+def get_job_sitemap() -> JobSitemapResponse:
+    """Returns up to 500 distinct recent job listings from search cache for SEO sitemap."""
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT DISTINCT ON (url) title, company, url
+            FROM (
+                SELECT
+                    j->>'title'   AS title,
+                    j->>'company' AS company,
+                    j->>'url'     AS url,
+                    sc.created_at
+                FROM search_cache sc,
+                     jsonb_array_elements(sc.result_json->'jobs') AS j
+                WHERE sc.expires_at > NOW()
+                  AND j->>'url'     IS NOT NULL
+                  AND j->>'title'   IS NOT NULL
+                  AND j->>'company' IS NOT NULL
+            ) subq
+            ORDER BY url, created_at DESC
+            LIMIT 500
+        """).fetchall()
+    return JobSitemapResponse(
+        jobs=[SitemapJobEntry(title=r["title"], company=r["company"], url=r["url"]) for r in rows]
     )
 
 

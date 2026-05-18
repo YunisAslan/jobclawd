@@ -1,8 +1,7 @@
 "use client";
 
-import Image from "next/image";
-import logo from "@/assets/logo/jobclawd-logo.svg";
 import { useState, useEffect } from "react";
+import { JobClawdLogo } from "@/assets/JobClawdLogo";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
@@ -83,14 +82,8 @@ function LoginForm() {
         />
 
         <div className="relative z-10">
-          <Image
-            src={logo}
-            alt="JobClawd"
-            width={72}
-            height={72}
-            className="rounded-2xl mb-10 brightness-0 invert"
-          />
-          <h2 className="text-[2.1rem] font-bold text-white dark:text-foreground leading-tight mb-4">
+          <JobClawdLogo size={36} className="text-sidebar-foreground mb-10" />
+          <h2 className="text-[2.1rem] font-bold text-sidebar-foreground leading-tight mb-4">
             Apply smarter.
             <br />
             Get hired faster.
@@ -106,7 +99,7 @@ function LoginForm() {
                   {f.icon}
                 </div>
                 <div>
-                  <p className="text-white dark:text-foreground text-sm font-medium leading-none mb-1">
+                  <p className="text-sidebar-foreground text-sm font-medium leading-none mb-1">
                     {f.title}
                   </p>
                   <p className="text-muted-foreground text-xs leading-snug">{f.desc}</p>
@@ -124,7 +117,7 @@ function LoginForm() {
             { label: "Jobs searched", value: stats?.searched_jobs },
           ].map((s) => (
             <div key={s.label}>
-              <p className="text-white dark:text-foreground font-bold text-lg leading-none mb-1">
+              <p className="text-sidebar-foreground font-bold text-lg leading-none mb-1">
                 {s.value != null ? `${s.value}+` : "—"}
               </p>
               <p className="text-muted-foreground text-[11px] leading-snug">{s.label}</p>
@@ -135,17 +128,8 @@ function LoginForm() {
 
       {/* Form panel */}
       <div className="w-1/2 flex-1 flex flex-col justify-center bg-card px-[clamp(2rem,8vw,5.5rem)] py-12">
-        <Link href="/" className="flex items-center gap-2.5 mb-12 w-fit">
-          <Image
-            src={logo}
-            alt="JobClawd"
-            width={34}
-            height={34}
-            className="dark:brightness-0 dark:invert shrink-0"
-          />
-          <span className="font-bold text-lg tracking-tight text-foreground">
-            Job<span className="text-primary">Clawd</span>
-          </span>
+        <Link href="/" className="mb-12 w-fit">
+          <JobClawdLogo size={24} className="text-foreground" />
         </Link>
 
         {sent ? (

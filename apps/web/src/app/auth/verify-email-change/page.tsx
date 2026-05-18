@@ -1,8 +1,7 @@
 "use client";
 
-import Image from "next/image";
-import logo from "@/assets/logo/jobclawd-logo.svg";
 import { Suspense, useEffect, useRef, useState } from "react";
+import { JobClawdLogo } from "@/assets/JobClawdLogo";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { authService } from "@/services/auth.service";
@@ -47,17 +46,8 @@ function VerifyEmailChangeInner() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col justify-center items-center px-6">
-      <Link href="/" className="flex items-center gap-2.5 mb-12">
-        <Image
-          src={logo}
-          alt="JobClawd"
-          width={34}
-          height={34}
-          className="dark:brightness-0 dark:invert shrink-0"
-        />
-        <span className="font-bold text-lg tracking-tight text-foreground">
-          Job<span className="text-primary">Clawd</span>
-        </span>
+      <Link href="/" className="mb-12">
+        <JobClawdLogo size={20} className="text-foreground" />
       </Link>
 
       {status === "verifying" && (

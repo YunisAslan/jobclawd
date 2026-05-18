@@ -516,3 +516,15 @@ class CachedAnalysisEntry(BaseModel):
 
 class CachedAnalysisListResponse(BaseModel):
     entries: list[CachedAnalysisEntry]
+
+
+# ---------- SEO / Sitemap ----------
+
+class SitemapJobEntry(BaseModel):
+    title: str
+    company: str
+    url: str
+
+
+class JobSitemapResponse(BaseModel):
+    jobs: list[SitemapJobEntry]

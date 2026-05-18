@@ -482,3 +482,15 @@ export interface CVData {
    *  editor's "personal" key. Empty means default order. */
   section_order?: string[];
 }
+
+// ── SEO ──
+
+export interface SitemapJob {
+  title: string;
+  company: string;
+  url: string;
+}
+
+export interface JobSitemapResponse {
+  jobs: SitemapJob[];
+}

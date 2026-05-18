@@ -1,8 +1,7 @@
 "use client";
 
-import Image from "next/image";
-import logo from "@/assets/logo/jobclawd-logo.svg";
 import Link from "next/link";
+import { JobClawdLogo } from "@/assets/JobClawdLogo";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/Button";
@@ -720,8 +719,7 @@ function HeroInteractiveDemo() {
               style={{ width: DEMO_SIDEBAR_W }}
             >
               <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-                <Image src={logo} width={16} height={16} alt="" className="dark:brightness-0 dark:invert opacity-70 shrink-0" />
-                <span className="text-sm font-bold">Job<span className="text-primary">Clawd</span></span>
+                <JobClawdLogo size={13} className="text-foreground opacity-80" />
               </div>
               <nav className="flex-1 py-2 px-2 space-y-0.5">
                 {([
@@ -1658,17 +1656,8 @@ export default function LandingPage() {
           )}
         >
           {/* Logo — left */}
-          <div className="flex items-center gap-2.5 flex-1">
-            <Image
-              src={logo}
-              alt="JobClawd"
-              width={28}
-              height={28}
-              className="dark:brightness-0 dark:invert shrink-0"
-            />
-            <span className="font-bold text-base tracking-tight">
-              Job<span className="text-primary">Clawd</span>
-            </span>
+          <div className="flex items-center flex-1">
+            <JobClawdLogo size={22} className="text-foreground" />
           </div>
 
           {/* Links — center */}

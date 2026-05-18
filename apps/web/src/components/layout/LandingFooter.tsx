@@ -1,7 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Mail } from "lucide-react";
-import logo from "@/assets/logo/jobclawd-logo.svg";
+import { JobClawdLogo } from "@/assets/JobClawdLogo";
 
 export default function LandingFooter() {
   return (
@@ -11,12 +10,7 @@ export default function LandingFooter() {
 
           {/* Brand column */}
           <div className="lg:col-span-1 space-y-4">
-            <div className="flex items-center gap-2.5">
-              <Image src={logo} alt="JobClawd" width={22} height={22} className="dark:brightness-0 dark:invert opacity-80 shrink-0" />
-              <span className="font-bold text-base tracking-tight">
-                Job<span className="text-primary">Clawd</span>
-              </span>
-            </div>
+            <JobClawdLogo size={16} className="text-foreground opacity-90" />
             <p className="text-sm text-muted-foreground leading-relaxed">
               Search 10+ job platforms, optimize your CV with AI, and send ATS-ready applications that increase your chances of getting to interview.
             </p>
