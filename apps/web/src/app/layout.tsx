@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "../styles/globals.css";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import AppShell from "@/components/layout/AppShell";
+import CookieBanner from "@/components/layout/CookieBanner";
+import { CookieConsentProvider } from "@/contexts/CookieConsentContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import { SidebarShellProvider } from "@/contexts/SidebarShellContext";
 import { FeedUrlProvider } from "@/contexts/FeedUrlContext";
@@ -117,6 +119,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
+        <CookieConsentProvider>
         <QueryProvider>
           <AuthProvider>
             <ThemeProvider>
@@ -135,6 +138,8 @@ export default function RootLayout({
             </ThemeProvider>
           </AuthProvider>
         </QueryProvider>
+        <CookieBanner />
+        </CookieConsentProvider>
       </body>
     </html>
   );

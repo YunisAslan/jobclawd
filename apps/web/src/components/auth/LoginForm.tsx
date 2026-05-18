@@ -14,6 +14,7 @@ import { authService } from "@/services/auth.service";
 import { extractApiError } from "@/lib/utils";
 import { API_BASE_URL } from "@/lib/endpoints";
 import { platformStatsService, type PlatformStats } from "@/services/platform-stats.service";
+import { useCookieConsent } from "@/contexts/CookieConsentContext";
 
 const FEATURES = [
   {
@@ -47,10 +48,12 @@ function LoginForm() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
   const [stats, setStats] = useState<PlatformStats | null>(null);
+  const { consent } = useCookieConsent();
 
   useEffect(() => {
+    if (consent === "declined") return;
     platformStatsService.getStats().then(setStats).catch(() => {});
-  }, []);
+  }, [consent]);
 
   const sendMutation = useMutation({
     mutationFn: (addr: string) => authService.sendMagicLink(addr),
