@@ -1,8 +1,14 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import { Mail } from "lucide-react";
+import { Mail, HelpCircle } from "lucide-react";
 import { JobClawdLogo } from "@/assets/JobClawdLogo";
+import { FeedbackDialog } from "@/components/layout/FeedbackDialog";
 
 export default function LandingFooter() {
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+
   return (
     <footer className="border-t border-border bg-muted/5">
       <div className="max-w-7xl mx-auto px-6 py-14">
@@ -95,10 +101,19 @@ export default function LandingFooter() {
           <div className="flex items-center gap-5">
             <Link href="/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</Link>
             <Link href="/terms" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Terms of Service</Link>
-            <span className="text-xs text-muted-foreground/50">Built for job seekers.</span>
+            <button
+              type="button"
+              onClick={() => setFeedbackOpen(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary/70 hover:text-primary border border-primary/20 hover:border-primary/40 rounded-full px-3 py-1 transition-colors"
+            >
+              <HelpCircle className="size-3" />
+              Send feedback
+            </button>
           </div>
         </div>
       </div>
+
+      <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </footer>
   );
 }

@@ -22,8 +22,10 @@ function writeCookie(value: "accepted" | "declined") {
 interface CookieConsentCtx {
   consent: ConsentState;
   resolved: boolean;
+  analyticsEnabled: boolean;
   accept: () => void;
   decline: () => void;
+  savePreferences: (prefs: { analytics: boolean }) => void;
 }
 
 const CookieConsentContext = createContext<CookieConsentCtx | null>(null);
@@ -47,8 +49,23 @@ export function CookieConsentProvider({ children }: { children: React.ReactNode 
     setConsent("declined");
   }
 
+  function savePreferences({ analytics }: { analytics: boolean }) {
+    const value = analytics ? "accepted" : "declined";
+    writeCookie(value);
+    setConsent(value);
+  }
+
   return (
-    <CookieConsentContext.Provider value={{ consent, resolved, accept, decline }}>
+    <CookieConsentContext.Provider
+      value={{
+        consent,
+        resolved,
+        analyticsEnabled: consent === "accepted",
+        accept,
+        decline,
+        savePreferences,
+      }}
+    >
       {children}
     </CookieConsentContext.Provider>
   );

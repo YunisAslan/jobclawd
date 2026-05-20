@@ -3,6 +3,7 @@ import "../styles/globals.css";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import AppShell from "@/components/layout/AppShell";
 import CookieBanner from "@/components/layout/CookieBanner";
+import FeedbackButton from "@/components/layout/FeedbackButton";
 import { CookieConsentProvider } from "@/contexts/CookieConsentContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import { SidebarShellProvider } from "@/contexts/SidebarShellContext";
@@ -52,8 +53,7 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "JobClawd",
     title: "JobClawd — AI-Powered Job Search",
-    description:
-      "Search 10+ job boards simultaneously — AI scores every vacancy against your CV.",
+    description: "Search 10+ job boards simultaneously — AI scores every vacancy against your CV.",
     url: BASE_URL,
     images: [
       {
@@ -67,8 +67,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "JobClawd — AI-Powered Job Search",
-    description:
-      "Search 10+ job boards simultaneously — AI scores every vacancy against your CV.",
+    description: "Search 10+ job boards simultaneously — AI scores every vacancy against your CV.",
     images: ["/opengraph-image"],
   },
   robots: {
@@ -120,25 +119,26 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         <CookieConsentProvider>
-        <QueryProvider>
-          <AuthProvider>
-            <ThemeProvider>
-              <TooltipProvider delayDuration={200}>
-                <CreditsProvider>
-                  <ProfileProvider>
-                    <SidebarShellProvider>
-                      <FeedUrlProvider>
-                        <AppShell>{children}</AppShell>
-                      </FeedUrlProvider>
-                      <Toaster position="top-center" richColors />
-                    </SidebarShellProvider>
-                  </ProfileProvider>
-                </CreditsProvider>
-              </TooltipProvider>
-            </ThemeProvider>
-          </AuthProvider>
-        </QueryProvider>
-        <CookieBanner />
+          <QueryProvider>
+            <AuthProvider>
+              <ThemeProvider>
+                <TooltipProvider delayDuration={200}>
+                  <CreditsProvider>
+                    <ProfileProvider>
+                      <SidebarShellProvider>
+                        <FeedUrlProvider>
+                          <AppShell>{children}</AppShell>
+                        </FeedUrlProvider>
+                        <Toaster position="top-center" richColors />
+                        <FeedbackButton />
+                      </SidebarShellProvider>
+                    </ProfileProvider>
+                  </CreditsProvider>
+                </TooltipProvider>
+              </ThemeProvider>
+            </AuthProvider>
+          </QueryProvider>
+          <CookieBanner />
         </CookieConsentProvider>
       </body>
     </html>

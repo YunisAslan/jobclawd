@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, CheckCircle2, Loader2, X, ShieldCheck } from "lucide-react";
+import { Mail, CheckCircle2, Loader2, X, ShieldCheck, LifeBuoy } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { useAuth } from "@/contexts/AuthContext";
 import { authService } from "@/services/auth.service";
+import { FeedbackDialog } from "@/components/layout/FeedbackDialog";
 import { cn } from "@/lib/utils";
 
 type Step =
@@ -24,6 +25,7 @@ export default function ChangeEmailSection() {
   const [otp, setOtp] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [error, setError] = useState("");
+  const [helpOpen, setHelpOpen] = useState(false);
 
   function reset() {
     setStep("idle");
@@ -172,6 +174,30 @@ export default function ChangeEmailSection() {
             Cancel
           </Button>
         </div>
+
+        <div className="flex items-start gap-2.5 rounded-lg border border-border/50 bg-muted/30 px-3.5 py-3">
+          <LifeBuoy className="size-3.5 shrink-0 text-muted-foreground mt-0.5" />
+          <div className="text-xs text-muted-foreground leading-snug">
+            <span className="font-medium text-foreground">Can&apos;t access this email?</span>{" "}
+            If you no longer have access to{" "}
+            <span className="font-medium text-foreground">{user?.email}</span>, contact us and we&apos;ll help you recover your account.{" "}
+            <button
+              type="button"
+              onClick={() => setHelpOpen(true)}
+              className="text-primary underline underline-offset-2 hover:no-underline font-medium"
+            >
+              Get help
+            </button>
+          </div>
+        </div>
+
+        <FeedbackDialog
+          open={helpOpen}
+          onOpenChange={setHelpOpen}
+          title="Account recovery request"
+          description="We'll get back to you as soon as possible"
+          initialMessage={`Hi, I can't access my current email (${user?.email}) and need help changing it to a new one. `}
+        />
       </div>
     );
   }
