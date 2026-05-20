@@ -23,6 +23,8 @@ import { useTheme } from "@/contexts/ThemeContext";
 import {
   PanelRightClose,
   PanelRightOpen,
+  Menu,
+  X,
   Sun,
   Moon,
   Monitor,
@@ -31,6 +33,7 @@ import {
   LogOut,
   CreditCard,
 } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface TopBarProps {
   title: string;
@@ -40,6 +43,7 @@ interface TopBarProps {
 
 export default function TopBar({ title, action, className }: TopBarProps) {
   const { open, toggle } = useSidebarShell();
+  const isMobile = useIsMobile();
   const { user, logout } = useAuth();
   const { profile } = useProfile();
   const { resolved: theme, preference, setTheme } = useTheme();
@@ -86,7 +90,11 @@ export default function TopBar({ title, action, className }: TopBarProps) {
             className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0"
             aria-label="Toggle sidebar"
           >
-            {open ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
+            {isMobile ? (
+              open ? <X className="size-4" /> : <Menu className="size-4" />
+            ) : (
+              open ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />
+            )}
           </Button>
 
           <h1 className="text-base font-semibold tracking-tight">{title}</h1>

@@ -105,9 +105,9 @@ export default function CVStructuredEditor({ data, onChange, highlightSection, o
             sectionIconsMap={SECTION_ICONS}
             forceOpen={highlightSection === "cv-section-personal"}
           >
-            <div className="flex items-start gap-4">
+            <div className="flex flex-col sm:flex-row items-start gap-4">
               {/* Photo upload */}
-              <div className="flex flex-col items-center gap-1.5 shrink-0">
+              <div className="flex flex-col items-center gap-1.5 shrink-0 self-center sm:self-start">
                 <div
                   className="relative size-16 rounded-full overflow-hidden border-2 border-dashed border-border bg-muted/40 flex items-center justify-center cursor-pointer group"
                   onClick={() => {
@@ -161,7 +161,7 @@ export default function CVStructuredEditor({ data, onChange, highlightSection, o
                 )}
               </div>
 
-              <div className="flex-1 grid grid-cols-2 gap-3">
+              <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label="Full Name" value={data.personal_info.full_name}
                   onChange={(v) => update({ personal_info: { ...data.personal_info, full_name: v } })} />
                 <Field label="Location" value={data.personal_info.location}
@@ -323,7 +323,7 @@ export default function CVStructuredEditor({ data, onChange, highlightSection, o
             <div className="space-y-2">
               {data.languages.map((lang, i) => (
                 <div key={i} className="flex items-start gap-2">
-                  <div className="flex-1 grid grid-cols-2 gap-2">
+                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <Field label="Language" value={lang.language}
                       onChange={(v) => { const next = [...data.languages]; next[i] = { ...lang, language: v }; update({ languages: next }); }} />
                     <Field label="Proficiency" value={lang.level} placeholder="e.g. Fluent, B2, Native"
@@ -354,7 +354,7 @@ export default function CVStructuredEditor({ data, onChange, highlightSection, o
               {data.certifications.map((cert, i) => (
                 <div key={cert.id} className="flex items-start gap-2">
                   <div className="flex-1 space-y-2">
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       <LinkedField
                         label="Certificate Name"
                         value={cert.name}
@@ -428,7 +428,7 @@ export default function CVStructuredEditor({ data, onChange, highlightSection, o
                 <div className="rounded-xl border border-border bg-background/40 p-3 space-y-3">
                   <div className="flex items-start gap-2">
                     {handle}
-                    <div className="flex-1 grid grid-cols-2 gap-2">
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <Field
                         label="Title"
                         value={entry.title}
@@ -472,7 +472,7 @@ export default function CVStructuredEditor({ data, onChange, highlightSection, o
 
   return (
     <div ref={scrollContainerRef} className="flex-1 overflow-y-auto bg-muted/40">
-      <div className="px-5 py-6">
+      <div className="px-3 sm:px-5 py-4 sm:py-6">
         <div className="mx-auto max-w-225 space-y-4">
           {sectionOrder.map((key, i) => {
             const isDragging = secDragFrom === i;

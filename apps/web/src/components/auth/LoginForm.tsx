@@ -112,7 +112,7 @@ function LoginForm() {
           </div>
         </div>
 
-        <div className="relative z-10 border-t border-sidebar-border pt-7 grid grid-cols-4 gap-3">
+        <div className="relative z-10 border-t border-sidebar-border pt-7 grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: "CV analyses",   value: stats?.total_analyses },
             { label: "Suggestions",   value: stats?.suggestions_applied },

@@ -15,8 +15,8 @@ import {
   Check,
   Undo2,
   CheckCircle2,
+  Zap,
 } from "lucide-react";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -332,8 +332,9 @@ export default function SuggestionsList({
             Get specific, actionable suggestions to improve your CV for this role.
           </p>
         </div>
-        <Button onClick={onAnalyze} className="w-full gap-2">
-          <Sparkles className="size-4" /> Get Suggestions
+        <Button onClick={onAnalyze} className="w-full justify-between">
+          <span className="flex items-center gap-2"><Sparkles className="size-4" /> Get Suggestions</span>
+          <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold bg-white/15 dark:bg-white/10 rounded px-1.5 py-0.5 leading-none">3 <Zap className="size-3" /></span>
         </Button>
       </div>
     );

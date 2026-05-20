@@ -19,6 +19,7 @@ import {
   ChevronsRight,
   Sparkles,
   RefreshCw,
+  Zap,
 } from "lucide-react";
 import type { CVData, CVSuggestion, CVSuggestionsResponse, SuggestionCategory } from "@/types";
 
@@ -195,7 +196,7 @@ export default function WorkspaceSuggestions({
   }
 
   return (
-    <aside className="w-80 flex-none border-r border-border/50 flex flex-col overflow-hidden bg-muted/20" data-tour="workspace-suggestions" data-loading={loading || undefined}>
+    <aside className="w-full md:w-80 md:flex-none max-h-72 md:max-h-none border-b md:border-b-0 md:border-r border-border/50 flex flex-col overflow-hidden bg-muted/20" data-tour="workspace-suggestions" data-loading={loading || undefined}>
 
       {/* Header — fixed, slightly elevated */}
       <div className="px-4 pt-3.5 pb-3 border-b border-border/40 shrink-0 space-y-2.5 bg-background">
@@ -216,12 +217,13 @@ export default function WorkspaceSuggestions({
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={onGenerateSuggestions}
-                className="size-6 text-muted-foreground/60 hover:text-foreground"
+                className="h-6 px-1.5 gap-1 text-[10px] text-muted-foreground/60 hover:text-foreground"
                 title="Regenerate suggestions"
               >
-                <RefreshCw className="size-3.5" />
+                <RefreshCw className="size-3" />
+                <span className="inline-flex items-center gap-0.5 font-semibold">3 <Zap className="size-2.5" /></span>
               </Button>
             )}
           </div>
@@ -313,12 +315,12 @@ export default function WorkspaceSuggestions({
                 <Button
                   type="button"
                   size="sm"
-                  className="gap-1.5 mt-1"
+                  className="justify-between gap-2 mt-1"
                   onClick={onGenerateSuggestions}
                   data-tour="generate-suggestions-btn"
                 >
-                  <Sparkles className="size-3.5" />
-                  Generate suggestions
+                  <span className="flex items-center gap-1.5"><Sparkles className="size-3.5" /> Generate suggestions</span>
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold bg-white/15 dark:bg-white/10 rounded px-1.5 py-0.5 leading-none">3 <Zap className="size-2.5" /></span>
                 </Button>
               )}
             </div>

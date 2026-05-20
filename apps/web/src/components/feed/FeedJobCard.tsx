@@ -185,8 +185,8 @@ export default function FeedJobCard({
                 <span className="text-xs text-muted-foreground/30">—</span>
               )}
             </div>
-            {/* Meta chips — single row, no wrap, overflow hidden */}
-            <div className="h-6 flex items-center gap-1.5 mt-1.5 overflow-y-hidden overflow-x-scroll scrollbar-none">
+            {/* Meta chips — wrap on mobile, single row + horizontal scroll on larger screens */}
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 mt-1.5 sm:h-6 sm:overflow-y-hidden sm:overflow-x-scroll scrollbar-none">
               {job.seniority_str && (
                 <MetaChip
                   className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 border border-border/60 rounded-md px-1.5 py-0.5 shrink-0"

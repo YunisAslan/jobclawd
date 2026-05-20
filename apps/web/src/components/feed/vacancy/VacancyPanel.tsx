@@ -21,9 +21,11 @@ import {
   X,
   TrendingUp,
   RefreshCw,
+  Zap,
 } from "lucide-react";
 import SourceBadge from "@/components/ui/SourceBadge";
 import SaveToggleButton from "@/components/ui/SaveToggleButton";
+
 import VacancySummary from "./VacancySummary";
 import MatchScoreBreakdown from "./MatchScoreBreakdown";
 import CVSelector from "./CVSelector";
@@ -196,13 +198,14 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
                     {hasCV && (
                       <Button
                         onClick={() => addCVToCompare(selectedCV!)}
-                        className="w-full gap-2"
+                        className="w-full justify-between"
                         disabled={multiCVResults.some(
                           (e) => e.cv.url === selectedCV?.url && e.loading,
                         )}
                         data-tour="analyze-cv-btn"
                       >
-                        Analyze CV
+                        <span>Analyze CV</span>
+                        <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold bg-white/15 dark:bg-white/10 rounded px-1.5 py-0.5 leading-none">5 <Zap className="size-3" /></span>
                       </Button>
                     )}
                     {!hasCV && (
@@ -429,6 +432,7 @@ function MultiCVRow({
             title="Re-analyze"
           >
             <RefreshCw className="size-3" />
+            <span className="inline-flex items-center gap-0.5 font-semibold">5 <Zap className="size-2.5" /></span>
           </Button>
         </div>
       )}

@@ -50,7 +50,7 @@ export default function ActivityTrend({ data, days = 30 }: ActivityTrendProps) {
   return (
     <div className="space-y-2">
       <ChartContainer config={chartConfig} className="h-35 w-full">
-        <AreaChart data={points} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+        <AreaChart data={points} margin={{ top: 4, right: 4, left: -12, bottom: 0 }}>
           <defs>
             <linearGradient id="fillCount" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="var(--color-count)" stopOpacity={0.3} />

@@ -55,12 +55,12 @@ export default function ExtendedProfileForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 sm:gap-8 items-start">
         {/* LEFT: sticky identity card */}
         <ProfileIdentityCard control={control} setValue={setValue} saving={saving} saved={saved} isDirty={isDirty} />
 
         {/* RIGHT: form sections */}
-        <div className="space-y-3 bg-card border border-border/60 shadow-sm rounded-xl p-6">
+        <div className="space-y-3 bg-card border border-border/60 shadow-sm rounded-xl p-4 sm:p-6">
           <IdentitySection control={control} email={profile.email} />
           <PreferencesSection control={control} meta={meta} />
           <DocumentsSection control={control} />

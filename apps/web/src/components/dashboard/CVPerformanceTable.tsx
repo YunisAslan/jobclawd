@@ -14,27 +14,29 @@ export default function CVPerformanceTable({ data }: { data: CVPerformanceEntry[
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>CV</TableHead>
-          <TableHead className="text-right">Sent</TableHead>
-          <TableHead className="text-right">Replies</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {data.map((row, i) => (
-          <TableRow key={i}>
-            <TableCell className="font-medium max-w-[140px] truncate">{row.cv_name}</TableCell>
-            <TableCell className="text-right">{row.sent}</TableCell>
-            <TableCell
-              className={`text-right font-semibold ${row.replies > 0 ? "text-success" : "text-foreground"}`}
-            >
-              {row.replies}
-            </TableCell>
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>CV</TableHead>
+            <TableHead className="text-right">Sent</TableHead>
+            <TableHead className="text-right">Replies</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {data.map((row, i) => (
+            <TableRow key={i}>
+              <TableCell className="font-medium max-w-25 sm:max-w-35 truncate">{row.cv_name}</TableCell>
+              <TableCell className="text-right">{row.sent}</TableCell>
+              <TableCell
+                className={`text-right font-semibold ${row.replies > 0 ? "text-success" : "text-foreground"}`}
+              >
+                {row.replies}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

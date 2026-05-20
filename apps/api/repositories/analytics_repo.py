@@ -19,11 +19,19 @@ from models.schemas import (
 
 def _derive_source_label(job_url: str) -> str:
     u = (job_url or "").lower()
-    if "linkedin" in u:
-        return "LinkedIn"
-    if "indeed" in u:
-        return "Indeed"
-    return "JobSearch.az"
+    if "linkedin" in u:       return "LinkedIn"
+    if "indeed" in u:         return "Indeed"
+    if "glassdoor" in u:      return "Glassdoor"
+    if "ziprecruiter" in u:   return "ZipRecruiter"
+    if "remoteok" in u:       return "RemoteOK"
+    if "simplify" in u:       return "Simplify"
+    if "dice.com" in u:       return "Dice"
+    if "jobicy" in u:         return "Jobicy"
+    if "jobgether" in u:      return "Jobicy"
+    if "weworkremotely" in u: return "We Work Remotely"
+    if "remotive" in u:       return "Remotive"
+    if "jobsearch.az" in u:   return "JobSearch.az"
+    return "Other"
 
 
 def get_analytics(email: str) -> AnalyticsResponse:
@@ -146,9 +154,19 @@ def get_analytics(email: str) -> AnalyticsResponse:
             """
             SELECT
                 CASE
-                    WHEN job_url ILIKE '%%linkedin%%' THEN 'LinkedIn'
-                    WHEN job_url ILIKE '%%indeed%%'   THEN 'Indeed'
-                    ELSE                                   'JobSearch.az'
+                    WHEN job_url ILIKE '%%linkedin%%'       THEN 'LinkedIn'
+                    WHEN job_url ILIKE '%%indeed%%'         THEN 'Indeed'
+                    WHEN job_url ILIKE '%%glassdoor%%'      THEN 'Glassdoor'
+                    WHEN job_url ILIKE '%%ziprecruiter%%'   THEN 'ZipRecruiter'
+                    WHEN job_url ILIKE '%%remoteok%%'       THEN 'RemoteOK'
+                    WHEN job_url ILIKE '%%simplify%%'       THEN 'Simplify'
+                    WHEN job_url ILIKE '%%dice.com%%'       THEN 'Dice'
+                    WHEN job_url ILIKE '%%jobicy%%'         THEN 'Jobicy'
+                    WHEN job_url ILIKE '%%jobgether%%'      THEN 'Jobicy'
+                    WHEN job_url ILIKE '%%weworkremotely%%' THEN 'We Work Remotely'
+                    WHEN job_url ILIKE '%%remotive%%'       THEN 'Remotive'
+                    WHEN job_url ILIKE '%%jobsearch.az%%'   THEN 'JobSearch.az'
+                    ELSE                                         'Other'
                 END AS source,
                 COUNT(*) AS cnt
             FROM cv_analysis_events

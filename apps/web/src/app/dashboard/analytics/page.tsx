@@ -168,7 +168,7 @@ export default function AnalyticsPage() {
   return (
     <div>
       <TopBar title="Analytics" />
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
 
         {/* Summary banner */}
         {isLoading ? (
@@ -185,7 +185,7 @@ export default function AnalyticsPage() {
 
         {/* KPI cards */}
         {!isEmpty && (
-          <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {isLoading ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <Card key={i} className="gap-0 py-5">

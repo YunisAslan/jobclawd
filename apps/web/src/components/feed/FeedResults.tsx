@@ -351,37 +351,6 @@ function CreditsExhaustedBanner({ maxCredits }: { maxCredits: number }) {
   );
 }
 
-function CreditsBadge({ creditsLeft, maxCredits }: { creditsLeft: number; maxCredits: number }) {
-  const ratio = creditsLeft / maxCredits;
-  const color =
-    ratio > 0.5
-      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-      : ratio > 0.2
-        ? "bg-warning/15 text-warning border-warning/25"
-        : "bg-destructive/15 text-destructive border-destructive/25";
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border cursor-help",
-            color,
-          )}
-        >
-          <Zap className="size-3" />
-          {creditsLeft}/{maxCredits} credits left
-          <Info className="size-3 opacity-60" />
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="bottom">
-        You have {creditsLeft} of {maxCredits} searches left. Repeating the same search with the
-        same filters won&apos;t use a credit — cached results are free.
-      </TooltipContent>
-    </Tooltip>
-  );
-}
-
 function CacheTimer({
   countdown,
   onRefresh,
@@ -525,7 +494,6 @@ export default function FeedResults({
             {cacheCountdown && (
               <CacheTimer countdown={cacheCountdown} onRefresh={onRefresh} loading={loading} />
             )}
-            <CreditsBadge creditsLeft={creditsLeft} maxCredits={maxCredits} />
           </div>
         </div>
         <div
@@ -589,7 +557,6 @@ export default function FeedResults({
           {cacheCountdown && (
             <CacheTimer countdown={cacheCountdown} onRefresh={onRefresh} loading={loading} />
           )}
-          <CreditsBadge creditsLeft={creditsLeft} maxCredits={maxCredits} />
         </div>
       </div>
 

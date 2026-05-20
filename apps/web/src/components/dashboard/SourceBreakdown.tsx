@@ -15,10 +15,56 @@ interface SourceBreakdownProps {
 }
 
 const SOURCE_COLORS: Record<string, string> = {
-  LinkedIn:     "#0A66C2",
-  Indeed:       "#8B5CF6",
-  "JobSearch.az": "#10B981",
+  LinkedIn:           "#0A66C2",
+  Indeed:             "#2557A7",
+  Glassdoor:          "#0CAA41",
+  ZipRecruiter:       "#4A90D9",
+  RemoteOK:           "#00B2A9",
+  Simplify:           "#6366F1",
+  Dice:               "#D0333C",
+  Jobicy:             "#FF7A00",
+  "We Work Remotely": "#1DBF73",
+  Remotive:           "#404BBF",
+  "JobSearch.az":     "#10B981",
+  Other:              "#6B7280",
 };
+
+function colorFor(source: string) {
+  return SOURCE_COLORS[source] ?? "#6B7280";
+}
+
+function BarList({ data, total }: { data: SourceBreakdownEntry[]; total: number }) {
+  return (
+    <div className="space-y-2.5">
+      {data.map((d) => {
+        const pct = total > 0 ? Math.round((d.count / total) * 100) : 0;
+        const color = colorFor(d.source);
+        return (
+          <div key={d.source}>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className="size-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: color }}
+                />
+                <span className="text-xs text-foreground truncate">{d.source}</span>
+              </div>
+              <span className="text-xs tabular-nums text-muted-foreground ml-3 shrink-0">
+                {d.count} <span className="text-muted-foreground/60">({pct}%)</span>
+              </span>
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${pct}%`, backgroundColor: color }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function SourceBreakdown({ data }: SourceBreakdownProps) {
   const total = data.reduce((s, d) => s + d.count, 0);
@@ -27,18 +73,19 @@ export default function SourceBreakdown({ data }: SourceBreakdownProps) {
     return <p className="text-xs text-muted-foreground text-center py-8">No analyses recorded yet.</p>;
   }
 
+  if (data.length > 4) {
+    return <BarList data={data} total={total} />;
+  }
+
   const chartConfig = Object.fromEntries(
-    data.map((d) => [
-      d.source,
-      { label: d.source, color: SOURCE_COLORS[d.source] ?? "#6B7280" },
-    ])
+    data.map((d) => [d.source, { label: d.source, color: colorFor(d.source) }])
   ) satisfies ChartConfig;
 
   const chartData = data.map((d) => ({
     source: d.source,
     count: d.count,
     pct: Math.round((d.count / total) * 100),
-    fill: SOURCE_COLORS[d.source] ?? "#6B7280",
+    fill: colorFor(d.source),
   }));
 
   return (

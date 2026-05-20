@@ -193,7 +193,7 @@ export default function CVWorkspaceDialog({
         >
 
           {/* Header */}
-          <header className="flex items-center justify-between gap-4 px-6 py-4 border-b border-border/50 shrink-0 bg-background">
+          <header className="flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 border-b border-border/50 shrink-0 bg-background flex-wrap">
             <div className="flex items-center gap-3 min-w-0">
               <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                 <FileText className="size-4 text-primary" />
@@ -206,8 +206,8 @@ export default function CVWorkspaceDialog({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0 pr-8">
-              <Badge variant="outline" className="text-[10px] font-medium hidden sm:inline-flex">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 pr-8 flex-wrap">
+              <Badge variant="outline" className="text-[10px] font-medium hidden md:inline-flex">
                 {isPdf ? "PDF" : fileType === "docx" ? "DOCX" : "External"}
               </Badge>
 
@@ -264,7 +264,7 @@ export default function CVWorkspaceDialog({
                   size="sm"
                   variant="outline"
                   className={cn(
-                    "gap-1.5 cursor-pointer transition-colors",
+                    "gap-1.5 cursor-pointer transition-colors hidden lg:inline-flex",
                     miniPreviewOpen
                       ? "bg-primary/10 border-primary/40 text-primary"
                       : "hover:bg-muted/60"
@@ -323,7 +323,7 @@ export default function CVWorkspaceDialog({
           )}
 
           {/* Body */}
-          <div className="flex-1 min-h-0 overflow-hidden flex">
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col md:flex-row">
 
             {/* Suggestions sidebar */}
             <WorkspaceSuggestions
@@ -363,9 +363,9 @@ export default function CVWorkspaceDialog({
               )}
             </div>
 
-            {/* ATS Preview panel */}
+            {/* ATS Preview panel — hidden below lg (1024px) where it doesn't fit */}
             {miniPreviewOpen && cvData && (
-              <div className="w-72 shrink-0 border-l border-border/50 bg-background flex flex-col overflow-hidden" data-tour="workspace-ats-panel">
+              <div className="w-72 shrink-0 border-l border-border/50 bg-background hidden lg:flex flex-col overflow-hidden" data-tour="workspace-ats-panel">
                 <div className="flex items-center justify-between px-3 py-2 border-b border-border/40 shrink-0">
                   <div className="flex items-center gap-1.5">
                     <ScanEye className="size-3.5 text-primary" />

@@ -1754,7 +1754,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="relative max-w-7xl mx-auto mt-14" style={{ animation: "fade-up 0.6s ease 0.15s both" }}>
+        <div className="relative max-w-7xl mx-auto mt-14 hidden md:block" style={{ animation: "fade-up 0.6s ease 0.15s both" }}>
           <div className="absolute -inset-6 rounded-3xl bg-primary/5 blur-2xl pointer-events-none" />
           <HeroInteractiveDemo />
         </div>

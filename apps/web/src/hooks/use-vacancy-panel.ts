@@ -124,15 +124,10 @@ export function useVacancyPanel(job: JobListing | null) {
     if (cvOverride) setSelectedCV(cvOverride);
     setWorkspaceOpen(true);
     cvMatch.parseCv(cv.url);
-    // Reuse existing sidebar score if already computed — seeds score only, shows "Generate Suggestions"
-    // button instead of auto-fetching so users who already applied aren't re-prompted.
-    const existingEntry = multiCVResults.find((e) => e.cv.url === cv.url && e.analysis && !e.loading);
-    if (existingEntry?.analysis) {
-      cvMatch.seedAnalysis(existingEntry.analysis);
-    } else {
-      cvMatch.analyze(job.url, cv.url, cv.name);
-    }
-  }, [job?.url, selectedCV, multiCVResults, cvMatch.analyze, cvMatch.seedAnalysis, cvMatch.parseCv]);
+    // Always use the bundle endpoint — it serves from cache if already analyzed,
+    // so previously generated suggestions are restored without re-charging credits.
+    cvMatch.analyze(job.url, cv.url, cv.name);
+  }, [job?.url, selectedCV, cvMatch.analyze, cvMatch.parseCv]);
 
   // Multi-CV: analyze a CV and add result to comparison list
   const addCVToCompare = useCallback(async (cv: CVLink) => {

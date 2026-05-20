@@ -1,12 +1,14 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Search, Bookmark, User, Settings, LogOut, BarChart2, Zap, Sparkles } from "lucide-react";
+import { Search, Bookmark, User, Settings, LogOut, BarChart2, Zap, Sparkles, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSidebarShell } from "@/contexts/SidebarShellContext";
 import { useFeedUrl } from "@/contexts/FeedUrlContext";
 import { useCredits } from "@/contexts/CreditsContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/Tooltip";
 import { Button } from "@/components/ui/Button";
@@ -82,6 +84,7 @@ function NavItem({
     </Link>
   );
 
+  // Tooltip only shown when collapsed (desktop narrow mode). On mobile drawer, labels are visible.
   if (collapsed) {
     return (
       <Tooltip>
@@ -115,16 +118,23 @@ function CreditBar({ credits, maxCredits }: { credits: number; maxCredits: numbe
 }
 
 export default function AppSidebar() {
-  const { open } = useSidebarShell();
+  const { open, close } = useSidebarShell();
   const { logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const isMobile = useIsMobile();
   const collapsed = !open;
   const { credits, maxCredits, isLoading } = useCredits();
 
   const hasCredits = credits !== null;
   const pct = hasCredits && maxCredits ? Math.min(100, Math.round((credits! / maxCredits) * 100)) : 0;
   const isLow = pct <= 20 && hasCredits;
+
+  // Auto-close drawer on route change (mobile only)
+  useEffect(() => {
+    if (isMobile && open) close();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   function handleLogout() {
     logout();
@@ -153,116 +163,144 @@ export default function AppSidebar() {
   );
 
   return (
-    <aside
-      className={cn(
-        "flex flex-col h-screen sticky top-0 shrink-0 border-r border-sidebar-border overflow-hidden transition-[width] duration-200 ease-in-out bg-sidebar",
-        collapsed ? "w-15" : "w-60",
+    <>
+      {/* Mobile backdrop — click to close */}
+      {isMobile && open && (
+        <div
+          className="fixed inset-0 bg-black/40 z-55 md:hidden animate-in fade-in duration-150"
+          onClick={close}
+          aria-hidden
+        />
       )}
-    >
-      {/* Logo */}
-      <div className="flex items-center justify-center h-14.25 shrink-0 border-b border-sidebar-border px-3">
-        {collapsed ? (
-          <JobClawdMiniLogo size={21} className="text-sidebar-foreground dark:text-foreground" />
-        ) : (
-          <JobClawdLogo size={20} className="ml-2.5 text-sidebar-foreground dark:text-foreground w-full" />
+
+      <aside
+        className={cn(
+          "flex flex-col h-screen shrink-0 border-r border-sidebar-border overflow-hidden bg-sidebar",
+          // Mobile: fixed drawer that slides in/out (above TopBar's z-50)
+          "fixed inset-y-0 left-0 z-60 w-64 transition-transform duration-200 ease-in-out",
+          open ? "translate-x-0" : "-translate-x-full",
+          // Desktop: sticky, transitions width instead of transform
+          "md:sticky md:top-0 md:z-auto md:translate-x-0 md:transition-[width] md:duration-200",
+          collapsed ? "md:w-15" : "md:w-60",
         )}
-      </div>
-
-      {/* Nav */}
-      <nav data-tour="sidebar-nav" className="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2 space-y-0.5">
-        {NAV_ITEMS.map((item) => (
-          <NavItem
-            key={item.href}
-            href={item.href}
-            label={item.label}
-            icon={item.icon}
-            collapsed={collapsed}
-            data-tour={item.href.includes("profile") ? "nav-profile" : undefined}
-          />
-        ))}
-      </nav>
-
-      {/* Credits + Upgrade */}
-      <div className="px-2 pb-2 space-y-1">
-        {/* Credit widget — expanded */}
-        {!collapsed && !isLoading && hasCredits && (
-          <div className="px-3 py-2.5 rounded-lg bg-muted/40">
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-1.5">
-                <Zap className={cn("size-3.5 shrink-0", isLow ? "text-destructive" : "text-primary")} />
-                <span className="text-xs font-medium text-foreground">Credits</span>
-              </div>
-              <span className={cn("text-xs font-semibold tabular-nums", isLow ? "text-destructive" : "text-foreground")}>
-                {credits}
-                {maxCredits ? <span className="text-muted-foreground font-normal"> / {maxCredits}</span> : null}
-              </span>
-            </div>
-            <CreditBar credits={credits!} maxCredits={maxCredits ?? credits!} />
-            {isLow && <p className="text-xs text-destructive mt-1.5 font-medium">Running low</p>}
+      >
+        {/* Logo + mobile close button */}
+        <div className="flex items-center justify-between h-14.25 shrink-0 border-b border-sidebar-border px-3 gap-2">
+          <div className="flex-1 flex items-center justify-center min-w-0">
+            {collapsed ? (
+              <JobClawdMiniLogo size={21} className="text-sidebar-foreground dark:text-foreground" />
+            ) : (
+              <JobClawdLogo size={20} className="ml-2.5 text-sidebar-foreground dark:text-foreground w-full" />
+            )}
           </div>
-        )}
-
-        {/* Credit icon — collapsed */}
-        {collapsed && hasCredits && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link
-                href="/dashboard/billing"
-                className={cn(
-                  "flex items-center justify-center w-full px-3 py-2.5 rounded-lg transition-colors duration-150",
-                  isLow
-                    ? "text-destructive hover:bg-destructive/10"
-                    : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                )}
-              >
-                <Zap className="size-4.5 shrink-0" />
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={8}>
-              {credits} credits remaining
-            </TooltipContent>
-          </Tooltip>
-        )}
-
-        {/* Upgrade button */}
-        {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link
-                href="/dashboard/billing"
-                className="flex items-center justify-center w-full px-3 py-2.5 rounded-lg text-primary/70 hover:text-primary transition-colors duration-150"
-              >
-                <Sparkles className="size-4.5 shrink-0" />
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={8}>
-              Get more credits
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <Link
-            href="/dashboard/billing"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium w-full border border-dashed border-primary/30 text-primary/70 hover:border-primary/60 hover:text-primary transition-colors duration-150"
+          {/* Close button — mobile only */}
+          <Button
+            onClick={close}
+            variant="ghost"
+            size="icon-sm"
+            className="text-muted-foreground hover:text-foreground hover:bg-accent shrink-0 md:hidden"
+            aria-label="Close sidebar"
           >
-            <Sparkles className="size-4 shrink-0" />
-            <span className="whitespace-nowrap overflow-hidden">Get more credits</span>
-          </Link>
-        )}
-      </div>
+            <X className="size-4" />
+          </Button>
+        </div>
 
-      {/* Logout footer */}
-      <div className="border-t border-sidebar-border p-2">
-        {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>{logoutBtn}</TooltipTrigger>
-            <TooltipContent side="right" sideOffset={8}>
-              Log out
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          logoutBtn
-        )}
-      </div>
-    </aside>
+        {/* Nav */}
+        <nav data-tour="sidebar-nav" className="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2 space-y-0.5">
+          {NAV_ITEMS.map((item) => (
+            <NavItem
+              key={item.href}
+              href={item.href}
+              label={item.label}
+              icon={item.icon}
+              collapsed={collapsed}
+              data-tour={item.href.includes("profile") ? "nav-profile" : undefined}
+            />
+          ))}
+        </nav>
+
+        {/* Credits + Upgrade */}
+        <div className="px-2 pb-2 space-y-1">
+          {/* Credit widget — expanded */}
+          {!collapsed && !isLoading && hasCredits && (
+            <div className="px-3 py-2.5 rounded-lg bg-muted/40">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <Zap className={cn("size-3.5 shrink-0", isLow ? "text-destructive" : "text-primary")} />
+                  <span className="text-xs font-medium text-foreground">Credits</span>
+                </div>
+                <span className={cn("text-xs font-semibold tabular-nums", isLow ? "text-destructive" : "text-foreground")}>
+                  {credits}
+                  {maxCredits ? <span className="text-muted-foreground font-normal"> / {maxCredits}</span> : null}
+                </span>
+              </div>
+              <CreditBar credits={credits!} maxCredits={maxCredits ?? credits!} />
+              {isLow && <p className="text-xs text-destructive mt-1.5 font-medium">Running low</p>}
+            </div>
+          )}
+
+          {/* Credit icon — collapsed */}
+          {collapsed && hasCredits && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/dashboard/billing"
+                  className={cn(
+                    "flex items-center justify-center w-full px-3 py-2.5 rounded-lg transition-colors duration-150",
+                    isLow
+                      ? "text-destructive hover:bg-destructive/10"
+                      : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  )}
+                >
+                  <Zap className="size-4.5 shrink-0" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                {credits} credits remaining
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* Upgrade button */}
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/dashboard/billing"
+                  className="flex items-center justify-center w-full px-3 py-2.5 rounded-lg text-primary/70 hover:text-primary transition-colors duration-150"
+                >
+                  <Sparkles className="size-4.5 shrink-0" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                Get more credits
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <Link
+              href="/dashboard/billing"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium w-full border border-dashed border-primary/30 text-primary/70 hover:border-primary/60 hover:text-primary transition-colors duration-150"
+            >
+              <Sparkles className="size-4 shrink-0" />
+              <span className="whitespace-nowrap overflow-hidden">Get more credits</span>
+            </Link>
+          )}
+        </div>
+
+        {/* Logout footer */}
+        <div className="border-t border-sidebar-border p-2">
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>{logoutBtn}</TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                Log out
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            logoutBtn
+          )}
+        </div>
+      </aside>
+    </>
   );
 }
