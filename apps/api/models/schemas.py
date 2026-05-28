@@ -472,6 +472,8 @@ class CVMatchResponse(BaseModel):
 class CVSuggestionRequest(BaseModel):
     job_url: str
     cv_url: str
+    analysis: Optional[dict] = None
+    force_regenerate: bool = False
 
 class CVDraftRequest(BaseModel):
     cv_url: str
@@ -503,6 +505,8 @@ class CVAnalysisBundleResponse(BaseModel):
     analysis: CVMatchResponse
     suggestions: CVSuggestionsResponse
     draft: CVDraftResponse
+    job_title: str = ""
+    job_company: str = ""
     error_analysis: Optional[str] = None
     error_suggestions: Optional[str] = None
     error_draft: Optional[str] = None

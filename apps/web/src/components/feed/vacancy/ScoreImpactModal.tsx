@@ -79,58 +79,56 @@ export default function ScoreImpactModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden rounded-2xl">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg p-0 gap-0 overflow-hidden rounded-2xl">
 
         {/* Top accent bar */}
-        <div className={cn("h-1 w-full", improved ? "bg-emerald-500" : unchanged ? "bg-border" : "bg-orange-500")} />
+        <div className={cn("h-1 w-full shrink-0", improved ? "bg-emerald-500" : unchanged ? "bg-border" : "bg-orange-500")} />
 
-        <div className="px-7 pt-6 pb-7 space-y-6">
+        <div className="px-4 sm:px-7 pt-5 sm:pt-6 pb-5 sm:pb-7 space-y-4 sm:space-y-6 overflow-y-auto max-h-[calc(100dvh-5rem)]">
 
           {/* Header */}
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <DialogTitle className="text-base font-bold leading-snug">{headline}</DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground mt-1">
-                {improved
-                  ? "Your edits made a measurable difference."
-                  : unchanged
-                  ? "Apply more suggestions from the sidebar to see improvement."
-                  : "Some content changes may have reduced relevance."}
-              </DialogDescription>
-            </div>
+          <div>
+            <DialogTitle className="text-sm sm:text-base font-bold leading-snug pr-6">{headline}</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
+              {improved
+                ? "Your edits made a measurable difference."
+                : unchanged
+                ? "Apply more suggestions from the sidebar to see improvement."
+                : "Some content changes may have reduced relevance."}
+            </DialogDescription>
           </div>
 
           {/* Score comparison */}
-          <div className={cn("flex items-center justify-center gap-4 rounded-xl border px-6 py-5", accentBg, accentBorder)}>
+          <div className={cn("flex items-center justify-center gap-3 sm:gap-4 rounded-xl border px-4 sm:px-6 py-4 sm:py-5", accentBg, accentBorder)}>
             <div className="flex flex-col items-center gap-1">
-              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Before</span>
-              <span className="text-5xl font-black tabular-nums text-foreground leading-none">{baseline}</span>
-              <span className="text-sm text-muted-foreground font-medium">%</span>
+              <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Before</span>
+              <span className="text-4xl sm:text-5xl font-black tabular-nums text-foreground leading-none">{baseline}</span>
+              <span className="text-xs sm:text-sm text-muted-foreground font-medium">%</span>
             </div>
 
-            <div className="flex flex-col items-center gap-1 px-2">
-              <TrendIcon className={cn("size-6", accentText)} />
+            <div className="flex flex-col items-center gap-1 px-1 sm:px-2">
+              <TrendIcon className={cn("size-5 sm:size-6", accentText)} />
               {!unchanged && (
-                <span className={cn("text-sm font-bold tabular-nums", accentText)}>
+                <span className={cn("text-xs sm:text-sm font-bold tabular-nums", accentText)}>
                   {delta > 0 ? "+" : ""}{delta} pts
                 </span>
               )}
               {unchanged && (
-                <span className="text-xs text-muted-foreground">no change</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground">no change</span>
               )}
             </div>
 
             <div className="flex flex-col items-center gap-1">
-              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">After</span>
-              <span className={cn("text-5xl font-black tabular-nums leading-none", accentText)}>{result.overall_score}</span>
-              <span className={cn("text-sm font-medium", accentText)}>%</span>
+              <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground uppercase tracking-wide">After</span>
+              <span className={cn("text-4xl sm:text-5xl font-black tabular-nums leading-none", accentText)}>{result.overall_score}</span>
+              <span className={cn("text-xs sm:text-sm font-medium", accentText)}>%</span>
             </div>
           </div>
 
           {/* Category breakdown */}
           {result.categories.length > 0 && (
             <div className="space-y-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Category Breakdown</p>
+              <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Category Breakdown</p>
               <div className="space-y-2.5">
                 {result.categories.map((cat) => {
                   const after = Math.max(0, Math.min(100, cat.score));
@@ -175,13 +173,13 @@ export default function ScoreImpactModal({
 
           {/* Summary */}
           {result.summary && (
-            <p className="text-xs text-muted-foreground leading-relaxed border-l-2 border-border pl-3 italic">
+            <p className="text-xs text-muted-foreground leading-relaxed border-l-2 border-border pl-3 italic line-clamp-4 sm:line-clamp-none">
               {result.summary}
             </p>
           )}
 
           {/* Actions */}
-          <div className="flex items-center gap-3 pt-1">
+          <div className="flex items-center gap-2 sm:gap-3 pt-1">
             <Button
               type="button"
               variant="outline"
@@ -195,7 +193,7 @@ export default function ScoreImpactModal({
               <Button
                 type="button"
                 size="sm"
-                className="flex-1 gap-2 cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white border-0"
+                className="flex-1 gap-1.5 sm:gap-2 cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white border-0 text-xs sm:text-sm"
                 onClick={() => { onClose(); onDownload(); }}
                 disabled={generatingPdf}
               >
@@ -204,7 +202,8 @@ export default function ScoreImpactModal({
                 ) : (
                   <CheckCircle2 className="size-3.5" />
                 )}
-                Download Updated CV
+                <span className="hidden xs:inline">Download Updated CV</span>
+                <span className="xs:hidden">Download CV</span>
                 {!generatingPdf && <ArrowRight className="size-3.5" />}
               </Button>
             )}

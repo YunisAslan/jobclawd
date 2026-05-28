@@ -45,8 +45,6 @@ async def cv_match_preview(
     request: CVMatchTextRequest,
     email: str = Depends(get_current_email),
 ):
-    if not use_credits(email, 2):
-        raise HTTPException(status_code=402, detail=_ERR_NO_CREDITS)
     job_context = await gather_job_context(request.job_url)
     if not job_context:
         raise HTTPException(status_code=400, detail="Could not fetch job details.")
@@ -90,10 +88,10 @@ async def cv_analysis_bundle(
         from demo.demo_data import DEMO_CV_BUNDLE
         return DEMO_CV_BUNDLE
 
-    # Only charge on a cache miss (same logic as search)
+    # Only charge on a cache miss
     cached = cv_analysis_cache_repo.get_cv_analysis(email, request.cv_url, request.job_url)
     if not cached:
-        if not use_credits(email, 5):  # bundle = analysis (2) + suggestions (3)
+        if not use_credits(email, 2):
             raise HTTPException(status_code=402, detail=_ERR_NO_CREDITS)
 
     return await analyze_cv_bundle(request.job_url, request.cv_url, email=email, cv_name=request.cv_name)
@@ -104,9 +102,25 @@ async def cv_suggestions(
     request: CVSuggestionRequest,
     email: str = Depends(get_current_email),
 ):
+    # Return cached suggestions for free unless the user explicitly forces a refresh
+    if not request.force_regenerate:
+        cached = cv_analysis_cache_repo.get_cv_analysis(email, request.cv_url, request.job_url)
+        if cached and cached.get("suggestions") and cached["suggestions"].get("suggestions"):
+            return cached["suggestions"]
+
     if not use_credits(email, 3):
         raise HTTPException(status_code=402, detail=_ERR_NO_CREDITS)
-    result = await generate_cv_suggestions(request.job_url, request.cv_url)
+
+    result = await generate_cv_suggestions(request.job_url, request.cv_url, analysis=request.analysis)
+
+    # Persist suggestions into the cache entry so future loads are free
+    existing = cv_analysis_cache_repo.get_cv_analysis(email, request.cv_url, request.job_url)
+    if existing:
+        cv_analysis_cache_repo.set_cv_analysis(
+            email, request.cv_url, request.job_url,
+            existing["analysis"], result, existing.get("cv_name", ""),
+        )
+
     return result
 
 

@@ -51,7 +51,7 @@ interface WorkspaceSuggestionsProps {
   onReset: (index: number) => void;
   readOnly?: boolean;
   onAppliedScrollTarget?: (sectionId: string) => void;
-  onGenerateSuggestions?: () => void;
+  onGenerateSuggestions?: (force?: boolean) => void;
   cvData?: CVData | null;
 }
 
@@ -141,9 +141,19 @@ export default function WorkspaceSuggestions({
   cvData,
 }: WorkspaceSuggestionsProps) {
   const list = suggestions?.suggestions ?? [];
+  const [mobileExpanded, setMobileExpanded] = useState(false);
 
   const [syncedSuggestions, setSyncedSuggestions] = useState(suggestions);
-  const [edited, setEdited] = useState<Record<number, string>>({});
+  const [edited, setEdited] = useState<Record<number, string>>(() => {
+    const next: Record<number, string> = {};
+    for (const [i, s] of (suggestions?.suggestions ?? []).entries()) {
+      const raw = s.suggested_text ?? "";
+      next[i] = s.specific_text
+        ? cleanSuggestionText(raw)
+        : cleanSuggestionText(extractQuotedValue(raw) || raw);
+    }
+    return next;
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
   const [hasScrollBelow, setHasScrollBelow] = useState(false);
 
@@ -196,29 +206,45 @@ export default function WorkspaceSuggestions({
   }
 
   return (
-    <aside className="w-full md:w-80 md:flex-none max-h-72 md:max-h-none border-b md:border-b-0 md:border-r border-border/50 flex flex-col overflow-hidden bg-muted/20" data-tour="workspace-suggestions" data-loading={loading || undefined}>
+    <aside
+      className={cn(
+        "w-full md:w-80 md:flex-none md:max-h-none border-b md:border-b-0 md:border-r border-border/50 flex flex-col overflow-hidden bg-muted/20 transition-[max-height] duration-300 md:transition-none",
+        mobileExpanded ? "max-h-72" : "max-h-12",
+      )}
+      data-tour="workspace-suggestions"
+      data-loading={loading || undefined}
+    >
 
       {/* Header — fixed, slightly elevated */}
       <div className="px-4 pt-3.5 pb-3 border-b border-border/40 shrink-0 space-y-2.5 bg-background">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
+        {/* Entire row is the collapse/expand toggle on mobile */}
+        <div
+          className="flex items-center justify-between gap-2 cursor-pointer md:cursor-default select-none"
+          onClick={() => setMobileExpanded((v) => !v)}
+        >
+          <div className="flex items-center gap-1.5 min-w-0">
             <p className="text-xs font-semibold text-foreground">AI Suggestions</p>
             {list.length > 0 && (
               <Badge variant="outline" className="text-[10px] font-medium">{list.length}</Badge>
             )}
+            {!mobileExpanded && appliedCount > 0 && (
+              <Badge className="text-[10px] font-medium bg-success/10 text-success border-success/20 border md:hidden">
+                {appliedCount} applied
+              </Badge>
+            )}
           </div>
-          <div className="flex items-center gap-1.5">
-            {appliedCount > 0 && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            {mobileExpanded && appliedCount > 0 && (
               <Badge className="text-[10px] font-medium bg-success/10 text-success border-success/20 border">
                 {appliedCount} applied
               </Badge>
             )}
-            {!loading && list.length > 0 && onGenerateSuggestions && (
+            {!loading && list.length > 0 && onGenerateSuggestions && mobileExpanded && (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={onGenerateSuggestions}
+                onClick={(e) => { e.stopPropagation(); onGenerateSuggestions(true); }}
                 className="h-6 px-1.5 gap-1 text-[10px] text-muted-foreground/60 hover:text-foreground"
                 title="Regenerate suggestions"
               >
@@ -226,6 +252,16 @@ export default function WorkspaceSuggestions({
                 <span className="inline-flex items-center gap-0.5 font-semibold">3 <Zap className="size-2.5" /></span>
               </Button>
             )}
+            {/* Chevron indicator — click handled by parent row */}
+            <span
+              className="md:hidden flex items-center justify-center size-6 text-muted-foreground"
+              aria-label={mobileExpanded ? "Collapse suggestions" : "Expand suggestions"}
+            >
+              {mobileExpanded
+                ? <ChevronUp className="size-3.5" />
+                : <ChevronDown className="size-3.5" />
+              }
+            </span>
           </div>
         </div>
 
@@ -316,7 +352,7 @@ export default function WorkspaceSuggestions({
                   type="button"
                   size="sm"
                   className="justify-between gap-2 mt-1"
-                  onClick={onGenerateSuggestions}
+                  onClick={() => onGenerateSuggestions()}
                   data-tour="generate-suggestions-btn"
                 >
                   <span className="flex items-center gap-1.5"><Sparkles className="size-3.5" /> Generate suggestions</span>

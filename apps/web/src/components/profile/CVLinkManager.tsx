@@ -115,8 +115,8 @@ export default function CVLinkManager({ cvLinks, onChange }: CVLinkManagerProps)
               key={cv.url || i}
               className="group rounded-2xl border border-border/60 bg-card/80 p-3.5 shadow-sm transition-colors hover:border-primary/25"
             >
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div className="flex min-w-96 gap-3">
+              <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 flex-1 gap-3">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted/70 text-muted-foreground">
                     <FileText className="size-4.5" />
                   </div>

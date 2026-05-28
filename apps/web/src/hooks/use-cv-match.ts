@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { cvMatchService } from "@/services/cv-match.service";
 import { documentService } from "@/services/document.service";
 import { analyticsEventsService } from "@/services/analytics-events.service";
@@ -78,12 +79,13 @@ export function useCVMatch() {
     setState((s) => ({
       ...s,
       loadingAnalysis: true,
-      loadingSuggestions: true,
+      loadingSuggestions: false,
       loadingDraft: true,
       errorAnalysis: null,
       errorSuggestions: null,
       errorDraft: null,
       analyzed: true,
+      suggestions: null,
       suggestionActions: {},
       jobUrl,
       cvUrl,
@@ -95,7 +97,7 @@ export function useCVMatch() {
       setState((s) => ({
         ...s,
         analysis: DEMO_BUNDLE.analysis,
-        suggestions: DEMO_BUNDLE.suggestions,
+        suggestions: null,
         loadingAnalysis: false,
         loadingSuggestions: false,
         loadingDraft: false,
@@ -115,7 +117,7 @@ export function useCVMatch() {
     setState((s) => ({
       ...s,
       analysis: bundle.status === "fulfilled" ? bundle.value.analysis : null,
-      suggestions: bundle.status === "fulfilled" ? bundle.value.suggestions : null,
+      suggestions: null,
       loadingAnalysis: false,
       loadingSuggestions: false,
       loadingDraft: false,
@@ -126,10 +128,7 @@ export function useCVMatch() {
             (bundle.value.analysis.overall_score === 0 && bundle.value.analysis.categories.length === 0
               ? bundle.value.analysis.summary || "Could not generate analysis."
               : null),
-      errorSuggestions:
-        bundle.status === "rejected"
-          ? "Failed to generate suggestions. Please try again."
-          : bundle.value.error_suggestions || null,
+      errorSuggestions: null,
       draftText: bundle.status === "fulfilled" ? bundle.value.draft.text : "",
       originalDraftText: bundle.status === "fulfilled" ? bundle.value.draft.text : "",
       draftFileName: bundle.status === "fulfilled" ? bundle.value.draft.file_name : "",
@@ -144,8 +143,8 @@ export function useCVMatch() {
         cv_url: cvUrl,
         cv_name: cvName ?? "",
         job_url: jobUrl,
-        job_title: bundle.value.suggestions?.job_title ?? "",
-        company: bundle.value.suggestions?.job_company ?? "",
+        job_title: bundle.value.job_title ?? "",
+        company: bundle.value.job_company ?? "",
         overall_score: bundle.value.analysis.overall_score,
         match_level: bundle.value.analysis.match_level,
       });
@@ -160,8 +159,9 @@ export function useCVMatch() {
     setState((s) => ({
       ...s,
       analysis: seededAnalysis,
+      suggestions: null,
       loadingAnalysis: false,
-      loadingSuggestions: true,
+      loadingSuggestions: false,
       loadingDraft: true,
       errorAnalysis: null,
       errorSuggestions: null,
@@ -176,44 +176,32 @@ export function useCVMatch() {
     if (isDemo) {
       setState((s) => ({
         ...s,
-        suggestions: DEMO_BUNDLE.suggestions,
-        loadingSuggestions: false,
         loadingDraft: false,
         draftText: DEMO_BUNDLE.draft.text,
         originalDraftText: DEMO_BUNDLE.draft.text,
         draftFileName: DEMO_BUNDLE.draft.file_name,
-        errorSuggestions: null,
         errorDraft: null,
       }));
       return;
     }
 
-    const [suggestionsResult, draftResult] = await Promise.allSettled([
-      cvMatchService.getSuggestions(jobUrl, cvUrl),
-      cvMatchService.getDraft(cvUrl),
-    ]);
+    const draftResult = await cvMatchService.getDraft(cvUrl).catch(() => null);
 
     setState((s) => ({
       ...s,
-      suggestions: suggestionsResult.status === "fulfilled" ? suggestionsResult.value : null,
-      loadingSuggestions: false,
-      errorSuggestions:
-        suggestionsResult.status === "rejected"
-          ? "Failed to generate suggestions. Please try again."
-          : null,
-      draftText: draftResult.status === "fulfilled" ? draftResult.value.text : "",
-      originalDraftText: draftResult.status === "fulfilled" ? draftResult.value.text : "",
-      draftFileName: draftResult.status === "fulfilled" ? draftResult.value.file_name : "",
+      draftText: draftResult?.text ?? "",
+      originalDraftText: draftResult?.text ?? "",
+      draftFileName: draftResult?.file_name ?? "",
       loadingDraft: false,
-      errorDraft: draftResult.status === "rejected" ? "Could not load the CV draft for editing." : null,
+      errorDraft: draftResult ? null : "Could not load the CV draft for editing.",
     }));
 
     analyticsEventsService.trackCvAnalyzed({
       cv_url: cvUrl,
       cv_name: cvName ?? "",
       job_url: jobUrl,
-      job_title: suggestionsResult.status === "fulfilled" ? (suggestionsResult.value?.job_title ?? "") : "",
-      company: suggestionsResult.status === "fulfilled" ? (suggestionsResult.value?.job_company ?? "") : "",
+      job_title: "",
+      company: "",
       overall_score: seededAnalysis.overall_score,
       match_level: seededAnalysis.match_level,
     });
@@ -261,7 +249,10 @@ export function useCVMatch() {
   }
 
   async function previewAtsScore(jobUrl: string) {
-    if (!state.cvData || !state.analysis) return;
+    if (!state.cvData || !state.analysis) {
+      toast.error("Please analyze your CV against this job first.");
+      return;
+    }
     if (isDemo) {
       setState((s) => ({ ...s, loadingAtsPreview: true, atsPreview: null, atsPreviewBaseline: null }));
       await new Promise((r) => setTimeout(r, 800));
@@ -295,14 +286,26 @@ export function useCVMatch() {
           touchedMatchCategories.add("skills");
           break;
         case "rewrite_bullets":
+          touchedMatchCategories.add("experience");
+          touchedMatchCategories.add("keywords");
+          break;
         case "elevate_experience":
+          touchedMatchCategories.add("experience");
+          touchedMatchCategories.add("fit");
+          break;
         case "reduce_irrelevant":
+          touchedMatchCategories.add("experience");
+          touchedMatchCategories.add("fit");
+          break;
         case "address_requirements":
         case "address_gaps":
           touchedMatchCategories.add("experience");
+          touchedMatchCategories.add("skills");
+          touchedMatchCategories.add("keywords");
           break;
         case "improve_headline":
           touchedMatchCategories.add("skills");
+          touchedMatchCategories.add("fit");
           break;
       }
     }
@@ -334,8 +337,16 @@ export function useCVMatch() {
           loadingAtsPreview: false,
         };
       });
-    } catch {
+    } catch (err: unknown) {
       setState((s) => ({ ...s, loadingAtsPreview: false }));
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 402) {
+        toast.error("Not enough credits to check impact.");
+      } else if (status === 400) {
+        toast.error("Could not fetch job details. The job listing may no longer be available.");
+      } else {
+        toast.error("Failed to check impact. Please try again.");
+      }
     }
   }
 
@@ -359,7 +370,7 @@ export function useCVMatch() {
   }
 
   /** Fetch fresh suggestions on demand (bypasses bundle cache — uses /cv-suggestions directly). */
-  async function generateSuggestions(jobUrl: string, cvUrl: string) {
+  async function generateSuggestions(jobUrl: string, cvUrl: string, force = false) {
     setState((s) => ({ ...s, loadingSuggestions: true, errorSuggestions: null, suggestions: null }));
     if (isDemo) {
       await new Promise((r) => setTimeout(r, 500));
@@ -367,7 +378,7 @@ export function useCVMatch() {
       return;
     }
     try {
-      const result = await cvMatchService.getSuggestions(jobUrl, cvUrl);
+      const result = await cvMatchService.getSuggestions(jobUrl, cvUrl, state.analysis, force);
       setState((s) => ({ ...s, suggestions: result, loadingSuggestions: false }));
     } catch {
       setState((s) => ({
@@ -409,7 +420,18 @@ export function useCVMatch() {
     const editedText = cvDataToText(state.cvData);
     try {
       const result = await cvMatchService.matchFromText(jobUrl, editedText);
-      setState((s) => ({ ...s, analysis: result }));
+      // Clear stale cache and suggestions — the CV has changed, both are now outdated.
+      if (state.cvUrl) {
+        cvMatchService.deleteCachedResult(jobUrl, state.cvUrl).catch(() => {});
+      }
+      setState((s) => ({
+        ...s,
+        analysis: result,
+        suggestions: null,
+        suggestionActions: {},
+        preAcceptSnapshots: {},
+        preAcceptCvSnapshots: {},
+      }));
       return result;
     } catch {
       return null;

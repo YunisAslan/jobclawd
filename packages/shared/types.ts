@@ -287,6 +287,8 @@ export interface CVAnalysisBundleResponse {
   analysis: CVMatchAnalysis;
   suggestions: CVSuggestionsResponse;
   draft: CVDraftResponse;
+  job_title?: string;
+  job_company?: string;
   error_analysis?: string | null;
   error_suggestions?: string | null;
   error_draft?: string | null;

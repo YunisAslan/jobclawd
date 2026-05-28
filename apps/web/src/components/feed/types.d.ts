@@ -25,6 +25,7 @@ export type {
   CVSuggestionsResponse,
   CVDraftResponse,
   CVAnalysisBundleResponse,
+  CachedAnalysisListResponse,
   VacancyPanelProps,
   SuggestionPriority,
   SuggestionCategory,

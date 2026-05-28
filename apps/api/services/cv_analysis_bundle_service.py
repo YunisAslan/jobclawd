@@ -1,11 +1,11 @@
-"""Bundled CV analysis — runs match + suggestions in parallel, with caching."""
+"""Bundled CV analysis — scores the CV against the job (analysis only).
 
-import asyncio
+Suggestions are generated separately on-demand via /cv-suggestions.
+"""
 
 from services.cv_analysis_shared import prepare_cv_analysis_inputs
 from services.cv_document_service import infer_cv_filename
 from services.cv_match_service import compute_cv_match_from_data
-from services.cv_suggestions_service import generate_cv_suggestions_from_data
 
 
 async def analyze_cv_bundle(job_url: str, cv_url: str, email: str = "", cv_name: str = "") -> dict:
@@ -17,13 +17,16 @@ async def analyze_cv_bundle(job_url: str, cv_url: str, email: str = "", cv_name:
             from repositories.cv_analysis_cache_repo import get_cv_analysis
             cached = get_cv_analysis(email, cv_url, job_url)
             if cached:
+                analysis = cached["analysis"]
                 return {
-                    "analysis": cached["analysis"],
-                    "suggestions": cached["suggestions"],
+                    "analysis": analysis,
+                    "suggestions": _empty_suggestions(),
                     "draft": {
                         "text": "",
                         "file_name": cached["cv_name"] or cv_name,
                     },
+                    "job_title": analysis.pop("_job_title", ""),
+                    "job_company": analysis.pop("_job_company", ""),
                     "error_analysis": None,
                     "error_suggestions": None,
                     "error_draft": None,
@@ -38,35 +41,40 @@ async def analyze_cv_bundle(job_url: str, cv_url: str, email: str = "", cv_name:
         reason = error or "Could not prepare CV analysis."
         return {
             "analysis": _empty_analysis(reason),
-            "suggestions": _empty_suggestions(reason),
+            "suggestions": _empty_suggestions(),
             "draft": {"text": "", "file_name": cv_name},
+            "job_title": "",
+            "job_company": "",
             "error_analysis": reason,
-            "error_suggestions": reason,
+            "error_suggestions": None,
             "error_draft": reason,
         }
 
-    analysis, suggestions = await asyncio.gather(
-        compute_cv_match_from_data(job_context, cv_text, deterministic=True),
-        generate_cv_suggestions_from_data(job_context, cv_text),
-    )
+    analysis = await compute_cv_match_from_data(job_context, cv_text, deterministic=True)
 
-    # ── Cache write ───────────────────────────────────────────────────────────
+    job_title = job_context.get("title", "")
+    job_company = job_context.get("company", "")
+
+    # ── Cache write (embed job metadata so cache hits can return it) ─────────
     if email and analysis.get("categories"):
         try:
             from repositories.cv_analysis_cache_repo import set_cv_analysis
-            set_cv_analysis(email, cv_url, job_url, analysis, suggestions, cv_name)
+            analysis_to_cache = {**analysis, "_job_title": job_title, "_job_company": job_company}
+            set_cv_analysis(email, cv_url, job_url, analysis_to_cache, _empty_suggestions(), cv_name)
         except Exception:
             pass  # Non-fatal
 
     return {
         "analysis": analysis,
-        "suggestions": suggestions,
+        "suggestions": _empty_suggestions(),
         "draft": {
             "text": cv_text,
             "file_name": cv_name,
         },
+        "job_title": job_title,
+        "job_company": job_company,
         "error_analysis": analysis["summary"] if not analysis.get("categories") else None,
-        "error_suggestions": None if suggestions.get("suggestions") else "No suggestions generated. The AI may be unavailable.",
+        "error_suggestions": None,
         "error_draft": None,
     }
 
@@ -80,10 +88,5 @@ def _empty_analysis(reason: str) -> dict:
     }
 
 
-def _empty_suggestions(reason: str) -> dict:
-    return {
-        "suggestions": [],
-        "total": 0,
-        "job_title": "",
-        "job_company": "",
-    }
+def _empty_suggestions() -> dict:
+    return {"suggestions": [], "total": 0, "job_title": "", "job_company": ""}

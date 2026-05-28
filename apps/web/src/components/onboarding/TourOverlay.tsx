@@ -10,6 +10,11 @@ import { cn } from "@/lib/utils";
 const PAD = 8;
 const TOOLTIP_W = 340;
 
+function getTooltipWidth() {
+  if (typeof window === "undefined") return TOOLTIP_W;
+  return Math.min(TOOLTIP_W, window.innerWidth - 24);
+}
+
 interface Rect { top: number; left: number; width: number; height: number }
 
 function useTargetRect(selector: string | null, active: boolean) {
@@ -45,12 +50,13 @@ function tooltipPosition(
   rect: Rect | null,
   position: string,
   tooltipH: number,
+  tw: number = TOOLTIP_W,
 ): React.CSSProperties {
   if (!rect || position === "center") {
     return { position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)" };
   }
   if (position === "top-right") {
-    return { position: "fixed", top: 16, left: window.innerWidth - TOOLTIP_W - 16 };
+    return { position: "fixed", top: 16, left: window.innerWidth - tw - 16 };
   }
   const sp = { t: rect.top - PAD, l: rect.left - PAD, w: rect.width + PAD * 2, h: rect.height + PAD * 2 };
   const vw = window.innerWidth;
@@ -60,24 +66,23 @@ function tooltipPosition(
   if (position === "right") {
     const left = sp.l + sp.w + OFF;
     const top = Math.max(8, Math.min(sp.t + sp.h / 2 - tooltipH / 2, vh - tooltipH - 8));
-    if (left + TOOLTIP_W < vw - 8) return { position: "fixed", top, left };
-    return { position: "fixed", top, left: sp.l - TOOLTIP_W - OFF };
+    if (left + tw < vw - 8) return { position: "fixed", top, left };
+    return { position: "fixed", top, left: sp.l - tw - OFF };
   }
   if (position === "left") {
-    const left = sp.l - TOOLTIP_W - OFF;
+    const left = sp.l - tw - OFF;
     const top = Math.max(8, Math.min(sp.t + sp.h / 2 - tooltipH / 2, vh - tooltipH - 8));
     if (left > 8) return { position: "fixed", top, left };
-    // Not enough room on the left — center the tooltip instead of going off-screen right
     return { position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)" };
   }
   if (position === "bottom") {
-    const left = Math.max(8, Math.min(sp.l + sp.w / 2 - TOOLTIP_W / 2, vw - TOOLTIP_W - 8));
+    const left = Math.max(8, Math.min(sp.l + sp.w / 2 - tw / 2, vw - tw - 8));
     const top = sp.t + sp.h + OFF;
     if (top + tooltipH < vh - 8) return { position: "fixed", top, left };
     return { position: "fixed", top: sp.t - tooltipH - OFF, left };
   }
   // top
-  const left = Math.max(8, Math.min(sp.l + sp.w / 2 - TOOLTIP_W / 2, vw - TOOLTIP_W - 8));
+  const left = Math.max(8, Math.min(sp.l + sp.w / 2 - tw / 2, vw - tw - 8));
   const top = sp.t - tooltipH - OFF;
   if (top > 8) return { position: "fixed", top, left };
   return { position: "fixed", top: sp.t + sp.h + OFF, left };
@@ -264,6 +269,8 @@ export default function TourOverlay() {
   // results stream in normally. The DOM watcher will call next() when they appear.
   if (current.id === "searching") return null;
 
+  const tooltipW = getTooltipWidth();
+
   // ── Mode choice screen ───────────────────────────────────────────────────
 
   if (current.id === "mode_choice") {
@@ -280,7 +287,7 @@ export default function TourOverlay() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 p-4">
+          <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3 p-4">
 
             {/* Demo option */}
             <button
@@ -397,7 +404,7 @@ export default function TourOverlay() {
     ? { t: rect.top - PAD, l: rect.left - PAD, w: rect.width + PAD * 2, h: rect.height + PAD * 2 }
     : null;
 
-  const tipStyle = tooltipPosition(rect, current.position, tooltipH);
+  const tipStyle = tooltipPosition(rect, current.position, tooltipH, tooltipW);
 
   // stepIndex 0 = mode_choice (not shown here), so visible progress starts at index 1
   const visibleIndex = stepIndex - 1;
@@ -439,7 +446,7 @@ export default function TourOverlay() {
       <div
         ref={tooltipRef}
         className="fixed pointer-events-auto"
-        style={{ ...tipStyle, width: TOOLTIP_W, transition: "top 0.3s ease, left 0.3s ease", zIndex: 70 }}
+        style={{ ...tipStyle, width: tooltipW, transition: "top 0.3s ease, left 0.3s ease", zIndex: 70 }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-card border border-border rounded-xl shadow-2xl overflow-hidden">

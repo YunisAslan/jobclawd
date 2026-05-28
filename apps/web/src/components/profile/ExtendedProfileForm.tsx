@@ -9,6 +9,7 @@ import { useMetaFilters } from "@/hooks/use-meta";
 import { useProfileQuery, useSaveProfile } from "@/hooks/use-profile";
 import { Button } from "@/components/ui/Button";
 import { Check, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import ProfileIdentityCard from "@/components/profile/ProfileIdentityCard";
 import IdentitySection from "@/components/profile/sections/IdentitySection";
 import PreferencesSection from "@/components/profile/sections/PreferencesSection";
@@ -55,7 +56,8 @@ export default function ExtendedProfileForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 sm:gap-8 items-start">
+      {/* Extra bottom padding on mobile so the fixed save bar never overlaps content */}
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 sm:gap-8 items-start pb-20 lg:pb-0">
         {/* LEFT: sticky identity card */}
         <ProfileIdentityCard control={control} setValue={setValue} saving={saving} saved={saved} isDirty={isDirty} />
 
@@ -64,30 +66,48 @@ export default function ExtendedProfileForm() {
           <IdentitySection control={control} email={profile.email} />
           <PreferencesSection control={control} meta={meta} />
           <DocumentsSection control={control} />
-
-          {/* Mobile save */}
-          <div className="flex items-center justify-end gap-3 lg:hidden pb-2">
-            {isDirty && !saving && !saved && (
-              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span className="size-1.5 rounded-full bg-amber-400 shrink-0" />
-                Unsaved changes
-              </p>
-            )}
-            <Button type="submit" className="gap-2 min-w-30" disabled={saving}>
-              {saving ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" /> Saving...
-                </>
-              ) : saved ? (
-                <>
-                  <Check className="size-4" /> Saved
-                </>
-              ) : (
-                "Save profile"
-              )}
-            </Button>
-          </div>
         </div>
+      </div>
+
+      {/* Fixed save bar — always visible on mobile so users never lose track of save */}
+      <div className="fixed bottom-0 inset-x-0 z-30 lg:hidden border-t border-border/60 bg-background/95 backdrop-blur-sm px-4 py-2.5 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          {saving ? (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Loader2 className="size-3.5 animate-spin shrink-0" />
+              Saving...
+            </span>
+          ) : saved ? (
+            <span className="flex items-center gap-1.5 text-xs text-success font-medium">
+              <Check className="size-3.5 shrink-0" />
+              Saved
+            </span>
+          ) : isDirty ? (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="size-1.5 rounded-full bg-amber-400 shrink-0 animate-pulse" />
+              Unsaved changes
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground/40">Profile</span>
+          )}
+        </div>
+        <Button
+          type="submit"
+          size="sm"
+          disabled={saving || !isDirty}
+          className={cn(
+            "gap-1.5 min-w-28 transition-all",
+            isDirty && !saving && "shadow-md",
+          )}
+        >
+          {saving ? (
+            <><Loader2 className="size-3.5 animate-spin" /> Saving…</>
+          ) : saved ? (
+            <><Check className="size-3.5" /> Saved</>
+          ) : (
+            "Save profile"
+          )}
+        </Button>
       </div>
     </form>
   );

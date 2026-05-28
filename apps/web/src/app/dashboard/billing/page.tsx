@@ -53,7 +53,7 @@ function PlanCard({
   return (
     <div
       className={cn(
-        "relative flex flex-col rounded-xl border p-6 transition-all duration-200",
+        "relative flex flex-col rounded-xl border p-4 sm:p-6 transition-all duration-200",
         plan.popular
           ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
           : "border-border bg-card hover:border-primary/40",
@@ -148,20 +148,20 @@ export default function BillingPage() {
   return (
     <div className="flex flex-col h-full">
       <TopBar title="Billing & Credits" />
-      <div className="flex-1 overflow-y-auto px-6 py-8 space-y-8">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
 
       {/* Current plan */}
       <section>
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
           Current Plan
         </h2>
-        <div className="rounded-xl border border-border bg-card p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3">
+        <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-3 min-w-0">
               <div className="flex items-center justify-center size-9 rounded-lg bg-primary/10 shrink-0">
                 <CreditCard className="size-4.5 text-primary" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-semibold text-foreground">Free Plan</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   10 starter credits included on sign-up
@@ -202,13 +202,13 @@ export default function BillingPage() {
         </h2>
 
         {plansLoading ? (
-          <div className="grid grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {[1, 2, 3].map((i) => (
               <div key={i} className="h-64 rounded-xl border border-border bg-muted/30 animate-pulse" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-5 pt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 pt-3">
             {plans.map((plan) => (
               <PlanCard
                 key={plan.id}

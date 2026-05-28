@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 
 import {
   Sparkles,
@@ -12,6 +12,8 @@ import {
   GraduationCap,
   Briefcase,
   LucideSearch,
+  SlidersHorizontal,
+  ChevronDown,
 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -64,6 +66,7 @@ export default function FeedFilterForm({
 
   const formRef = useRef<HTMLFormElement>(null);
   const searchAutocompleteRef = useRef<SearchAutocompleteHandle>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const appliedInitialRef = useRef(false);
   useEffect(() => {
@@ -88,6 +91,23 @@ export default function FeedFilterForm({
 
   const watchedLocation = watch("location");
   const watchedSalaryMin = watch("salaryMin");
+  const watchedSources = watch("sources");
+  const watchedWorkModes = watch("workModes");
+  const watchedExperience = watch("experience");
+  const watchedJobTypes = watch("jobTypes");
+  const watchedDatePosted = watch("datePosted");
+  const watchedSortBy = watch("sortBy");
+
+  const activeFilterCount = [
+    watchedSources?.length,
+    watchedWorkModes?.length,
+    watchedLocation ? 1 : 0,
+    watchedExperience?.length,
+    watchedJobTypes?.length,
+    watchedSalaryMin ? 1 : 0,
+    watchedDatePosted ? 1 : 0,
+    watchedSortBy ? 1 : 0,
+  ].filter(Boolean).length;
 
   const currency = useMemo(() => {
     if (!meta || !watchedLocation) return "USD";
@@ -135,7 +155,8 @@ export default function FeedFilterForm({
             result quality.
           </p>
 
-          <div className="flex gap-2">
+          {/* Search row — stacks on mobile */}
+          <div className="flex flex-col sm:flex-row gap-2">
             <Controller
               name="query"
               control={control}
@@ -150,46 +171,82 @@ export default function FeedFilterForm({
                 />
               )}
             />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span data-tour="fill-profile-btn" tabIndex={-1}>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={loading || !hasProfileDefaults}
-                    className="gap-1.5 h-12 shrink-0 text-muted-foreground"
-                    onClick={() => {
-                      const currentQuery = getValues("query");
-                      reset({
-                        ...EMPTY_FILTERS,
-                        ...profileDefaults,
-                        query: profileDefaults?.query || currentQuery,
-                      });
-                    }}
-                  >
-                    <Sparkles className="size-4" />
-                    Fill from profile
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {!hasProfileDefaults && (
-                <TooltipContent side="bottom" className="max-w-56 text-center">
-                  Your profile has no data yet. Add a job title, location, or preferences in your{" "}
-                  <span className="font-semibold">Profile</span> page to use this.
-                </TooltipContent>
-              )}
-            </Tooltip>
-            <Button type="submit" disabled={loading} className="gap-2 px-6 h-12 shrink-0" data-tour="search-btn">
-              {loading ? (
-                <div className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              ) : (
-                <LucideSearch className="size-4" />
-              )}
-              {loading ? "Searching..." : "Search"}
-            </Button>
+            <div className="flex gap-2 sm:contents">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span data-tour="fill-profile-btn" tabIndex={-1} className="flex-1 sm:flex-none">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={loading || !hasProfileDefaults}
+                      className="gap-1.5 h-12 w-full sm:w-auto shrink-0 text-muted-foreground"
+                      onClick={() => {
+                        const currentQuery = getValues("query");
+                        reset({
+                          ...EMPTY_FILTERS,
+                          ...profileDefaults,
+                          query: profileDefaults?.query || currentQuery,
+                        });
+                      }}
+                    >
+                      <Sparkles className="size-4" />
+                      <span className="hidden sm:inline">Fill from profile</span>
+                      <span className="sm:hidden">Fill</span>
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!hasProfileDefaults && (
+                  <TooltipContent side="bottom" className="max-w-56 text-center">
+                    Your profile has no data yet. Add a job title, location, or preferences in your{" "}
+                    <span className="font-semibold">Profile</span> page to use this.
+                  </TooltipContent>
+                )}
+              </Tooltip>
+              <Button type="submit" disabled={loading} className="gap-2 px-5 h-12 shrink-0 flex-1 sm:flex-none" data-tour="search-btn">
+                {loading ? (
+                  <div className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  <LucideSearch className="size-4" />
+                )}
+                {loading ? "Searching..." : "Search"}
+              </Button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-2">
+          {/* Mobile filter toggle — hidden on md+ where filters are always visible */}
+          <div className="flex md:hidden items-center justify-between gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5 h-9 text-xs"
+              onClick={() => setFiltersOpen((v) => !v)}
+            >
+              <SlidersHorizontal className="size-3.5" />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="inline-flex items-center justify-center size-4 rounded-full bg-primary text-primary-foreground text-[10px] font-bold leading-none shrink-0">
+                  {activeFilterCount}
+                </span>
+              )}
+              <ChevronDown className={cn("size-3.5 transition-transform duration-200", filtersOpen && "rotate-180")} />
+            </Button>
+            {activeFilterCount > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-9 text-xs text-muted-foreground"
+                onClick={() => reset({ ...EMPTY_FILTERS })}
+              >
+                Clear filters
+              </Button>
+            )}
+          </div>
+
+          {/* Filter grids — always visible on md+, toggled on mobile */}
+          <div className={cn("space-y-3", !filtersOpen && "hidden md:block")}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2">
             <Controller
               name="sources"
               control={control}
@@ -271,7 +328,7 @@ export default function FeedFilterForm({
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-2 border-t border-border/60 pt-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2 border-t border-border/60 pt-3.5">
             <div className="xl:col-span-3 flex flex-col gap-1">
               <div
                 className={cn(
@@ -368,6 +425,7 @@ export default function FeedFilterForm({
               )}
             />
           </div>
+          </div>{/* end collapsible filter section */}
         </form>
       </CardContent>
     </Card>

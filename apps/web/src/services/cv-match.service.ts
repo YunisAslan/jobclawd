@@ -23,10 +23,10 @@ class CVMatchService extends APIService {
     return res.data;
   }
 
-  async getSuggestions(job_url: string, cv_url: string): Promise<CVSuggestionsResponse> {
+  async getSuggestions(job_url: string, cv_url: string, analysis?: CVMatchAnalysis | null, force?: boolean): Promise<CVSuggestionsResponse> {
     const res = await this.post(
       ENDPOINTS.CV_SUGGESTIONS,
-      { job_url, cv_url },
+      { job_url, cv_url, ...(analysis ? { analysis } : {}), ...(force ? { force_regenerate: true } : {}) },
       { headers: getAuthHeader(), timeout: 60000 },
     );
     return res.data;

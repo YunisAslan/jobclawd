@@ -205,7 +205,7 @@ export default function VacancyPanel({ job, onClose }: VacancyPanelProps) {
                         data-tour="analyze-cv-btn"
                       >
                         <span>Analyze CV</span>
-                        <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold bg-white/15 dark:bg-white/10 rounded px-1.5 py-0.5 leading-none">5 <Zap className="size-3" /></span>
+                        <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold bg-white/15 dark:bg-white/10 rounded px-1.5 py-0.5 leading-none">2 <Zap className="size-3" /></span>
                       </Button>
                     )}
                     {!hasCV && (
@@ -432,7 +432,7 @@ function MultiCVRow({
             title="Re-analyze"
           >
             <RefreshCw className="size-3" />
-            <span className="inline-flex items-center gap-0.5 font-semibold">5 <Zap className="size-2.5" /></span>
+            <span className="inline-flex items-center gap-0.5 font-semibold">2 <Zap className="size-2.5" /></span>
           </Button>
         </div>
       )}

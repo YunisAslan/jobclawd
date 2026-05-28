@@ -5,8 +5,51 @@ import { Tooltip as TooltipPrimitive } from "radix-ui";
 import { cn } from "@/lib/utils";
 
 const TooltipProvider = TooltipPrimitive.Provider;
-const Tooltip = TooltipPrimitive.Root;
 const TooltipTrigger = TooltipPrimitive.Trigger;
+
+/**
+ * Tooltip that opens on hover (desktop) AND tap (mobile/touch).
+ * Pass `open`/`onOpenChange` to control externally, otherwise it manages
+ * its own state and adds touch-tap support automatically.
+ */
+function Tooltip({
+  children,
+  delayDuration = 300,
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
+  ...restProps
+}: React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Root>) {
+  const [touchOpen, setTouchOpen] = React.useState(false);
+  const controlled = openProp !== undefined;
+  const open = controlled ? openProp! : touchOpen;
+
+  function handleOpenChange(next: boolean) {
+    if (controlled) onOpenChangeProp?.(next);
+    else setTouchOpen(next);
+  }
+
+  return (
+    <TooltipPrimitive.Root
+      delayDuration={delayDuration}
+      open={open}
+      onOpenChange={handleOpenChange}
+      {...restProps}
+    >
+      {/* Intercept touch/pen pointer-down to toggle tooltip on tap */}
+      <span
+        onPointerDown={(e) => {
+          if ((e.pointerType === "touch" || e.pointerType === "pen") && !controlled) {
+            e.preventDefault();
+            setTouchOpen((v) => !v);
+          }
+        }}
+        style={{ display: "contents" }}
+      >
+        {children}
+      </span>
+    </TooltipPrimitive.Root>
+  );
+}
 
 const TooltipContent = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Content>,

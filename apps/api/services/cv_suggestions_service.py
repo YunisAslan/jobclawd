@@ -141,20 +141,84 @@ TRUTHFULNESS
 they actually have the experience before using it
 
 ─────────────────────────────────────────────────────────────────
+SCORE-DRIVEN TARGETING (when score_gaps provided — HIGHEST PRIORITY)
+─────────────────────────────────────────────────────────────────
+If the input contains `score_gaps`, treat it as a diagnostic report from the ATS \
+scoring system. The `missing` arrays are the EXACT items causing score loss.
+
+MANDATORY RULES — violating these makes the suggestions worthless:
+
+1. KEYWORDS gap → generate exactly ONE add_keywords suggestion whose \
+   `suggested_text` contains ALL the missing keyword terms verbatim, \
+   comma-separated. Do not paraphrase. If missing = ["Laravel", "Redis", "CI/CD"] \
+   then suggested_text MUST include "Laravel, Redis, CI/CD".
+
+2. SKILLS gap → generate add_keywords or address_gaps suggestions that introduce \
+   the missing skills explicitly by name. If the candidate has indirect evidence \
+   of the skill, surface it with elevate_experience instead.
+
+3. EXPERIENCE gap → generate rewrite_bullets that replace a vague bullet with a \
+   quantified, role-aligned version that addresses the missing evidence. \
+   Find the weakest current bullet and rewrite it to fill the gap — do not \
+   generate a generic "improve your bullets" suggestion.
+
+4. FIT gap → generate improve_headline that rewrites the summary to directly \
+   claim the target role identity. The new headline must open with the job title \
+   or role category, not a generic professional description.
+
+5. Focus your suggestions on the LOWEST-scoring categories first — they have the \
+   most room for improvement and will move the overall score most.
+
+The scoring system re-evaluates the CV after suggestions are applied. \
+Suggestions that copy the exact missing items into the CV WILL improve the score. \
+Suggestions that are vague or generic WILL NOT.
+
+─────────────────────────────────────────────────────────────────
+SCORING ALIGNMENT (what actually moves the ATS match score)
+─────────────────────────────────────────────────────────────────
+The CV is scored across 4 dimensions. Design each suggestion to measurably improve
+at least one:
+
+• keywords score  — improved by: adding missing job-specific tools/technologies/terms.
+  Use: add_keywords, address_gaps
+• skills score    — improved by: explicitly listing matching skills and tools in the
+  CV. Use: add_keywords, address_gaps, improve_headline
+• experience score — improved by: quantifying achievements, using strong action verbs,
+  making bullets directly reference the role's requirements.
+  Use: rewrite_bullets, elevate_experience
+• fit score       — improved by: repositioning the headline/summary to directly claim
+  the target role, removing identity conflicts, better career narrative.
+  Use: improve_headline, elevate_experience, reduce_irrelevant
+
+PRIORITY GUIDELINE:
+If the CV is already strong (good experience), prioritise:
+1. improve_headline (highest fit/skills impact)
+2. add_keywords (direct keywords/skills impact)
+3. address_gaps (fills missing scoring criteria)
+4. rewrite_bullets (quantification and keyword density)
+5. reduce_irrelevant (removes score dilution)
+
+─────────────────────────────────────────────────────────────────
 CATEGORIES (use EXACTLY these strings)
 ─────────────────────────────────────────────────────────────────
-• improve_headline   — Rewrite the CV summary. In pivot mode: highest impact.
-• rewrite_bullets    — Rewrite a specific weak CV bullet. \
-`specific_text` = that bullet verbatim from cv_text.
-• elevate_experience — Reframe a CV role entry to match vacancy language. \
-`specific_text` = original text from cv_text.
+• improve_headline   — Rewrite the CV summary to directly target this role. \
+In pivot mode: highest impact. Improves FIT and SKILLS scores.
+• rewrite_bullets    — Rewrite a specific weak CV bullet with quantified impact \
+and role-relevant keywords. `specific_text` = that bullet verbatim from cv_text. \
+Improves EXPERIENCE and KEYWORDS scores.
+• elevate_experience — Reframe a CV role entry using the vacancy's language and \
+highlight role-relevant achievements. `specific_text` = original text from cv_text. \
+Improves EXPERIENCE and FIT scores.
 • add_keywords       — Add ATS-critical keywords to the CV Skills section. \
-Comma-separated tokens only (≤ 5 words each). `specific_text` = null.
+Comma-separated tokens only (≤ 5 words each). `specific_text` = null. \
+Improves KEYWORDS and SKILLS scores.
 • address_gaps       — New content for a genuine skill gap: a ready-to-use \
-template bullet or a new section suggestion. `specific_text` = null.
+template bullet or a new section suggestion. `specific_text` = null. \
+Improves SKILLS, KEYWORDS, and EXPERIENCE scores.
 • reduce_irrelevant  — Remove CV content that signals the wrong identity for \
 this vacancy. `specific_text` = exact text from cv_text to cut. \
-`suggested_text` = "" to delete, or a condensed version.
+`suggested_text` = "" to delete, or a condensed version. \
+Improves FIT score by removing wrong-domain signals.
 
 ─────────────────────────────────────────────────────────────────
 FIELD RULES
@@ -176,12 +240,20 @@ Headline: 2–3 sentences max.
 QUALITY FILTER (apply before returning)
 ─────────────────────────────────────────────────────────────────
 Remove any suggestion that:
-• sounds generic or doesn't reference a specific vacancy requirement
-• doesn't change how the recruiter or ATS perceives the candidate
+• is generic ("add more details", "highlight your skills") — not tied to a specific \
+  vacancy requirement or identified missing item
+• doesn't change how the ATS or recruiter scores the candidate
 • repeats another suggestion in different wording
+• has a `suggested_text` that is vague, contains instructions to the user, or \
+  says "add X here" — it must be ready-to-paste final text
 
-Prefer 8 strong, targeted suggestions over 14 weak ones. \
-In pivot mode aim for 10–14 since more transformation is needed.
+Each suggestion's `suggested_text` must be COPY-PASTE READY: \
+no placeholders, no "[INSERT X]", no meta-instructions. \
+Write the actual replacement text the candidate can use immediately.
+
+Aim for 6–10 high-impact suggestions. \
+If score_gaps were provided, prioritise covering every missing item over hit count. \
+In pivot mode aim for 10–12 since more transformation is needed.
 
 ─────────────────────────────────────────────────────────────────
 OUTPUT
@@ -203,7 +275,7 @@ Return JSON only — no markdown, no text outside the JSON:
 }"""
 
 
-async def generate_cv_suggestions(job_url: str, cv_url: str) -> dict:
+async def generate_cv_suggestions(job_url: str, cv_url: str, analysis: Optional[dict] = None) -> dict:
     """
     Generate prioritised CV optimisation suggestions for a specific job.
     Returns a dict matching CVSuggestionsResponse shape.
@@ -212,19 +284,39 @@ async def generate_cv_suggestions(job_url: str, cv_url: str) -> dict:
     if error or not cv_text or not job_context:
         return _empty_result(error or "Could not prepare suggestion inputs.")
 
-    return await generate_cv_suggestions_from_data(job_context, cv_text)
+    return await generate_cv_suggestions_from_data(job_context, cv_text, analysis=analysis)
 
 
-async def generate_cv_suggestions_from_data(job_context: dict, cv_text: str) -> dict:
-    """Generate suggestions using already-prepared job context and CV text."""
+async def generate_cv_suggestions_from_data(job_context: dict, cv_text: str, analysis: Optional[dict] = None) -> dict:
+    """Generate suggestions using already-prepared job context and CV text.
+
+    Pass `analysis` (the result of compute_cv_match_from_data) to enable
+    score-driven targeting — suggestions will directly address identified gaps.
+    """
 
     if not _OPENAI_API_KEY:
         return _empty_result("AI suggestions unavailable — no API key configured.")
 
-    user_message = json.dumps({
+    user_payload: dict = {
         "job": job_context,
-        "cv_text": cv_text[:5000],
-    }, ensure_ascii=False)
+        "cv_text": cv_text[:8000],
+    }
+
+    if analysis and analysis.get("categories"):
+        user_payload["score_gaps"] = {
+            "overall_score": analysis.get("overall_score", 0),
+            "categories": [
+                {
+                    "category": cat["category"],
+                    "score": cat.get("score", 0),
+                    "missing": cat.get("missing", []),
+                    "reasoning": cat.get("reasoning", ""),
+                }
+                for cat in analysis["categories"]
+            ],
+        }
+
+    user_message = json.dumps(user_payload, ensure_ascii=False)
 
     headers = {
         "Authorization": f"Bearer {_OPENAI_API_KEY}",

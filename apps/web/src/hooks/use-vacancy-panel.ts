@@ -123,11 +123,16 @@ export function useVacancyPanel(job: JobListing | null) {
     if (!job?.url || !cv?.url) return;
     if (cvOverride) setSelectedCV(cvOverride);
     setWorkspaceOpen(true);
-    cvMatch.parseCv(cv.url);
-    // Always use the bundle endpoint — it serves from cache if already analyzed,
-    // so previously generated suggestions are restored without re-charging credits.
-    cvMatch.analyze(job.url, cv.url, cv.name);
-  }, [job?.url, selectedCV, cvMatch.analyze, cvMatch.parseCv]);
+    if (!cvMatch.cvData && !cvMatch.loadingParse) {
+      cvMatch.parseCv(cv.url);
+    }
+    // Skip re-analyze if this exact CV+job is already in state — preserves suggestions.
+    const alreadyAnalyzed = cvMatch.analyzed && cvMatch.jobUrl === job.url && cvMatch.cvUrl === cv.url;
+    if (!alreadyAnalyzed) {
+      cvMatch.analyze(job.url, cv.url, cv.name);
+    }
+  }, [job?.url, selectedCV, cvMatch.analyzed, cvMatch.jobUrl, cvMatch.cvUrl,
+      cvMatch.cvData, cvMatch.loadingParse, cvMatch.analyze, cvMatch.parseCv]);
 
   // Multi-CV: analyze a CV and add result to comparison list
   const addCVToCompare = useCallback(async (cv: CVLink) => {
@@ -164,8 +169,8 @@ export function useVacancyPanel(job: JobListing | null) {
         cv_url: cv.url,
         cv_name: cv.name ?? "",
         job_url: job.url,
-        job_title: bundle.suggestions?.job_title ?? "",
-        company: bundle.suggestions?.job_company ?? "",
+        job_title: bundle.job_title ?? job.title ?? "",
+        company: bundle.job_company ?? job.company ?? "",
         overall_score: bundle.analysis.overall_score,
         match_level: bundle.analysis.match_level,
       });
@@ -187,10 +192,10 @@ export function useVacancyPanel(job: JobListing | null) {
     setWorkspaceOpen(false);
   }, []);
 
-  // Fetch suggestions on demand (used when workspace was opened from an already-analyzed CV)
-  const generateSuggestions = useCallback(() => {
+  // Fetch suggestions on demand; force=true bypasses cache (refresh button)
+  const generateSuggestions = useCallback((force = false) => {
     if (!job?.url || !selectedCV?.url) return;
-    cvMatch.generateSuggestions(job.url, selectedCV.url);
+    cvMatch.generateSuggestions(job.url, selectedCV.url, force);
   }, [job?.url, selectedCV?.url, cvMatch.generateSuggestions]);
 
   // When user changes CV, reset analysis

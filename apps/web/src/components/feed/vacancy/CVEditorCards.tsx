@@ -18,11 +18,13 @@ export function ExperienceCard({ entry, onChange, onRemove, handle }: {
     <div className="rounded-xl border border-border bg-muted/30 overflow-hidden">
       <div className="flex items-start gap-2 p-4 pb-3">
         <div className="mt-2">{handle}</div>
-        <div className="flex-1 grid grid-cols-2 gap-2.5">
-          <Field label="Job Title" value={entry.title}
-            onChange={(v) => onChange({ ...entry, title: v })} />
-          <Field label="Company" value={entry.company}
-            onChange={(v) => onChange({ ...entry, company: v })} />
+        <div className="flex-1 min-w-0 space-y-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
+            <Field label="Job Title" value={entry.title}
+              onChange={(v) => onChange({ ...entry, title: v })} />
+            <Field label="Company" value={entry.company}
+              onChange={(v) => onChange({ ...entry, company: v })} />
+          </div>
           <Field label="Location" value={entry.location}
             onChange={(v) => onChange({ ...entry, location: v })} />
           <div className="grid grid-cols-2 gap-2">
@@ -57,7 +59,7 @@ export function EducationCard({ entry, onChange, onRemove, handle }: {
     <div className="rounded-xl border border-border bg-muted/30 overflow-hidden">
       <div className="flex items-start gap-2 p-4 pb-3">
         <div className="mt-2">{handle}</div>
-        <div className="flex-1 grid grid-cols-2 gap-2.5">
+        <div className="flex-1 min-w-0 space-y-2.5">
           <Field label="Institution" value={entry.institution}
             onChange={(v) => onChange({ ...entry, institution: v })} />
           <Field label="Degree" value={entry.degree}
@@ -65,9 +67,9 @@ export function EducationCard({ entry, onChange, onRemove, handle }: {
           <Field label="Field of Study" value={entry.field_of_study}
             onChange={(v) => onChange({ ...entry, field_of_study: v })} />
           <div className="grid grid-cols-2 gap-2">
-            <Field label="Start Date" value={entry.start_date} placeholder="YYYY"
+            <Field label="Start" value={entry.start_date} placeholder="YYYY"
               onChange={(v) => onChange({ ...entry, start_date: v })} />
-            <Field label="End Date" value={entry.end_date} placeholder="YYYY or Present"
+            <Field label="End" value={entry.end_date} placeholder="YYYY / Present"
               onChange={(v) => onChange({ ...entry, end_date: v })} />
           </div>
         </div>
@@ -111,14 +113,14 @@ export function SkillGroupCard({ group, onChange, onRemove, handle }: {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
-      <div className="flex items-center gap-2">
+    <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3 overflow-hidden">
+      <div className="flex items-center gap-2 min-w-0">
         {handle}
         <Input
           value={group.category}
           onChange={(e) => onChange({ ...group, category: e.target.value })}
           placeholder="Category (e.g. Frontend, Tools, Frameworks)"
-          className="flex-1 text-sm font-semibold"
+          className="flex-1 min-w-0 text-sm font-semibold"
         />
         <RemoveButton onClick={onRemove} />
       </div>
@@ -129,13 +131,13 @@ export function SkillGroupCard({ group, onChange, onRemove, handle }: {
           {pillItems.map(({ item, i }) => (
             <span
               key={i}
-              className="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-lg bg-background border border-border text-xs text-foreground"
+              className="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-lg bg-background border border-border text-xs text-foreground max-w-[calc(100%-1rem)]"
             >
               <Input
                 value={item}
                 onChange={(e) => updateItem(i, e.target.value)}
-                className="bg-transparent border-0 shadow-none outline-none p-0 h-auto min-w-[3ch] text-xs text-foreground focus-visible:ring-0"
-                style={{ width: `${Math.max(3, Math.min(item.length, 30))}ch` }}
+                className="bg-transparent border-0 shadow-none outline-none p-0 h-auto min-w-[3ch] max-w-[18ch] text-xs text-foreground focus-visible:ring-0"
+                style={{ width: `${Math.max(3, Math.min(item.length, 18))}ch` }}
               />
               <Button
                 type="button"

@@ -71,7 +71,7 @@ interface CVWorkspaceDialogProps {
   loadingAtsPreview: boolean;
   onAtsPreview: () => void;
   onDismissAtsPreview: () => void;
-  onGenerateSuggestions?: () => void;
+  onGenerateSuggestions?: (force?: boolean) => void;
 }
 
 /* ── Component ── */
@@ -118,7 +118,9 @@ export default function CVWorkspaceDialog({
 
   const [viewMode, setViewMode] = useState<"edit" | "preview">("edit");
   const [highlightSection, setHighlightSection] = useState<string | null>(null);
-  const [miniPreviewOpen, setMiniPreviewOpen] = useState(true);
+  const [miniPreviewOpen, setMiniPreviewOpen] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 1024 : true
+  );
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
   const [lensPos, setLensPos] = useState<{ x: number; y: number } | null>(null);
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
@@ -206,7 +208,7 @@ export default function CVWorkspaceDialog({
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 pr-8 flex-wrap">
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 pr-8 flex-wrap">
               <Badge variant="outline" className="text-[10px] font-medium hidden md:inline-flex">
                 {isPdf ? "PDF" : fileType === "docx" ? "DOCX" : "External"}
               </Badge>
@@ -218,7 +220,7 @@ export default function CVWorkspaceDialog({
               <div className="h-4 w-px bg-border/40 hidden sm:block" />
 
               {hasStructuredData && (
-                <Button type="button" size="sm" variant="outline" className="gap-1.5 cursor-pointer" onClick={onCvDataReset} disabled={savingCvData}>
+                <Button type="button" size="sm" variant="outline" className="gap-1.5 cursor-pointer px-2 sm:px-3" onClick={onCvDataReset} disabled={savingCvData} title="Reset changes">
                   <RotateCcw className="size-3.5" /><span className="hidden sm:inline">Reset</span>
                 </Button>
               )}
@@ -231,7 +233,7 @@ export default function CVWorkspaceDialog({
                   onClick={onSaveCvData}
                   disabled={savingCvData || (!hasChanges && !cvDataSaved)}
                   className={cn(
-                    "gap-1.5 cursor-pointer transition-colors",
+                    "gap-1.5 cursor-pointer transition-colors px-2 sm:px-3",
                     cvDataSaved
                       ? "border-match-high/40 text-match-high bg-match-high/5"
                       : hasChanges
@@ -283,10 +285,10 @@ export default function CVWorkspaceDialog({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="gap-1.5 border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="gap-1.5 border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed px-2 sm:px-3"
                   onClick={onAtsPreview}
                   disabled={loadingAtsPreview || !canCheckImpact}
-                  title={!canCheckImpact ? "Edit your CV first to check impact" : undefined}
+                  title={!canCheckImpact ? "Edit your CV first to check impact" : "Check score impact"}
                   data-tour="workspace-check-impact-btn"
                   data-loading={loadingAtsPreview || undefined}
                 >
@@ -307,12 +309,13 @@ export default function CVWorkspaceDialog({
               <Button
                 type="button"
                 size="sm"
-                className="gap-1.5 cursor-pointer"
+                className="gap-1.5 cursor-pointer px-2 sm:px-3"
                 onClick={handleOpenDownload}
                 disabled={!hasStructuredData || generatingPdf}
+                title="Download as PDF"
               >
                 <Download className="size-3.5" />
-                {generatingPdf ? "Generating…" : "Download PDF"}
+                <span className="hidden sm:inline">{generatingPdf ? "Generating…" : "Download PDF"}</span>
               </Button>
             </div>
           </header>
@@ -323,7 +326,7 @@ export default function CVWorkspaceDialog({
           )}
 
           {/* Body */}
-          <div className="flex-1 min-h-0 overflow-hidden flex flex-col md:flex-row">
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col md:flex-row relative">
 
             {/* Suggestions sidebar */}
             <WorkspaceSuggestions
@@ -363,9 +366,37 @@ export default function CVWorkspaceDialog({
               )}
             </div>
 
-            {/* ATS Preview panel — hidden below lg (1024px) where it doesn't fit */}
+            {/* Floating ATS toggle — mobile only, lives at bottom-left of the body */}
+            {hasStructuredData && (
+              <button
+                type="button"
+                onClick={() => setMiniPreviewOpen((v) => !v)}
+                className={cn(
+                  "absolute bottom-3 left-3 z-20 lg:hidden flex items-center gap-1.5 h-8 px-3 rounded-full border bg-background/95 backdrop-blur-sm text-xs font-medium shadow-md transition-colors",
+                  miniPreviewOpen
+                    ? "border-primary/50 text-primary bg-primary/10"
+                    : "border-border text-muted-foreground hover:text-foreground",
+                )}
+                data-tour="workspace-ats-btn"
+                aria-label="Toggle ATS Preview"
+              >
+                <ScanEye className="size-3.5" />
+                {miniPreviewOpen ? "Close" : "ATS Preview"}
+              </button>
+            )}
+
+            {/* ATS Preview panel — side panel on lg+, bottom overlay on mobile */}
             {miniPreviewOpen && cvData && (
-              <div className="w-72 shrink-0 border-l border-border/50 bg-background hidden lg:flex flex-col overflow-hidden" data-tour="workspace-ats-panel">
+              <div
+                className={cn(
+                  "shrink-0 border-border/50 bg-background flex flex-col overflow-hidden",
+                  // Mobile: slide up as a bottom overlay inside the dialog body
+                  "absolute bottom-0 left-0 right-0 h-72 border-t z-10",
+                  // lg+: restore as right-side flex panel
+                  "lg:relative lg:inset-auto lg:h-auto lg:border-t-0 lg:border-l lg:w-72 lg:z-auto",
+                )}
+                data-tour="workspace-ats-panel"
+              >
                 <div className="flex items-center justify-between px-3 py-2 border-b border-border/40 shrink-0">
                   <div className="flex items-center gap-1.5">
                     <ScanEye className="size-3.5 text-primary" />
@@ -484,7 +515,7 @@ function MatchScoreStrip({ cvAnalysis, loadingAnalysis }: { cvAnalysis: CVMatchA
   const catLabels: Record<string, string> = { skills: "Skills", experience: "Exp", fit: "Fit", keywords: "KW" };
 
   return (
-    <div className="px-6 py-3 border-b border-border/40 shrink-0 bg-muted/20 flex items-center gap-4">
+    <div className="px-3 sm:px-6 py-2.5 sm:py-3 border-b border-border/40 shrink-0 bg-muted/20 flex items-center gap-3 sm:gap-4">
       {loadingAnalysis ? (
         <div className="flex items-center gap-3 w-full">
           <div className="rounded-xl px-3 py-2 border border-border/40 bg-muted/40 shrink-0 flex flex-col items-center gap-1 animate-pulse">

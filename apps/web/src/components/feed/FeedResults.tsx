@@ -361,7 +361,7 @@ function CacheTimer({
   loading?: boolean;
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span className="inline-flex flex-wrap items-center gap-1.5">
       {onRefresh && (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -370,7 +370,7 @@ function CacheTimer({
               size="sm"
               onClick={onRefresh}
               disabled={loading}
-              className="h-auto gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium text-muted-foreground hover:text-foreground"
+              className="h-auto gap-1 pl-0! pr-2 py-0.5 rounded-full text-[11px] font-medium text-muted-foreground hover:text-foreground"
             >
               <RefreshCw className={cn("size-3", loading && "animate-spin")} />
               Refresh · 1 credit
@@ -539,7 +539,7 @@ export default function FeedResults({
           </div>
         )
       )}
-      <div className="flex flex-wrap items-center justify-between gap-y-1.5 border-b border-border/40 pb-2.5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-y-1.5 border-b border-border/40 pb-2.5">
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span>
             {hasMore && totalAll > 0
@@ -553,11 +553,11 @@ export default function FeedResults({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {cacheCountdown && (
+        {cacheCountdown && (
+          <div className="flex items-center gap-1.5 flex-wrap">
             <CacheTimer countdown={cacheCountdown} onRefresh={onRefresh} loading={loading} />
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {[
