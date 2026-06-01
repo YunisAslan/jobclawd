@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useProfile } from "@/contexts/ProfileContext";
 import { savedVacanciesService } from "@/services/saved-vacancies.service";
 import { profileService } from "@/services/profile.service";
@@ -9,6 +10,7 @@ import { analyticsEventsService } from "@/services/analytics-events.service";
 import { useCVMatch } from "@/hooks/use-cv-match";
 import { useTour } from "@/contexts/TourContext";
 import { DEMO_BUNDLE, DEMO_JOB_URL } from "@/lib/tour-demo-data";
+import { isNoCredits } from "@/lib/utils";
 import type { JobListing, CVLink, CVMatchAnalysis } from "@/types";
 
 const DEMO_CV: CVLink = { name: "Marketing_Resume_Demo.pdf", url: "__demo__" };
@@ -163,8 +165,12 @@ export function useVacancyPanel(job: JobListing | null) {
       setMultiCVResults((prev) =>
         prev.map((e) => (e.cv.url === cv.url ? { ...e, loading: false, analysis: bundle.analysis } : e))
       );
-      // Invalidate so next open of this vacancy reflects the newly cached entry
       qc.invalidateQueries({ queryKey: ["cv-analyses-cache", job.url] });
+      // If re-analyzing the currently active CV, reset state so the workspace
+      // runs a fresh analyze instead of serving the previous in-memory result.
+      if (cv.url === cvMatch.cvUrl) {
+        cvMatch.reset();
+      }
       analyticsEventsService.trackCvAnalyzed({
         cv_url: cv.url,
         cv_name: cv.name ?? "",
@@ -174,9 +180,15 @@ export function useVacancyPanel(job: JobListing | null) {
         overall_score: bundle.analysis.overall_score,
         match_level: bundle.analysis.match_level,
       });
-    } catch {
+    } catch (err: unknown) {
+      const noCredits = isNoCredits(err);
+      if (noCredits) toast.error("Not enough credits to analyze this CV.");
       setMultiCVResults((prev) =>
-        prev.map((e) => (e.cv.url === cv.url ? { ...e, loading: false, error: "Analysis failed. Try again." } : e))
+        prev.map((e) =>
+          e.cv.url === cv.url
+            ? { ...e, loading: false, error: noCredits ? null : "Analysis failed. Try again." }
+            : e
+        )
       );
     }
   }, [job?.url, isDemo]);
@@ -186,7 +198,12 @@ export function useVacancyPanel(job: JobListing | null) {
     if (job?.url) {
       cvMatchService.deleteCachedResult(job.url, cvUrl).catch(() => {});
     }
-  }, [job?.url]);
+    // If this was the currently analyzed CV, clear state so the next
+    // analyze call starts fresh instead of serving stale in-memory data.
+    if (cvUrl === cvMatch.cvUrl) {
+      cvMatch.reset();
+    }
+  }, [job?.url, cvMatch.cvUrl, cvMatch.reset]);
 
   const closeWorkspace = useCallback(() => {
     setWorkspaceOpen(false);

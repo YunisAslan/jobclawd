@@ -68,6 +68,51 @@ function computeChangedTexts(original: CVData, current: CVData): Set<string> {
   return changed;
 }
 
+/* Compute text strings that existed in original but are gone from current */
+function computeRemovedTexts(original: CVData, current: CVData): Set<string> {
+  const removed = new Set<string>();
+
+  const currentBullets = new Set(current.experience.flatMap((e) => e.bullets));
+  for (const entry of original.experience) {
+    for (const bullet of entry.bullets) {
+      if (bullet && !currentBullets.has(bullet)) removed.add(bullet);
+    }
+  }
+
+  const currentSkillItems = new Set(current.skills.flatMap((g) => g.items));
+  for (const group of original.skills) {
+    for (const item of group.items) {
+      if (item && !currentSkillItems.has(item)) removed.add(item);
+    }
+  }
+
+  return removed;
+}
+
+/* For each experience entry, find which original bullets were removed */
+function getRemovedBulletsForEntry(
+  originalData: CVData,
+  entry: CVData["experience"][number],
+): string[] {
+  const origEntry = originalData.experience.find(
+    (oe) => oe.id === entry.id || (oe.title === entry.title && oe.company === entry.company),
+  );
+  if (!origEntry) return [];
+  const current = new Set(entry.bullets);
+  return origEntry.bullets.filter((b) => b && !current.has(b));
+}
+
+/* For each skill group, find which original items were removed */
+function getRemovedSkillsForGroup(
+  originalData: CVData,
+  group: CVData["skills"][number],
+): string[] {
+  const origGroup = originalData.skills.find((og) => og.category === group.category);
+  if (!origGroup) return [];
+  const current = new Set(group.items);
+  return origGroup.items.filter((item) => item && !current.has(item));
+}
+
 const HIGHLIGHT_STYLE: React.CSSProperties = {
   background: "rgba(34, 197, 94, 0.18)",
   borderRadius: "2px",
@@ -75,9 +120,23 @@ const HIGHLIGHT_STYLE: React.CSSProperties = {
   outline: "1px solid rgba(34, 197, 94, 0.35)",
 };
 
+const REMOVED_STYLE: React.CSSProperties = {
+  background: "rgba(239, 68, 68, 0.08)",
+  borderRadius: "2px",
+  padding: "0 2px",
+  outline: "1px solid rgba(239, 68, 68, 0.22)",
+  textDecoration: "line-through",
+  color: "#ef4444",
+  opacity: 0.75,
+};
+
 function H({ text, changed }: { text: string; changed: Set<string> }) {
   if (!changed.has(text)) return <>{text}</>;
   return <span style={HIGHLIGHT_STYLE}>{text}</span>;
+}
+
+function D({ text }: { text: string }) {
+  return <span style={REMOVED_STYLE}>{text}</span>;
 }
 
 interface CVMiniPreviewProps {
@@ -88,7 +147,8 @@ interface CVMiniPreviewProps {
 export default function CVMiniPreview({ data, originalData }: CVMiniPreviewProps) {
   const pi = data.personal_info;
   const changed = originalData ? computeChangedTexts(originalData, data) : new Set<string>();
-  const hasChanges = changed.size > 0;
+  const removed = originalData ? computeRemovedTexts(originalData, data) : new Set<string>();
+  const hasChanges = changed.size > 0 || removed.size > 0;
 
   return (
     <div
@@ -97,11 +157,19 @@ export default function CVMiniPreview({ data, originalData }: CVMiniPreviewProps
     >
       {/* Change legend */}
       {hasChanges && (
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px", padding: "4px 8px", background: "rgba(34,197,94,0.08)", borderRadius: "6px", border: "1px solid rgba(34,197,94,0.2)" }}>
-          <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "2px", background: "rgba(34,197,94,0.4)", flexShrink: 0 }} />
-          <span style={{ fontSize: "10px", color: "#16a34a", fontWeight: 600 }}>
-            {changed.size} change{changed.size !== 1 ? "s" : ""} highlighted
-          </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px", padding: "4px 8px", background: "rgba(0,0,0,0.03)", borderRadius: "6px", border: "1px solid rgba(0,0,0,0.08)", flexWrap: "wrap" }}>
+          {changed.size > 0 && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "10px", color: "#16a34a", fontWeight: 600 }}>
+              <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "2px", background: "rgba(34,197,94,0.4)" }} />
+              {changed.size} added
+            </span>
+          )}
+          {removed.size > 0 && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "10px", color: "#ef4444", fontWeight: 600 }}>
+              <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "2px", background: "rgba(239,68,68,0.35)" }} />
+              {removed.size} removed
+            </span>
+          )}
         </div>
       )}
 
@@ -159,23 +227,32 @@ export default function CVMiniPreview({ data, originalData }: CVMiniPreviewProps
           <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "#1a1a1a", borderBottom: "0.4px solid #d1d5db", paddingBottom: "3px", marginBottom: "8px", marginTop: "10px" }}>
             Work Experience
           </div>
-          {data.experience.map((e) => (
-            <div key={e.id} style={{ marginBottom: "10px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <span style={{ fontWeight: 700, fontSize: "13px", color: "#0f172a" }}>{e.title}</span>
-                <span style={{ fontSize: "11px", color: "#64748b" }}>{e.start_date} – {e.end_date || "Present"}</span>
-              </div>
-              <div style={{ fontSize: "12px", color: "#475569", marginBottom: "4px" }}>
-                {e.company}{e.location ? `, ${e.location}` : ""}
-              </div>
-              {e.bullets.map((b, i) => (
-                <div key={i} style={{ fontSize: "12px", color: "#334155", paddingLeft: "12px", position: "relative", marginBottom: "2px" }}>
-                  <span style={{ position: "absolute", left: 0 }}>•</span>
-                  <H text={b} changed={changed} />
+          {data.experience.map((e) => {
+            const removedBullets = originalData ? getRemovedBulletsForEntry(originalData, e) : [];
+            return (
+              <div key={e.id} style={{ marginBottom: "10px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <span style={{ fontWeight: 700, fontSize: "13px", color: "#0f172a" }}>{e.title}</span>
+                  <span style={{ fontSize: "11px", color: "#64748b" }}>{e.start_date} – {e.end_date || "Present"}</span>
                 </div>
-              ))}
-            </div>
-          ))}
+                <div style={{ fontSize: "12px", color: "#475569", marginBottom: "4px" }}>
+                  {e.company}{e.location ? `, ${e.location}` : ""}
+                </div>
+                {e.bullets.map((b, i) => (
+                  <div key={i} style={{ fontSize: "12px", color: "#334155", paddingLeft: "12px", position: "relative", marginBottom: "2px" }}>
+                    <span style={{ position: "absolute", left: 0 }}>•</span>
+                    <H text={b} changed={changed} />
+                  </div>
+                ))}
+                {removedBullets.map((b, i) => (
+                  <div key={`rm-${i}`} style={{ fontSize: "12px", paddingLeft: "12px", position: "relative", marginBottom: "2px" }}>
+                    <span style={{ position: "absolute", left: 0, color: "#ef4444", opacity: 0.6 }}>•</span>
+                    <D text={b} />
+                  </div>
+                ))}
+              </div>
+            );
+          })}
         </section>
       )}
 
@@ -223,17 +300,26 @@ export default function CVMiniPreview({ data, originalData }: CVMiniPreviewProps
           <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "#1a1a1a", borderBottom: "0.4px solid #d1d5db", paddingBottom: "3px", marginBottom: "8px", marginTop: "10px" }}>
             Skills
           </div>
-          {data.skills.map((g, i) => (
-            <div key={i} style={{ fontSize: "12px", color: "#334155", marginBottom: "3px" }}>
-              <span style={{ fontWeight: 700 }}>{g.category}: </span>
-              {g.items.map((item, j) => (
-                <span key={j}>
-                  {j > 0 && ", "}
-                  <H text={item} changed={changed} />
-                </span>
-              ))}
-            </div>
-          ))}
+          {data.skills.map((g, i) => {
+            const removedItems = originalData ? getRemovedSkillsForGroup(originalData, g) : [];
+            return (
+              <div key={i} style={{ fontSize: "12px", color: "#334155", marginBottom: "3px" }}>
+                <span style={{ fontWeight: 700 }}>{g.category}: </span>
+                {g.items.map((item, j) => (
+                  <span key={j}>
+                    {j > 0 && ", "}
+                    <H text={item} changed={changed} />
+                  </span>
+                ))}
+                {removedItems.map((item, j) => (
+                  <span key={`rm-${j}`}>
+                    {(g.items.length > 0 || j > 0) && ", "}
+                    <D text={item} />
+                  </span>
+                ))}
+              </div>
+            );
+          })}
         </section>
       )}
 

@@ -50,6 +50,7 @@ class SuggestionCategory(str, Enum):
     improve_headline = "improve_headline"
     address_requirements = "address_requirements"
     address_gaps = "address_gaps"
+    consolidate = "consolidate"
 
 
 class JobSource(str, Enum):

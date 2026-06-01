@@ -260,7 +260,8 @@ export type SuggestionCategory =
   | "reduce_irrelevant"
   | "improve_headline"
   | "address_requirements"
-  | "address_gaps";
+  | "address_gaps"
+  | "consolidate";
 
 export interface CVSuggestion {
   category: SuggestionCategory;

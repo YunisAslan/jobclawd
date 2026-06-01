@@ -16,6 +16,11 @@ export function extractApiError(error: unknown, fallback = "An error occurred.")
   return fallback;
 }
 
+export function isNoCredits(error: unknown): boolean {
+  if (error instanceof AxiosError) return error.response?.status === 402;
+  return (error as { response?: { status?: number } })?.response?.status === 402;
+}
+
 export function formatDate(dateStr: string, options?: Intl.DateTimeFormatOptions): string {
   if (!dateStr) return "";
   try {

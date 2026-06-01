@@ -5,6 +5,7 @@ import { documentService } from "@/services/document.service";
 import { analyticsEventsService } from "@/services/analytics-events.service";
 import { useTour } from "@/contexts/TourContext";
 import { DEMO_BUNDLE, DEMO_CV_DATA } from "@/lib/tour-demo-data";
+import { isNoCredits } from "@/lib/utils";
 import type { CVData, CVMatchAnalysis, CVSuggestion, CVSuggestionsResponse } from "@/types";
 
 interface CVMatchState {
@@ -114,6 +115,10 @@ export function useCVMatch() {
     const bundleResult = await Promise.allSettled([cvMatchService.getBundle(jobUrl, cvUrl, undefined, false)]);
     const bundle = bundleResult[0];
 
+    if (bundle.status === "rejected" && isNoCredits(bundle.reason)) {
+      toast.error("Not enough credits to analyze this vacancy.");
+    }
+
     setState((s) => ({
       ...s,
       analysis: bundle.status === "fulfilled" ? bundle.value.analysis : null,
@@ -123,7 +128,7 @@ export function useCVMatch() {
       loadingDraft: false,
       errorAnalysis:
         bundle.status === "rejected"
-          ? "Failed to analyze CV match. Please try again."
+          ? (isNoCredits(bundle.reason) ? null : "Failed to analyze CV match. Please try again.")
           : bundle.value.error_analysis ||
             (bundle.value.analysis.overall_score === 0 && bundle.value.analysis.categories.length === 0
               ? bundle.value.analysis.summary || "Could not generate analysis."
@@ -134,7 +139,7 @@ export function useCVMatch() {
       draftFileName: bundle.status === "fulfilled" ? bundle.value.draft.file_name : "",
       errorDraft:
         bundle.status === "rejected"
-          ? "Could not load the CV draft for editing."
+          ? (isNoCredits(bundle.reason) ? null : "Could not load the CV draft for editing.")
           : bundle.value.error_draft || null,
     }));
 
@@ -297,6 +302,11 @@ export function useCVMatch() {
           touchedMatchCategories.add("experience");
           touchedMatchCategories.add("fit");
           break;
+        case "consolidate":
+          touchedMatchCategories.add("experience");
+          touchedMatchCategories.add("skills");
+          touchedMatchCategories.add("fit");
+          break;
         case "address_requirements":
         case "address_gaps":
           touchedMatchCategories.add("experience");
@@ -380,12 +390,17 @@ export function useCVMatch() {
     try {
       const result = await cvMatchService.getSuggestions(jobUrl, cvUrl, state.analysis, force);
       setState((s) => ({ ...s, suggestions: result, loadingSuggestions: false }));
-    } catch {
-      setState((s) => ({
-        ...s,
-        loadingSuggestions: false,
-        errorSuggestions: "Failed to generate suggestions. Please try again.",
-      }));
+    } catch (err: unknown) {
+      if (isNoCredits(err)) {
+        toast.error("Not enough credits to generate suggestions.");
+        setState((s) => ({ ...s, loadingSuggestions: false }));
+      } else {
+        setState((s) => ({
+          ...s,
+          loadingSuggestions: false,
+          errorSuggestions: "Failed to generate suggestions. Please try again.",
+        }));
+      }
     }
   }
 
@@ -433,7 +448,8 @@ export function useCVMatch() {
         preAcceptCvSnapshots: {},
       }));
       return result;
-    } catch {
+    } catch (err: unknown) {
+      if (isNoCredits(err)) toast.error("Not enough credits to re-score your CV.");
       return null;
     }
   }
@@ -701,12 +717,39 @@ function splitBulletText(text: string): string[] {
     .filter((s) => s.length > 0);
 }
 
+const MAX_BULLETS_PER_ROLE = 6;
+
+// Returns true if bullet and target refer to the same text.
+// Uses substring matching first, then word-overlap for cases where the AI
+// returns a slightly truncated or rephrased version of the original.
+function bulletMatches(bullet: string, target: string): boolean {
+  const b = bullet.trim();
+  const t = target.trim();
+  if (!b || !t) return false;
+  if (b === t || b.includes(t) || t.includes(b)) return true;
+  const norm = (s: string) =>
+    s.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(Boolean);
+  const bWords = norm(b);
+  const tWords = norm(t);
+  if (tWords.length < 4) return false; // too short to fuzzy-match reliably
+  const bSet = new Set(bWords);
+  const overlap = tWords.filter((w) => bSet.has(w)).length;
+  return overlap / tWords.length > 0.7;
+}
+
+// Returns true if the candidate is unique enough to add (not a near-duplicate).
 function dedupeBullet(existing: string[], candidate: string): boolean {
   const norm = candidate.trim().toLowerCase();
   if (!norm) return false;
   return !existing.some((b) => {
     const n = b.trim().toLowerCase();
-    return n === norm || n.includes(norm) || norm.includes(n);
+    if (n === norm || n.includes(norm) || norm.includes(n)) return true;
+    // Word-overlap check: treat as duplicate when >55% of meaningful words overlap.
+    const wordsA = new Set(n.split(/\s+/).filter((w) => w.length > 3));
+    const wordsB = norm.split(/\s+/).filter((w) => w.length > 3);
+    if (wordsA.size === 0 || wordsB.length === 0) return false;
+    const overlap = wordsB.filter((w) => wordsA.has(w)).length;
+    return overlap / Math.min(wordsA.size, wordsB.length) > 0.55;
   });
 }
 
@@ -839,7 +882,7 @@ function applySuggestionToCvData(data: CVData, suggestion: CVSuggestion, suggest
     const pieces = splitBulletText(text);
     if (pieces.length === 0) return data;
     const experience = data.experience.map((entry) => {
-      const bulletIdx = entry.bullets.findIndex((b) => b.includes(target) || target.includes(b));
+      const bulletIdx = entry.bullets.findIndex((b) => bulletMatches(b, target));
       if (bulletIdx === -1) return entry;
       const bullets = [...entry.bullets];
       const [first, ...rest] = pieces;
@@ -867,7 +910,9 @@ function applySuggestionToCvData(data: CVData, suggestion: CVSuggestion, suggest
     if (pieces.length === 0) return data;
     const experience = [...data.experience];
     const current = [...experience[0].bullets];
+    if (current.length >= MAX_BULLETS_PER_ROLE) return data;
     for (const p of pieces) {
+      if (current.length >= MAX_BULLETS_PER_ROLE) break;
       if (dedupeBullet(current, p)) current.push(p);
     }
     experience[0] = { ...experience[0], bullets: current };
@@ -884,18 +929,40 @@ function applySuggestionToCvData(data: CVData, suggestion: CVSuggestion, suggest
     if (pieces.length === 0) return data;
     const experience = [...data.experience];
     const current = [...experience[0].bullets];
+    if (current.length >= MAX_BULLETS_PER_ROLE) return data;
     const fresh = pieces.filter((p) => dedupeBullet(current, p));
-    experience[0] = { ...experience[0], bullets: [...fresh, ...current] };
+    const merged = [...fresh, ...current].slice(0, MAX_BULLETS_PER_ROLE);
+    experience[0] = { ...experience[0], bullets: merged };
     return { ...data, experience };
   }
 
-  // reduce_irrelevant → try to find and remove matching bullet
+  // reduce_irrelevant → remove matching bullet from experience
   if (cat === "reduce_irrelevant" && target) {
     const experience = data.experience.map((entry) => ({
       ...entry,
-      bullets: entry.bullets.filter((b) => !b.includes(target) && !target.includes(b)),
+      bullets: entry.bullets.filter((b) => !bulletMatches(b, target)),
     }));
     return { ...data, experience };
+  }
+
+  // consolidate → remove or replace redundant/verbose content across bullets and skills
+  if (cat === "consolidate" && target) {
+    const replacing = text.length > 0;
+    // Update experience bullets
+    const experience = data.experience.map((entry) => ({
+      ...entry,
+      bullets: replacing
+        ? entry.bullets.map((b) => bulletMatches(b, target) ? text : b)
+        : entry.bullets.filter((b) => !bulletMatches(b, target)),
+    }));
+    // Update skills (remove redundant skill items)
+    const skills = data.skills.map((g) => ({
+      ...g,
+      items: replacing
+        ? g.items.map((item) => item.toLowerCase() === target.toLowerCase() ? text : item)
+        : g.items.filter((item) => item.toLowerCase() !== target.toLowerCase()),
+    }));
+    return { ...data, experience, skills };
   }
 
   // Fallback: route by content shape

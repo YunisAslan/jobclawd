@@ -33,6 +33,7 @@ const CATEGORY_TARGET: Record<SuggestionCategory, { label: string; sectionId: st
   improve_headline:     { label: "Summary",     sectionId: "cv-section-personal" },
   address_requirements: { label: "Experience",  sectionId: "cv-section-experience" },
   address_gaps:         { label: "Experience",  sectionId: "cv-section-experience" },
+  consolidate:          { label: "CV",          sectionId: "cv-section-experience" },
 };
 
 export function getTargetSectionId(category: SuggestionCategory): string {
@@ -63,6 +64,21 @@ interface WorkspaceSuggestionsProps {
  * Returns null if the text no longer exists in the CV (e.g. a bullet was
  * already removed), which hides the minus row entirely.
  */
+function bulletMatchesText(bullet: string, target: string): boolean {
+  const b = bullet.trim();
+  const t = target.trim();
+  if (!b || !t) return false;
+  if (b === t || b.includes(t) || t.includes(b)) return true;
+  const norm = (s: string) =>
+    s.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(Boolean);
+  const bWords = norm(b);
+  const tWords = norm(t);
+  if (tWords.length < 4) return false;
+  const bSet = new Set(bWords);
+  const overlap = tWords.filter((w) => bSet.has(w)).length;
+  return overlap / tWords.length > 0.7;
+}
+
 function resolveCurrentBeforeText(suggestion: CVSuggestion, cvData: CVData | null | undefined): string | null {
   if (!suggestion.specific_text) return null; // add-type: no "before"
   if (!cvData) return suggestion.specific_text;
@@ -77,22 +93,14 @@ function resolveCurrentBeforeText(suggestion: CVSuggestion, cvData: CVData | nul
     case "rewrite_bullets":
     case "elevate_experience":
     case "address_requirements":
-    case "address_gaps": {
-      // Find the bullet that still contains the original text.
-      for (const entry of cvData.experience) {
-        const match = entry.bullets.find((b) => b.includes(target) || target.includes(b));
-        if (match) return match;
-      }
-      // Bullet no longer exists — was already applied or removed. Hide minus row.
-      return null;
-    }
-
+    case "address_gaps":
+    case "consolidate":
     case "reduce_irrelevant": {
       for (const entry of cvData.experience) {
-        const match = entry.bullets.find((b) => b.includes(target) || target.includes(b));
+        const match = entry.bullets.find((b) => bulletMatchesText(b, target));
         if (match) return match;
       }
-      return null; // Already removed.
+      return null;
     }
 
     default:
