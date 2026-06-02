@@ -261,11 +261,21 @@ export type SuggestionCategory =
   | "improve_headline"
   | "address_requirements"
   | "address_gaps"
-  | "consolidate";
+  | "consolidate"
+  | "add_language"
+  | "add_certification";
 
 export interface CVSuggestion {
   category: SuggestionCategory;
   priority: SuggestionPriority;
+  /**
+   * Honest gap-bridging suggestion. True when the vacancy has a hard requirement
+   * the CV currently falls short of (e.g. years of experience, seniority, a
+   * missing skill/certification) that no rewrite of existing text can satisfy.
+   * These are advisory — they describe the gap and how to close it honestly,
+   * never a paste-ready fabricated claim. Rendered with a distinct style.
+   */
+  stretch?: boolean;
   title: string;
   description: string;
   specific_text?: string | null;

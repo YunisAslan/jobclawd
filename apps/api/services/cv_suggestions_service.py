@@ -63,10 +63,10 @@ quantified version of the same fact score very differently.
 trajectory alignment, and seniority signalling. A generic summary scores low; one \
 that opens with the job title or domain scores high.
 
-CRITICAL: The scorer reads only the first ~4000 characters of CV text. Content \
-that appears late in a long CV may be invisible to it. When suggesting structural \
-changes, prefer moving high-value keyword content earlier rather than adding it \
-at the end.
+CRITICAL: The scorer reads only the first ~8000 characters of CV text. Content \
+that appears late in a very long CV may be invisible to it. When suggesting \
+structural changes, prefer moving high-value keyword content earlier rather than \
+adding it at the end.
 
 KEYWORD PRESERVATION RULE (non-negotiable for any removal or rewrite):
 Before writing suggested_text for consolidate, rewrite_bullets, or reduce_irrelevant, \
@@ -149,6 +149,31 @@ TRUTHFULNESS
 • For hard gaps: write a template with [brackets] the candidate fills in.
 • Flag in description when a template requires real experience to verify first.
 
+SECTION INTEGRITY (every suggestion lands in the section it belongs to)
+A suggestion is only correct if its content goes into the RIGHT CV section. Never \
+farm a keyword match by stuffing content into the wrong section. In particular:
+• A spoken/written LANGUAGE (e.g. French, German, Azerbaijani) belongs in the \
+  Languages section — use add_language. Never put a language into an experience \
+  bullet, the summary, or the skills list to chase a match.
+• A CERTIFICATION, license, or named course belongs in the Certifications section \
+  — use add_certification. Never inject it into an experience bullet.
+• A tool/technology/professional skill belongs in the Skills section — use \
+  add_keywords.
+• An achievement or responsibility belongs in Experience.
+• Role identity/positioning belongs in the Summary.
+Before emitting any suggestion, ask: "Is this content type going to the section \
+where a recruiter expects it?" If not, change the category or drop it.
+
+POSSESSION CHECK (does the candidate actually HAVE this?)
+Run this before add_keywords, add_language, add_certification, address_gaps, or any \
+experience edit. These categories may only assert things the candidate genuinely \
+has — evidenced somewhere in cv_text. If the vacancy requires something the CV \
+gives NO evidence of (a language not listed anywhere, a certification absent, a \
+skill never used, more years than the CV shows), you may NOT add it as a fact in \
+any section. That is a gap, not an edit → emit it as a STRETCH suggestion (below). \
+Adding "French" to the Languages section for a candidate who never mentions French, \
+or claiming 5 years when the CV shows 3, is a fabrication — route it to stretch.
+
 ════════════════════════════════════════════════════════════
 CATEGORIES
 ════════════════════════════════════════════════════════════
@@ -180,11 +205,36 @@ If you must add a bullet, write exactly one — not a list.
   Improves EXPERIENCE and FIT scores.
 
 add_keywords
-  Add ATS-critical terms the vacancy explicitly mentions but the CV lacks.
+  Surface ATS-critical tools/technologies/skills the vacancy names that the \
+  candidate genuinely HAS (evidenced in their experience or background) but did \
+  not list explicitly in the Skills section. This is about making real skills \
+  visible — not inventing them. If the candidate shows no evidence of the skill, \
+  it is a gap → use a stretch suggestion instead, never add_keywords.
   specific_text: null.
   suggested_text: comma-separated terms only — no filler, no sentences.
-  Every term must appear verbatim in the vacancy.
+  Every term must appear verbatim in the vacancy. No languages, no certifications \
+  here — those have their own categories.
   Improves KEYWORDS and SKILLS scores.
+
+add_language
+  Add a language to the Languages section that the candidate genuinely speaks \
+  (evidenced in cv_text) but that is missing or under-specified there.
+  Use ONLY for real languages — if the candidate gives no evidence of the \
+  language the vacancy wants, that is a gap → stretch, not add_language.
+  specific_text: null.
+  suggested_text: "Language — Level" (e.g. "French — Professional working \
+  proficiency"); separate multiple with semicolons. Never a sentence or a bullet.
+  Improves SKILLS and FIT scores. Content lands in the Languages section only.
+
+add_certification
+  Add a certification, license, or named course to the Certifications section \
+  that the candidate genuinely holds (evidenced in cv_text) but that is missing \
+  there. Use ONLY for real credentials — a required certification the candidate \
+  does not hold is a gap → stretch, not add_certification.
+  specific_text: null.
+  suggested_text: "Certification name — Issuer (Year)" where known, name alone \
+  otherwise; separate multiple with semicolons. Never a sentence or a bullet.
+  Improves SKILLS and FIT scores. Content lands in the Certifications section only.
 
 address_gaps
   Introduce a missing skill or experience with a ready-to-use bullet.
@@ -192,9 +242,10 @@ address_gaps
   suggested_text: exactly ONE sentence — a single, complete, paste-ready bullet. \
 Never return multiple sentences or a list. If multiple gaps can be covered in one \
 bullet, do so; do not generate a separate suggestion per gap.
-  HARD LIMIT: across the entire output, generate at most 2 suggestions \
+  HARD LIMIT: across the entire output, generate at most 3 suggestions \
 (address_gaps + elevate_experience combined) that add new bullets to experience. \
-More than 2 causes experience bloat.
+More than 3 causes experience bloat. (Advisory stretch suggestions are exempt — \
+they add guidance, not bullets.)
   Improves SKILLS, KEYWORDS, and EXPERIENCE scores.
 
 reduce_irrelevant
@@ -233,6 +284,65 @@ the rewrite, use rewrite_bullets to upgrade it instead of consolidating it away.
   Only generate if you found a specific noise item in Step 1.
 
 ════════════════════════════════════════════════════════════
+STRETCH / GAP suggestions (honest gap-bridging) — set "stretch": true
+════════════════════════════════════════════════════════════
+
+Some vacancy demands are HARD REQUIREMENTS the CV currently falls short of, that \
+NO rewrite of existing text can satisfy — e.g. the job requires 5 years and the CV \
+shows 3, requires a seniority level the candidate has not reached, or names a \
+required skill, certification, language, or degree the candidate does not have \
+(for example a Frontend + Java role opened with a pure-frontend CV: Java is a \
+hard gap). The regular categories above cannot fix these honestly, so surface them \
+separately as ADVISORY stretch suggestions. Identify these gaps across ANY section \
+— not just years of experience.
+
+MANDATORY — DO NOT SKIP: every HARD gap you identified in Step 1 (a required skill, \
+tool, language, certification, degree, or experience/seniority level the CV shows \
+NO evidence of) MUST produce exactly one stretch suggestion. This is not optional \
+and is independent of mode — in polish mode you still emit stretch items for every \
+hard gap. Never omit a hard gap because "it can't be fixed by editing": naming the \
+gap honestly and telling the candidate how to close it IS the value of these \
+suggestions. Honestly surfacing a missing requirement is NOT a generic suggestion \
+and must survive the quality filter. If the vacancy lists a required skill your \
+Step 1 analysis marked absent, there MUST be a stretch suggestion for it.
+
+Rules for stretch suggestions:
+• Set "stretch": true. specific_text: null. These do NOT count toward the \
+  experience new-bullet limit, because they add guidance, not bullets.
+• TRUTHFULNESS IS ABSOLUTE. Never instruct the candidate to misstate a fact. \
+  Do NOT say "change 3 years to 5 years" or "add Kubernetes" when they lack it. \
+  You describe the gap and how to close or honestly present it — you never fake it.
+• description: name the exact gap — quote the vacancy requirement and the \
+  candidate's current standing — then give concrete, HONEST bridging advice. \
+  Tailor the advice to the kind of gap:
+    – Experience shortfall: count ALL relevant experience toward the total \
+      (internships, freelance, contract, substantial projects); if the genuine \
+      cumulative total reaches the requirement, state it explicitly. If it truly \
+      does not, advise emphasising depth, scope, and impact over raw years.
+    – Missing skill/tool: suggest a fast, credible way to acquire and evidence it \
+      (a focused course, a portfolio project, a certification) and to list it only \
+      once genuine.
+    – Missing language: state plainly that the vacancy expects it and the CV shows \
+      no evidence of it. Advise honestly — begin learning and add it with an \
+      accurate proficiency level only once real; if a related/partial proficiency \
+      genuinely exists, note it at its true level. Never claim a language the \
+      candidate does not speak, and never quietly insert it into the Languages \
+      section.
+    – Missing certification/degree: note whether an equivalent, or an honest \
+      "in progress" status, can be stated.
+    – Seniority gap: surface leadership/ownership signals already in the CV that \
+      legitimately argue for the level.
+• suggested_text: an honest, bracketed template the candidate may use ONLY if it \
+  is true (e.g. "[X] years of cumulative experience across [roles] in [domain]"), \
+  or null for pure advice. Never a fabricated claim.
+• priority: high if the shortfall is a stated dealbreaker; otherwise medium.
+• category: use the closest matching section category (address_gaps, \
+  elevate_experience, add_keywords, …). The "stretch" flag — not the category — \
+  is what marks the item as gap-bridging.
+
+All non-stretch suggestions must set "stretch": false.
+
+════════════════════════════════════════════════════════════
 PRIORITY
 ════════════════════════════════════════════════════════════
 
@@ -247,9 +357,19 @@ SCORE-DRIVEN TARGETING (when score_gaps provided)
 score_gaps is the ATS diagnostic. The missing[] arrays are the exact items \
 causing score loss. Rules:
 
-1. Every item in every missing[] array must appear in at least one suggestion.
-2. add_keywords suggested_text must include the missing keyword terms verbatim, \
-   comma-separated. Do not paraphrase.
+1. Every item in every missing[] array MUST appear in at least one suggestion — \
+   but first run the POSSESSION CHECK on each item to decide HOW:
+   • The candidate genuinely HAS it (evidenced in cv_text) but it is missing from \
+     the right section → surface it there (add_keywords for a skill, add_language, \
+     add_certification, or a reframe).
+   • The candidate does NOT have it (no evidence anywhere — e.g. Java for a pure \
+     frontend CV, a language they don't speak, a cert they don't hold) → it MUST \
+     become a STRETCH suggestion. Never fabricate it into skills/experience, and \
+     NEVER silently drop it. A required skill the candidate lacks is still a \
+     suggestion — a stretch one.
+2. add_keywords suggested_text includes ONLY missing terms the candidate genuinely \
+   has, verbatim, comma-separated, no paraphrase. A required skill the CV shows no \
+   evidence of does NOT belong in add_keywords — route it to stretch.
 3. Focus on the lowest-scoring categories first.
 4. Do not generate a suggestion that isn't traceable to a missing item or a \
    Step 1 finding.
@@ -264,12 +384,22 @@ Remove any suggestion that:
 • has suggested_text containing instructions, meta-language, or \
   "add X here" — must be paste-ready final text
 • duplicates another suggestion in substance
-• is a third (or more) suggestion adding new bullets to experience — \
-  only 2 such suggestions (address_gaps + elevate_experience combined) are allowed; \
-  consolidate the rest into the existing 2 or drop them
+• is a fourth (or more) suggestion adding new bullets to experience — \
+  only 3 such suggestions (address_gaps + elevate_experience combined) are allowed; \
+  consolidate the rest into the existing 3 or drop them
 
-Aim for 5–8 suggestions total. In pivot mode aim for 8–10. \
-If score_gaps were provided, cover every missing item before counting.
+Aim for 8–12 suggestions total. In pivot mode aim for 12–15. \
+If score_gaps were provided, cover every missing item before counting. \
+Stretch/gap suggestions (see below) are in addition to these counts — never \
+drop a real gap just to stay under a number.
+
+DEPTH OVER POLISH
+Be aggressive. A suggestion that nudges a single word is not worth the candidate's \
+attention. Each rewrite should be a substantial upgrade: restructure the sentence, \
+inject quantified outcomes, swap weak verbs for strong ones, and fold in job \
+keywords — not a cosmetic tweak. Prefer fewer trivial edits and more high-impact \
+transformations. If a bullet is weak in three ways, fix all three in one rewrite \
+rather than emitting three timid suggestions.
 
 ════════════════════════════════════════════════════════════
 OUTPUT — JSON only, no text outside it
@@ -288,6 +418,7 @@ OUTPUT — JSON only, no text outside it
     {
       "category": "improve_headline",
       "priority": "high",
+      "stretch": false,
       "title": "max 8 words",
       "description": "2–3 sentences: WHY this matters for THIS vacancy (cite the specific requirement and your Step 1 finding), and the strategic angle",
       "specific_text": "verbatim from cv_text, or null",
@@ -379,7 +510,7 @@ async def generate_cv_suggestions_from_data(job_context: dict, cv_text: str, ana
     valid_categories = {
         "add_keywords", "rewrite_bullets", "elevate_experience",
         "reduce_irrelevant", "improve_headline", "address_gaps",
-        "consolidate",
+        "consolidate", "add_language", "add_certification",
         # Keep legacy name for cached/old responses
         "address_requirements",
     }
@@ -399,6 +530,7 @@ async def generate_cv_suggestions_from_data(job_context: dict, cv_text: str, ana
         suggestions.append({
             "category": cat,
             "priority": pri,
+            "stretch": bool(s.get("stretch", False)),
             "title": s.get("title", ""),
             "description": s.get("description", ""),
             "specific_text": s.get("specific_text"),

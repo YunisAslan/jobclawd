@@ -20,6 +20,8 @@ import {
   Sparkles,
   RefreshCw,
   Zap,
+  Target,
+  ShieldAlert,
 } from "lucide-react";
 import type { CVData, CVSuggestion, CVSuggestionsResponse, SuggestionCategory } from "@/types";
 
@@ -34,6 +36,8 @@ const CATEGORY_TARGET: Record<SuggestionCategory, { label: string; sectionId: st
   address_requirements: { label: "Experience",  sectionId: "cv-section-experience" },
   address_gaps:         { label: "Experience",  sectionId: "cv-section-experience" },
   consolidate:          { label: "CV",          sectionId: "cv-section-experience" },
+  add_language:         { label: "Languages",   sectionId: "cv-section-languages" },
+  add_certification:    { label: "Certifications", sectionId: "cv-section-certifications" },
 };
 
 export function getTargetSectionId(category: SuggestionCategory): string {
@@ -190,6 +194,8 @@ export default function WorkspaceSuggestions({
   const appliedCount  = Object.values(suggestionActions).filter((v) => v === "accepted").length;
   const declinedCount = Object.values(suggestionActions).filter((v) => v === "rejected").length;
   const pendingCount  = list.filter((_, i) => !suggestionActions[i]).length;
+  // Stretch items are advisory and excluded from "Apply all".
+  const applyablePendingCount = list.filter((s, i) => !suggestionActions[i] && !s.stretch).length;
 
   function handleAccept(index: number, suggestion: CVSuggestion, overrideText?: string) {
     onAccept(index, suggestion, overrideText);
@@ -198,7 +204,8 @@ export default function WorkspaceSuggestions({
 
   function handleApplyAll() {
     list.forEach((suggestion, index) => {
-      if (!suggestionActions[index]) {
+      // Stretch items are advisory gap-bridging — never auto-applied to the draft.
+      if (!suggestionActions[index] && !suggestion.stretch) {
         onAccept(index, suggestion, edited[index] || suggestion.suggested_text || "");
       }
     });
@@ -276,7 +283,7 @@ export default function WorkspaceSuggestions({
         {/* Apply All / Undo All */}
         {!readOnly && !loading && list.length > 0 && (
           <div className="flex items-center gap-1.5">
-            {pendingCount > 0 && (
+            {applyablePendingCount > 0 && (
               <Button
                 type="button"
                 size="sm"
@@ -285,7 +292,7 @@ export default function WorkspaceSuggestions({
                 data-tour="apply-all-btn"
               >
                 <Wand2 className="size-3" />
-                Apply all ({pendingCount})
+                Apply all ({applyablePendingCount})
               </Button>
             )}
             {appliedCount > 0 && (
@@ -422,6 +429,7 @@ function SuggestionCard({
     : suggestion.priority === "medium" ? "bg-warning"
     : "bg-muted-foreground/40";
 
+  const isStretch     = !!suggestion.stretch;
   const isAddType     = !suggestion.specific_text;
   const target        = CATEGORY_TARGET[suggestion.category];
   const currentBefore = resolveCurrentBeforeText(suggestion, cvData);
@@ -439,7 +447,9 @@ function SuggestionCard({
       "rounded-lg border p-3 space-y-2 transition-all",
       isAccepted && "border-success/30 bg-success/5",
       isDeclined && "opacity-50 border-border/30",
-      !isAccepted && !isDeclined && "border-border/50",
+      !isAccepted && !isDeclined && !isStretch && "border-border/50",
+      !isAccepted && !isDeclined && isStretch &&
+        "border-dashed border-violet-300 dark:border-violet-500/40 bg-violet-50/50 dark:bg-violet-500/[0.07]",
     )}>
 
       {/* Title row */}
@@ -448,6 +458,11 @@ function SuggestionCard({
         <p className="text-xs font-semibold text-foreground leading-snug flex-1 min-w-0">
           {suggestion.title}
         </p>
+        {isStretch && !isAccepted && (
+          <Badge className="text-[9px] font-semibold px-1.5 py-0 gap-0.5 bg-violet-100 text-violet-700 border border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20 shrink-0">
+            <Target className="size-2.5" /> Stretch
+          </Badge>
+        )}
         {isAccepted && (
           <Badge className="text-[9px] font-semibold px-1.5 py-0 bg-success/10 text-success border border-success/20 shrink-0">
             Applied
@@ -488,6 +503,16 @@ function SuggestionCard({
         )}
       </div>
 
+      {/* Stretch caution — this is a gap, not a paste-ready edit */}
+      {isStretch && !isDeclined && (
+        <div className="flex items-start gap-1.5 pl-3">
+          <ShieldAlert className="size-3 text-violet-500 shrink-0 mt-px" />
+          <p className="text-[10px] text-violet-600 dark:text-violet-300 leading-relaxed">
+            Gap-bridging advice — only state what you can genuinely substantiate.
+          </p>
+        </div>
+      )}
+
       {/* Diff block */}
       {!isDeclined && (currentBefore !== null || !isAddType || suggestion.suggested_text) && (
         <div className="rounded border border-border overflow-hidden text-[11px] font-mono ml-3">
@@ -501,7 +526,7 @@ function SuggestionCard({
           )}
           <div className="flex items-start gap-1 px-2 py-1.5 bg-success/5">
             <span className="text-success font-bold shrink-0 mt-px">+</span>
-            {isAddType ? (
+            {isAddType && !isStretch ? (
               <>
                 <Input
                   type="text"
@@ -547,7 +572,27 @@ function SuggestionCard({
       )}
 
       {/* Actions */}
-      {!readOnly && (
+      {!readOnly && isStretch ? (
+        <div className="flex gap-1.5 pl-3">
+          {isDeclined ? (
+            <Button
+              type="button" size="sm" variant="ghost"
+              className="text-[10px] text-muted-foreground h-6 px-2"
+              onClick={() => onReset(index)}
+            >
+              Reconsider
+            </Button>
+          ) : (
+            <Button
+              type="button" size="sm" variant="outline"
+              className="h-6 text-[10px] gap-1 px-2 ml-auto"
+              onClick={() => onReject(index)}
+            >
+              <Check className="size-3" /> Got it
+            </Button>
+          )}
+        </div>
+      ) : !readOnly && (
         <div className="flex gap-1.5 pl-3">
           {isAccepted ? (
             <>

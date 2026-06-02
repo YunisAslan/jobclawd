@@ -6,7 +6,7 @@ import { analyticsEventsService } from "@/services/analytics-events.service";
 import { useTour } from "@/contexts/TourContext";
 import { DEMO_BUNDLE, DEMO_CV_DATA } from "@/lib/tour-demo-data";
 import { isNoCredits } from "@/lib/utils";
-import type { CVData, CVMatchAnalysis, CVSuggestion, CVSuggestionsResponse } from "@/types";
+import type { CVData, CVLanguageEntry, CVCertificationEntry, CVMatchAnalysis, CVSuggestion, CVSuggestionsResponse } from "@/types";
 
 interface CVMatchState {
   analysis: CVMatchAnalysis | null;
@@ -279,55 +279,46 @@ export function useCVMatch() {
       return;
     }
     const editedText = cvDataToText(state.cvData);
-    // Determine which CV match categories were actually touched by accepted suggestions
-    const touchedMatchCategories = new Set<string>();
+    // Which match-score categories each suggestion category affects.
+    const CATEGORY_IMPACT: Record<string, string[]> = {
+      add_keywords:         ["keywords", "skills"],
+      rewrite_bullets:      ["experience", "keywords"],
+      elevate_experience:   ["experience", "fit"],
+      reduce_irrelevant:    ["experience", "fit"],
+      consolidate:          ["experience", "skills", "fit"],
+      address_requirements: ["experience", "skills", "keywords"],
+      address_gaps:         ["experience", "skills", "keywords"],
+      improve_headline:     ["skills", "fit"],
+      add_language:         ["skills", "keywords", "fit"],
+      add_certification:    ["skills", "keywords", "fit"],
+    };
+    // A category may DROP below baseline only where the user applied a removal —
+    // deleting content can genuinely cost a job keyword, an honest tradeoff worth
+    // showing. Every other category is floored at baseline so additive or
+    // strengthening edits can only hold or raise the score, never read as a
+    // regression caused by re-score noise or section reordering.
+    const removalTouchedCategories = new Set<string>();
     for (const [idx, action] of Object.entries(state.suggestionActions)) {
       if (action !== "accepted") continue;
       const suggestion = state.suggestions?.suggestions[Number(idx)];
       if (!suggestion) continue;
-      switch (suggestion.category) {
-        case "add_keywords":
-          touchedMatchCategories.add("keywords");
-          touchedMatchCategories.add("skills");
-          break;
-        case "rewrite_bullets":
-          touchedMatchCategories.add("experience");
-          touchedMatchCategories.add("keywords");
-          break;
-        case "elevate_experience":
-          touchedMatchCategories.add("experience");
-          touchedMatchCategories.add("fit");
-          break;
-        case "reduce_irrelevant":
-          touchedMatchCategories.add("experience");
-          touchedMatchCategories.add("fit");
-          break;
-        case "consolidate":
-          touchedMatchCategories.add("experience");
-          touchedMatchCategories.add("skills");
-          touchedMatchCategories.add("fit");
-          break;
-        case "address_requirements":
-        case "address_gaps":
-          touchedMatchCategories.add("experience");
-          touchedMatchCategories.add("skills");
-          touchedMatchCategories.add("keywords");
-          break;
-        case "improve_headline":
-          touchedMatchCategories.add("skills");
-          touchedMatchCategories.add("fit");
-          break;
+      const isRemoval =
+        suggestion.category === "reduce_irrelevant" ||
+        (suggestion.category === "consolidate" && !(suggestion.suggested_text ?? "").trim());
+      if (isRemoval) {
+        for (const c of CATEGORY_IMPACT[suggestion.category] ?? []) removalTouchedCategories.add(c);
       }
     }
     setState((s) => ({ ...s, loadingAtsPreview: true, atsPreview: null, atsPreviewBaseline: null }));
     try {
       const previewResult = await cvMatchService.matchFromText(jobUrl, editedText);
-      // Pin untouched categories to the baseline to prevent spurious drift
       const baselineCategories = state.analysis.categories;
       const correctedCategories = previewResult.categories.map((cat) => {
-        if (touchedMatchCategories.has(cat.category)) return cat;
         const baseline = baselineCategories.find((b) => b.category === cat.category);
-        return baseline ? { ...cat, score: baseline.score } : cat;
+        if (!baseline) return cat;
+        // Honest floor: only a removal-touched category is allowed to fall.
+        if (removalTouchedCategories.has(cat.category)) return cat;
+        return { ...cat, score: Math.max(baseline.score, cat.score) };
       });
       // Recompute overall as average of corrected category scores (same weight as backend)
       const correctedOverall = correctedCategories.length > 0
@@ -788,7 +779,11 @@ function applySuggestionToDraft(draft: string, suggestion: CVSuggestion, suggest
   // route it to the Summary section in the draft instead.
   const cat = suggestion.category;
   let hint = `${suggestion.title} ${suggestion.description}`;
-  if (
+  if (cat === "add_language") {
+    hint = "languages";
+  } else if (cat === "add_certification") {
+    hint = "certifications";
+  } else if (
     (cat === "elevate_experience" || cat === "address_requirements" || cat === "address_gaps") &&
     isHeadlineLike(replacement) &&
     !isExperienceBullet(replacement)
@@ -875,6 +870,46 @@ function applySuggestionToCvData(data: CVData, suggestion: CVSuggestion, suggest
       skills.push({ category: "General", items: newItems });
     }
     return { ...data, skills };
+  }
+
+  // add_language → add to the Languages section ONLY (never experience/skills/summary)
+  if (cat === "add_language") {
+    const entries = text.split(/[;\n]+/).map((s) => cleanSuggestionText(s)).filter(Boolean);
+    const existing = new Set(data.languages.map((l) => l.language.trim().toLowerCase()));
+    const additions: CVLanguageEntry[] = [];
+    for (const entry of entries) {
+      // Split "Language" from "Level": prefer em/en-dash, colon or paren;
+      // fall back to a spaced hyphen so hyphenated names (e.g. Serbo-Croatian) survive.
+      // "French — Professional", "French (C1)", "French: Fluent", "French - Native"
+      const m = entry.match(/^(.+?)\s*[—–:(]\s*(.+?)\)?$/) || entry.match(/^(.+?)\s+-\s+(.+)$/);
+      const language = (m ? m[1] : entry).replace(/[()]/g, "").trim();
+      const level = m ? m[2].replace(/[()]/g, "").trim() : "";
+      if (!language || existing.has(language.toLowerCase())) continue;
+      existing.add(language.toLowerCase());
+      additions.push({ language, level });
+    }
+    if (additions.length === 0) return data;
+    return { ...data, languages: [...data.languages, ...additions] };
+  }
+
+  // add_certification → add to the Certifications section ONLY (never experience)
+  if (cat === "add_certification") {
+    const entries = text.split(/[;\n]+/).map((s) => cleanSuggestionText(s)).filter(Boolean);
+    const existing = new Set(data.certifications.map((c) => c.name.trim().toLowerCase()));
+    const additions: CVCertificationEntry[] = [];
+    for (const entry of entries) {
+      const dateMatch = entry.match(/\b(?:19|20)\d{2}\b/);
+      const date = dateMatch ? dateMatch[0] : "";
+      const withoutDate = entry.replace(/\s*[([]?\b(?:19|20)\d{2}\b[)\]]?\s*$/, "").trim();
+      const parts = withoutDate.split(/\s*[—–|]\s*/);
+      const name = (parts[0] || withoutDate).trim();
+      const issuer = (parts[1] || "").trim();
+      if (!name || existing.has(name.toLowerCase())) continue;
+      existing.add(name.toLowerCase());
+      additions.push({ id: Math.random().toString(36).slice(2, 14), name, issuer, date, link: "" });
+    }
+    if (additions.length === 0) return data;
+    return { ...data, certifications: [...data.certifications, ...additions] };
   }
 
   // rewrite_bullets → replace matched bullet; if text contains multiple bullets, insert the rest right after

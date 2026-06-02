@@ -32,6 +32,15 @@ SCORING SENSITIVITY:
 - Be sensitive to incremental improvements: adding 2-3 relevant keywords should visibly improve the keywords score; better-quantified bullets improve experience; a repositioned headline improves fit.
 - Do not anchor to any assumed previous score. Evaluate the CV as presented.
 
+USE THE FULL 0-100 RANGE — CALIBRATE REALISTICALLY:
+Score what is actually there. Do NOT compress scores toward the middle and do NOT cap a genuinely strong category at ~80 out of caution. If the evidence supports 90+, award 90+. Calibration bands per category:
+- 90-100 — The CV clearly meets or exceeds this dimension's requirements with explicit, direct evidence (e.g. nearly every required skill is named; experience comfortably meets seniority/years; headline directly targets the role). Reserve 96-100 for a near-perfect, exceptional match.
+- 75-89 — Strong match with only minor or cosmetic gaps.
+- 60-74 — Partial match; several relevant items present but real gaps remain.
+- 40-59 — Weak match; major requirements unmet.
+- 0-39 — Largely unmet / wrong domain.
+A category where the candidate genuinely covers ~90% of what the job asks for MUST land in the 90s, not the 80s. Conversely, do not inflate: a real gap must pull the score down into the band that reflects it.
+
 For each category, provide:
 - score (0-100)
 - matched: list of items that match between CV and job
@@ -39,7 +48,7 @@ For each category, provide:
 - reasoning: brief explanation
 
 Also provide:
-- overall_score (0-100): weighted average reflecting how well this CV fits the job
+- overall_score (0-100): the rounded average of the 4 category scores above. Compute it from the categories you assigned — it must be consistent with them, not an independent gut number.
 - summary: 2-3 sentence overall assessment
 
 Return JSON only:
@@ -75,7 +84,11 @@ async def compute_cv_match_from_data(job_context: dict, cv_text: str, determinis
 
     user_message = json.dumps({
         "job": job_context,
-        "cv_text": cv_text[:4000],
+        # Score a generous window so applied content (added skills, prepended
+        # bullets, languages/certifications that land later in the document) is
+        # actually seen. A 4000-char cut made improvements at the end of the CV
+        # invisible and could read as a regression.
+        "cv_text": cv_text[:8000],
     }, ensure_ascii=False)
 
     headers = {
