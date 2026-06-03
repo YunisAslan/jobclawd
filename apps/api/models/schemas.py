@@ -461,10 +461,18 @@ class MatchCategoryScore(BaseModel):
     missing: list[str] = []
     reasoning: str = ""
 
+class MatchGap(BaseModel):
+    requirement: str = ""           # the exact vacancy requirement not yet satisfied
+    category: str = ""              # which score category it belongs to
+    kind: str = "closeable"         # "closeable" (editable) | "substance" (genuinely absent)
+    detail: str = ""                # CV evidence + the edit that closes it, or why it's absent
+
 class CVMatchResponse(BaseModel):
     overall_score: int          # 0-100
+    closeable_ceiling: int = 0  # honest score if every closeable gap is addressed
     match_level: MatchLevel
     categories: list[MatchCategoryScore]
+    gaps: list[MatchGap] = []
     summary: str = ""
 
 

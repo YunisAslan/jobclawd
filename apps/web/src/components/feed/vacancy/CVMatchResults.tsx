@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, XCircle, FileSearch, AlertCircle, RefreshCw } from "lucide-react";
+import { CheckCircle2, XCircle, FileSearch, AlertCircle, RefreshCw, TrendingUp } from "lucide-react";
 import type { CVMatchAnalysis } from "@/types";
 
 interface CVMatchResultsProps {
@@ -166,6 +166,19 @@ export default function CVMatchResults({
           <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
             {analysis.summary}
           </p>
+          {typeof analysis.closeable_ceiling === "number" &&
+            analysis.closeable_ceiling > analysis.overall_score && (
+              <div className="flex items-start gap-1.5 mt-2">
+                <TrendingUp className="size-3.5 text-primary shrink-0 mt-px" />
+                <p className="text-[11px] leading-relaxed text-primary">
+                  Reachable by applying all suggestions:{" "}
+                  <span className="font-bold tabular-nums">{analysis.closeable_ceiling}</span>
+                  <span className="text-muted-foreground">
+                    {" "}— confirm the amber “Verify” items you genuinely have to go higher; the rest needs real new skills (shown as stretch).
+                  </span>
+                </p>
+              </div>
+            )}
         </div>
       </div>
 

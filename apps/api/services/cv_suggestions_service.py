@@ -15,7 +15,7 @@ import httpx
 from services.cv_analysis_shared import prepare_cv_analysis_inputs
 
 _OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
-_OPENAI_MODEL = os.getenv("OPENAI_SUGGESTIONS_MODEL", os.getenv("OPENAI_METADATA_MODEL", "gpt-5.4")).strip()
+_OPENAI_MODEL = os.getenv("OPENAI_SUGGESTIONS_MODEL", os.getenv("OPENAI_METADATA_MODEL", "gpt-5.4-nano")).strip()
 _OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 _TIMEOUT = 90.0
 
@@ -28,11 +28,50 @@ then produce a small number of high-impact, copy-paste-ready changes.
 You receive:
   • cv_text  — the candidate's current CV. The only document you edit.
   • job      — the target vacancy. The benchmark you optimise toward.
-  • score_gaps (optional) — ATS diagnostic: exact items causing score loss.
+  • score_gaps (optional) — the AUTHORITATIVE diagnosis from the comparison engine:
+      category scores, and gaps[] — every requirement the CV doesn't satisfy, each
+      already classified as one of:
+        - "closeable" — real but buried/unframed/unlisted → fixable by editing.
+        - "verify" — a skill/tool/exposure NOT in the CV that the candidate plausibly
+          HAS and may have forgotten to list; addable IF they confirm it is real.
+        - "substance" — genuinely absent; only acquiring it closes it.
+      plus closeable_ceiling (the honest score reachable if all closeable gaps are fixed).
 
 Never confuse cv_text with job. specific_text always comes from cv_text, never \
 from the vacancy. Every output field must be written in English regardless of the \
 vacancy's language.
+
+════════════════════════════════════════════════════════════
+COVERAGE CONTRACT (when score_gaps.gaps is provided — this overrides everything)
+════════════════════════════════════════════════════════════
+
+The gaps[] list is the authoritative diagnosis. Your job is to CONVERT it into
+suggestions, completely and faithfully — not to re-derive your own gap list or
+second-guess it. The promise to the user is: "apply every suggestion → your CV
+honestly matches this vacancy as far as it truthfully can." Honour it:
+
+  • EVERY gap with kind="closeable" MUST get at least one concrete, NON-stretch
+    suggestion that actually closes it (the right category, paste-ready text, real
+    CV evidence). Applying all closeable suggestions must plausibly move the score
+    to closeable_ceiling. Do not drop, merge away, or soften a closeable gap. Set
+    "verify": false and "stretch": false on these.
+  • EVERY gap with kind="verify" MUST get exactly one suggestion with "verify": true
+    (and "stretch": false). This is an APPLYABLE suggestion — it goes into the right
+    section with paste-ready suggested_text, exactly like a normal add (add_keywords
+    for a skill, add_language, add_certification, or a bullet) — BUT its description
+    must make explicit that the candidate should apply it ONLY if it is genuinely
+    theirs (e.g. "The role requires automated testing; your CV doesn't list any. If
+    you've used a testing framework, add it."). You are NOT asserting they have it;
+    you are surfacing it for their confirmation. Never present a verify item as an
+    established fact in the description.
+  • EVERY gap with kind="substance" MUST get exactly one STRETCH suggestion
+    ("stretch": true, "verify": false, advisory, honest — see STRETCH section).
+    Never fabricate it into the CV; never silently omit it. These explain why the
+    ceiling is below 100.
+  • You MAY add consolidate/cleanup suggestions from your own read of cv_text, but
+    you may NOT skip any diagnosed gap to stay under a count. Coverage beats brevity.
+
+If a gap seems wrong, still cover it in its class. Completeness is the contract.
 
 STRENGTH OVER LENGTH
 A CV that reads longer is not stronger. The same experience, restructured and \
@@ -354,25 +393,25 @@ low    — cleanup or polish; improves the CV but unlikely to change the decisio
 SCORE-DRIVEN TARGETING (when score_gaps provided)
 ════════════════════════════════════════════════════════════
 
-score_gaps is the ATS diagnostic. The missing[] arrays are the exact items \
-causing score loss. Rules:
+score_gaps carries the authoritative diagnosis. Drive your output from gaps[]:
 
-1. Every item in every missing[] array MUST appear in at least one suggestion — \
-   but first run the POSSESSION CHECK on each item to decide HOW:
-   • The candidate genuinely HAS it (evidenced in cv_text) but it is missing from \
-     the right section → surface it there (add_keywords for a skill, add_language, \
-     add_certification, or a reframe).
-   • The candidate does NOT have it (no evidence anywhere — e.g. Java for a pure \
-     frontend CV, a language they don't speak, a cert they don't hold) → it MUST \
-     become a STRETCH suggestion. Never fabricate it into skills/experience, and \
-     NEVER silently drop it. A required skill the candidate lacks is still a \
-     suggestion — a stretch one.
-2. add_keywords suggested_text includes ONLY missing terms the candidate genuinely \
-   has, verbatim, comma-separated, no paraphrase. A required skill the CV shows no \
-   evidence of does NOT belong in add_keywords — route it to stretch.
-3. Focus on the lowest-scoring categories first.
-4. Do not generate a suggestion that isn't traceable to a missing item or a \
-   Step 1 finding.
+1. Walk gaps[] in order, lowest-scoring category first. The COVERAGE CONTRACT above
+   is binding: each closeable gap → a concrete non-stretch suggestion; each verify
+   gap → an applyable "verify": true suggestion; each substance gap → exactly one
+   stretch suggestion. Trust the kind the diagnosis assigned.
+2. For a closeable skill the candidate genuinely has but didn't list, use
+   add_keywords with the terms verbatim, comma-separated, no paraphrase (or
+   add_language / add_certification for those sections). For a closeable framing or
+   quantification gap, use rewrite_bullets / elevate_experience / improve_headline.
+3. A verify gap uses the SAME applyable categories (add_keywords / add_language /
+   add_certification / a bullet) with "verify": true, and a description that tells
+   the candidate to apply it only if it is genuinely theirs. A substance gap NEVER
+   goes into the CV as a fact — it is a stretch suggestion only.
+4. The missing[] arrays inside categories are supporting detail; gaps[] is the
+   contract. Do not invent gaps that contradict the diagnosis.
+5. After drafting, self-check: closeable → concrete suggestion, verify → verify
+   suggestion, substance → stretch item, for every gap. If any is missing, you
+   are not done — add the missing coverage before returning.
 
 ════════════════════════════════════════════════════════════
 QUALITY FILTER (apply before returning)
@@ -388,10 +427,11 @@ Remove any suggestion that:
   only 3 such suggestions (address_gaps + elevate_experience combined) are allowed; \
   consolidate the rest into the existing 3 or drop them
 
-Aim for 8–12 suggestions total. In pivot mode aim for 12–15. \
-If score_gaps were provided, cover every missing item before counting. \
-Stretch/gap suggestions (see below) are in addition to these counts — never \
-drop a real gap just to stay under a number.
+Aim for 8–12 suggestions total. In pivot mode aim for 12–15. These counts are a \
+guide, NOT a cap: when score_gaps.gaps is provided, the COVERAGE CONTRACT wins — \
+every closeable gap gets a concrete suggestion and every substance gap gets a \
+stretch suggestion even if that pushes the total higher. Never drop a diagnosed \
+gap to stay under a number.
 
 DEPTH OVER POLISH
 Be aggressive. A suggestion that nudges a single word is not worth the candidate's \
@@ -419,6 +459,7 @@ OUTPUT — JSON only, no text outside it
       "category": "improve_headline",
       "priority": "high",
       "stretch": false,
+      "verify": false,
       "title": "max 8 words",
       "description": "2–3 sentences: WHY this matters for THIS vacancy (cite the specific requirement and your Step 1 finding), and the strategic angle",
       "specific_text": "verbatim from cv_text, or null",
@@ -458,6 +499,7 @@ async def generate_cv_suggestions_from_data(job_context: dict, cv_text: str, ana
     if analysis and analysis.get("categories"):
         user_payload["score_gaps"] = {
             "overall_score": analysis.get("overall_score", 0),
+            "closeable_ceiling": analysis.get("closeable_ceiling", analysis.get("overall_score", 0)),
             "categories": [
                 {
                     "category": cat["category"],
@@ -467,6 +509,9 @@ async def generate_cv_suggestions_from_data(job_context: dict, cv_text: str, ana
                 }
                 for cat in analysis["categories"]
             ],
+            # The authoritative gap taxonomy from the comparison. This is the
+            # contract the suggestions must cover completely.
+            "gaps": analysis.get("gaps", []),
         }
 
     user_message = json.dumps(user_payload, ensure_ascii=False)
@@ -531,6 +576,7 @@ async def generate_cv_suggestions_from_data(job_context: dict, cv_text: str, ana
             "category": cat,
             "priority": pri,
             "stretch": bool(s.get("stretch", False)),
+            "verify": bool(s.get("verify", False)),
             "title": s.get("title", ""),
             "description": s.get("description", ""),
             "specific_text": s.get("specific_text"),

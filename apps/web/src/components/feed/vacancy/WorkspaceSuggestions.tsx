@@ -22,6 +22,7 @@ import {
   Zap,
   Target,
   ShieldAlert,
+  HelpCircle,
 } from "lucide-react";
 import type { CVData, CVSuggestion, CVSuggestionsResponse, SuggestionCategory } from "@/types";
 
@@ -194,8 +195,8 @@ export default function WorkspaceSuggestions({
   const appliedCount  = Object.values(suggestionActions).filter((v) => v === "accepted").length;
   const declinedCount = Object.values(suggestionActions).filter((v) => v === "rejected").length;
   const pendingCount  = list.filter((_, i) => !suggestionActions[i]).length;
-  // Stretch items are advisory and excluded from "Apply all".
-  const applyablePendingCount = list.filter((s, i) => !suggestionActions[i] && !s.stretch).length;
+  // Stretch (advisory) and verify (needs confirmation) are excluded from "Apply all".
+  const applyablePendingCount = list.filter((s, i) => !suggestionActions[i] && !s.stretch && !s.verify).length;
 
   function handleAccept(index: number, suggestion: CVSuggestion, overrideText?: string) {
     onAccept(index, suggestion, overrideText);
@@ -204,8 +205,9 @@ export default function WorkspaceSuggestions({
 
   function handleApplyAll() {
     list.forEach((suggestion, index) => {
-      // Stretch items are advisory gap-bridging — never auto-applied to the draft.
-      if (!suggestionActions[index] && !suggestion.stretch) {
+      // Stretch items are advisory; verify items assert a skill we can't confirm —
+      // both require a deliberate per-item decision, never bulk auto-apply.
+      if (!suggestionActions[index] && !suggestion.stretch && !suggestion.verify) {
         onAccept(index, suggestion, edited[index] || suggestion.suggested_text || "");
       }
     });
@@ -430,6 +432,7 @@ function SuggestionCard({
     : "bg-muted-foreground/40";
 
   const isStretch     = !!suggestion.stretch;
+  const isVerify      = !!suggestion.verify && !isStretch;
   const isAddType     = !suggestion.specific_text;
   const target        = CATEGORY_TARGET[suggestion.category];
   const currentBefore = resolveCurrentBeforeText(suggestion, cvData);
@@ -447,7 +450,9 @@ function SuggestionCard({
       "rounded-lg border p-3 space-y-2 transition-all",
       isAccepted && "border-success/30 bg-success/5",
       isDeclined && "opacity-50 border-border/30",
-      !isAccepted && !isDeclined && !isStretch && "border-border/50",
+      !isAccepted && !isDeclined && !isStretch && !isVerify && "border-border/50",
+      !isAccepted && !isDeclined && isVerify &&
+        "border-dashed border-amber-300 dark:border-amber-500/40 bg-amber-50/50 dark:bg-amber-500/[0.07]",
       !isAccepted && !isDeclined && isStretch &&
         "border-dashed border-violet-300 dark:border-violet-500/40 bg-violet-50/50 dark:bg-violet-500/[0.07]",
     )}>
@@ -458,6 +463,11 @@ function SuggestionCard({
         <p className="text-xs font-semibold text-foreground leading-snug flex-1 min-w-0">
           {suggestion.title}
         </p>
+        {isVerify && !isAccepted && (
+          <Badge className="text-[9px] font-semibold px-1.5 py-0 gap-0.5 bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20 shrink-0">
+            <HelpCircle className="size-2.5" /> Verify
+          </Badge>
+        )}
         {isStretch && !isAccepted && (
           <Badge className="text-[9px] font-semibold px-1.5 py-0 gap-0.5 bg-violet-100 text-violet-700 border border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20 shrink-0">
             <Target className="size-2.5" /> Stretch
@@ -502,6 +512,16 @@ function SuggestionCard({
           </Button>
         )}
       </div>
+
+      {/* Verify caution — addable, but only if it's genuinely the candidate's */}
+      {isVerify && !isDeclined && !isAccepted && (
+        <div className="flex items-start gap-1.5 pl-3">
+          <HelpCircle className="size-3 text-amber-500 shrink-0 mt-px" />
+          <p className="text-[10px] text-amber-600 dark:text-amber-300 leading-relaxed">
+            The job wants this but your CV doesn&apos;t show it — apply only if it&apos;s genuinely yours.
+          </p>
+        </div>
+      )}
 
       {/* Stretch caution — this is a gap, not a paste-ready edit */}
       {isStretch && !isDeclined && (

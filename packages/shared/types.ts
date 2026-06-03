@@ -243,10 +243,25 @@ export interface CVMatchCategory {
   reasoning: string;
 }
 
+/** A job requirement the CV does not yet fully satisfy. */
+export interface MatchGap {
+  requirement: string;
+  category: string;
+  /** "closeable" — editable into the CV (real but buried/unframed/unlisted).
+   *  "verify" — not in the CV but plausibly owned; addable only if the candidate confirms it.
+   *  "substance" — genuinely absent; only acquiring it closes the gap. */
+  kind: "closeable" | "verify" | "substance";
+  detail: string;
+}
+
 export interface CVMatchAnalysis {
   overall_score: number;
+  /** Honest score reachable if every closeable gap is addressed by editing.
+   *  The gap to 100 is explained by the substance gaps. */
+  closeable_ceiling?: number;
   match_level: MatchLevel;
   categories: CVMatchCategory[];
+  gaps?: MatchGap[];
   summary: string;
 }
 
@@ -276,6 +291,13 @@ export interface CVSuggestion {
    * never a paste-ready fabricated claim. Rendered with a distinct style.
    */
   stretch?: boolean;
+  /**
+   * Verify suggestion. True when the vacancy requires a skill/tool/exposure the CV
+   * doesn't mention but the candidate plausibly has. Unlike stretch, it IS applyable
+   * (paste-ready, real section) — but the candidate must confirm it's genuinely
+   * theirs before applying. Rendered in a distinct "only if true" style.
+   */
+  verify?: boolean;
   title: string;
   description: string;
   specific_text?: string | null;

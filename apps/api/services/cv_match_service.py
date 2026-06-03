@@ -47,18 +47,66 @@ For each category, provide:
 - missing: list of items required by the job but absent from the CV
 - reasoning: brief explanation
 
+GAP TAXONOMY — the contract the suggestion engine is built on
+This is the most important part of your output. List EVERY job requirement the CV
+does not yet fully satisfy as a gap, and classify each one honestly:
+
+- "closeable" — the candidate shows evidence they HAVE this (or something directly
+  adjacent), but the CV buries it, frames it weakly, or omits it from the right
+  section. Editing the CV alone can close it. Examples: uses React heavily across
+  roles but never lists it in Skills; genuinely did the work but the bullet is
+  vague/unquantified; the headline doesn't claim the target role.
+
+- "verify" — a required skill, tool, technology, or exposure that is NOT in the CV,
+  but that a candidate with this profile PLAUSIBLY has and may simply have forgotten
+  to list. We genuinely cannot tell from the CV whether they own it. It is addable
+  as text IF the candidate confirms it is real — so it is recoverable, unlike a
+  substance gap. Prefer this for any missing skill/tool/keyword/framework/exposure
+  that fits the candidate's field. Examples: a React-heavy frontend CV that never
+  mentions a testing framework (they may well use Jest/Cypress); a frontend dev who
+  doesn't list Chakra UI but lists three other component libraries; no mention of
+  LLM/AI exposure for a modern web dev. These are the "only if it's genuinely yours"
+  items — surface them so the candidate can confirm and add them.
+
+- "substance" — a genuine shortfall that NO edit and no "I forgot to mention it" can
+  honestly fix. Only acquiring it, or time, closes it. Reserve this for quantitative
+  or credential shortfalls: fewer years than required, a seniority level not reached,
+  a degree or certification not held, an entire domain never touched. Examples: needs
+  5 years, CV shows 2; needs a PhD, none; needs Java for a pure-frontend CV with zero
+  backend-language signal.
+
+Classification rule of thumb: if the gap is a nameable skill/tool/exposure the
+candidate could plausibly possess and just left off → "verify". If it is a
+quantity, level, or credential they demonstrably do not have → "substance". If the
+evidence is already in the CV but buried/unframed → "closeable". When unsure between
+verify and substance, prefer "verify" (let the candidate decide) — never invent
+evidence to call something closeable.
+
 Also provide:
 - overall_score (0-100): the rounded average of the 4 category scores above. Compute it from the categories you assigned — it must be consistent with them, not an independent gut number.
+- closeable_ceiling (0-100): the overall score this CV would HONESTLY reach if every
+  CLOSEABLE gap were fully addressed by editing, while VERIFY and SUBSTANCE gaps
+  remain unaddressed. This is the guaranteed target for "apply all" — gains the
+  candidate can make with no new claims. Confirming verify items would lift the score
+  further, toward 100 minus the substance gaps; do not bake that conditional upside
+  into closeable_ceiling.
 - summary: 2-3 sentence overall assessment
 
 Return JSON only:
 {
   "overall_score": 72,
+  "closeable_ceiling": 88,
   "categories": [
     {"category": "skills", "score": 80, "matched": ["Python", "SQL"], "missing": ["Kubernetes"], "reasoning": "..."},
     {"category": "experience", "score": 70, "matched": ["3+ years backend"], "missing": ["team lead experience"], "reasoning": "..."},
     {"category": "fit", "score": 60, "matched": ["senior-level background"], "missing": ["industry-specific experience"], "reasoning": "..."},
     {"category": "keywords", "score": 75, "matched": ["REST API", "CI/CD"], "missing": ["Terraform"], "reasoning": "..."}
+  ],
+  "gaps": [
+    {"requirement": "Automated testing", "category": "skills", "kind": "verify", "detail": "Job requires automated testing; CV lists no testing framework. A React dev plausibly uses one — surface it so the candidate can confirm and add (Jest, Cypress, etc.)."},
+    {"requirement": "5+ years experience", "category": "experience", "kind": "substance", "detail": "Role asks for 5 years; CV shows ~2. Cannot be closed by editing."},
+    {"requirement": "Quantified impact", "category": "experience", "kind": "closeable", "detail": "Candidate did the work but bullets are vague — quantifying existing achievements closes this."},
+    {"requirement": "Headline targets this role", "category": "fit", "kind": "closeable", "detail": "Summary is generic; rewriting it to claim the target role closes this."}
   ],
   "summary": "..."
 }"""
@@ -146,10 +194,33 @@ async def compute_cv_match_from_data(job_context: dict, cv_text: str, determinis
             "reasoning": cat.get("reasoning", ""),
         })
 
+    gaps = []
+    for gap in parsed.get("gaps", []):
+        kind = gap.get("kind", "")
+        if kind not in ("closeable", "verify", "substance"):
+            # When the model is unsure, surface it as verify (candidate decides)
+            # rather than asserting evidence (closeable) or writing it off (substance).
+            kind = "verify"
+        gaps.append({
+            "requirement": gap.get("requirement", ""),
+            "category": gap.get("category", ""),
+            "kind": kind,
+            "detail": gap.get("detail", ""),
+        })
+
+    # Ceiling can never be below the current score; default to the current score.
+    ceiling = parsed.get("closeable_ceiling", overall)
+    try:
+        ceiling = max(int(overall), int(ceiling))
+    except (TypeError, ValueError):
+        ceiling = overall
+
     return {
         "overall_score": overall,
+        "closeable_ceiling": ceiling,
         "match_level": level.value,
         "categories": categories,
+        "gaps": gaps,
         "summary": parsed.get("summary", ""),
     }
 
@@ -157,7 +228,9 @@ async def compute_cv_match_from_data(job_context: dict, cv_text: str, determinis
 def _empty_result(reason: str) -> dict:
     return {
         "overall_score": 0,
+        "closeable_ceiling": 0,
         "match_level": MatchLevel.trash.value,
         "categories": [],
+        "gaps": [],
         "summary": reason,
     }
