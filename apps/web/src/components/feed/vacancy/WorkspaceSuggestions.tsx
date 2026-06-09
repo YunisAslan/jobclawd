@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import {
   Check,
@@ -348,10 +349,11 @@ export default function WorkspaceSuggestions({
         )}
         <div ref={scrollRef} className="h-full overflow-y-auto px-3 pt-1 pb-3 space-y-2">
           {loading && (
-            <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
-              <div className="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
-              Generating suggestions…
-            </div>
+            <>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <SuggestionSkeleton key={i} />
+              ))}
+            </>
           )}
           {!loading && list.length === 0 && (
             <div className="flex flex-col items-center gap-3 py-10 px-4 text-center">
@@ -398,6 +400,41 @@ export default function WorkspaceSuggestions({
         </div>
       </div>
     </aside>
+  );
+}
+
+/* ── Suggestion skeleton ── */
+
+/** Placeholder card shown while suggestions are being generated. Mirrors the
+ *  SuggestionCard layout: title row, target line, description, and diff block. */
+function SuggestionSkeleton() {
+  return (
+    <div className="rounded-lg border border-border/50 p-3 space-y-2">
+      {/* Title row */}
+      <div className="flex items-start gap-1.5">
+        <Skeleton className="mt-1.5 size-1.5 rounded-full shrink-0" />
+        <Skeleton className="h-3 flex-1 max-w-[70%]" />
+      </div>
+      {/* Target section */}
+      <div className="flex items-center gap-1.5 pl-3">
+        <Skeleton className="size-3 rounded-sm" />
+        <Skeleton className="h-2.5 w-20" />
+      </div>
+      {/* Description */}
+      <div className="pl-3 space-y-1">
+        <Skeleton className="h-2.5 w-full" />
+        <Skeleton className="h-2.5 w-4/5" />
+      </div>
+      {/* Diff block */}
+      <div className="rounded border border-border overflow-hidden ml-3">
+        <Skeleton className="h-7 w-full rounded-none" />
+      </div>
+      {/* Actions */}
+      <div className="flex gap-1.5 pl-3">
+        <Skeleton className="h-6 flex-1 rounded-md" />
+        <Skeleton className="h-6 w-14 rounded-md" />
+      </div>
+    </div>
   );
 }
 

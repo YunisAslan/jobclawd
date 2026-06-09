@@ -1,3 +1,11 @@
+# Frontend (Next.js) — e.g. jobclawd.com
+{$APP_DOMAIN} {
+  encode gzip zstd
+
+  reverse_proxy web:3000
+}
+
+# API (FastAPI) — e.g. api.jobclawd.com
 {$API_DOMAIN} {
   encode gzip zstd
 

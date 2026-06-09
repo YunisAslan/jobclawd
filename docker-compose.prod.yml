@@ -37,6 +37,7 @@ services:
       - caddy_config:/config
     depends_on:
       - api
+      - web
 
   web:
     build:
@@ -50,8 +51,9 @@ services:
       - .env.prod
     depends_on:
       - api
-    ports:
-      - "3000:3000"
+    # No public port — Caddy proxies to web:3000 over the internal Docker network.
+    expose:
+      - "3000"
 
 volumes:
   postgres_data:

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 98 26" role="img" aria-label="JobClawd">
+  <text x="0" y="21" font-family="system-ui,-apple-system,BlinkMacSystemFont,sans-serif" font-size="20" font-weight="700" letter-spacing="-0.5" fill="currentColor">jobcla</text>
+  <svg x="63" y="4.6" width="22.2" height="16.4" viewBox="1 7 46 34">
+    <path d="M4 10 L14 38 L24 10" stroke="#7B7CFF" stroke-width="6" stroke-linecap="square" stroke-linejoin="miter" fill="none"/>
+    <path d="M24 10 L34 38 L44 10" stroke="currentColor" stroke-width="6" stroke-linecap="square" stroke-linejoin="miter" fill="none"/>
+  </svg>
+  <text x="85" y="21" font-family="system-ui,-apple-system,BlinkMacSystemFont,sans-serif" font-size="20" font-weight="700" letter-spacing="-0.5" fill="currentColor">d</text>
+</svg>

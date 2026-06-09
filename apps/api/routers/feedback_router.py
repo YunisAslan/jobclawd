@@ -12,8 +12,12 @@ ROOT_ENV_PATH = Path(__file__).resolve().parent.parent.parent.parent / ".env"
 if ROOT_ENV_PATH.exists():
     load_dotenv(dotenv_path=ROOT_ENV_PATH)
 
-GMAIL_USER = os.getenv("GMAIL_USER", "")
-GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "").replace(" ", "")
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
+SMTP_USER = os.getenv("SMTP_USER", os.getenv("GMAIL_USER", ""))
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", os.getenv("GMAIL_APP_PASSWORD", "")).replace(" ", "")
+MAIL_FROM = os.getenv("MAIL_FROM", SMTP_USER)
+SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", SMTP_USER)
 
 router = APIRouter()
 
@@ -38,8 +42,8 @@ async def submit_feedback(payload: FeedbackPayload):
     body = "\n".join(body_lines)
 
     msg = MIMEMultipart()
-    msg["From"] = GMAIL_USER
-    msg["To"] = GMAIL_USER
+    msg["From"] = MAIL_FROM
+    msg["To"] = SUPPORT_EMAIL
     msg["Subject"] = subject
     if payload.email:
         msg["Reply-To"] = payload.email
@@ -48,11 +52,11 @@ async def submit_feedback(payload: FeedbackPayload):
     try:
         await aiosmtplib.send(
             msg,
-            hostname="smtp.gmail.com",
-            port=465,
+            hostname=SMTP_HOST,
+            port=SMTP_PORT,
             use_tls=True,
-            username=GMAIL_USER,
-            password=GMAIL_APP_PASSWORD,
+            username=SMTP_USER,
+            password=SMTP_PASSWORD,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail="Failed to send feedback email.") from exc

@@ -183,7 +183,7 @@ export default function CookieBanner() {
     <>
       <div
         className={cn(
-          "fixed bottom-4 left-1/2 -translate-x-1/2 z-9999",
+          "fixed bottom-4 left-1/2 -translate-x-1/2 z-50",
           "w-[calc(100%-2rem)] max-w-2xl",
           "bg-card border border-border rounded-2xl shadow-xl",
           "px-5 py-4",

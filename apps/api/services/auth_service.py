@@ -21,8 +21,12 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 TOKEN_TTL_MINUTES = 15
 JWT_TTL_DAYS = 30
 
-GMAIL_USER = os.getenv("GMAIL_USER", "")
-GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "").replace(" ", "")
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
+SMTP_USER = os.getenv("SMTP_USER", os.getenv("GMAIL_USER", ""))
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", os.getenv("GMAIL_APP_PASSWORD", "")).replace(" ", "")
+MAIL_FROM = os.getenv("MAIL_FROM", SMTP_USER)
+SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", SMTP_USER)
 JWT_SECRET = os.getenv("JWT_SECRET", "changeme-local-dev-only")
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
@@ -70,14 +74,14 @@ def create_and_store_token(email: str) -> str:
 
 
 async def send_magic_link_email(email: str, token: str):
-    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+    if not SMTP_USER or not SMTP_PASSWORD:
         raise RuntimeError("Server email is not configured. Contact the administrator.")
 
     magic_url = f"{FRONTEND_URL}/auth/verify?token={token}"
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "JobClawd — Sign-in link"
-    msg["From"] = f"JobClawd <{GMAIL_USER}>"
+    msg["From"] = f"JobClawd <{MAIL_FROM}>"
     msg["To"] = email
 
     html_body = f"""
@@ -129,11 +133,11 @@ async def send_magic_link_email(email: str, token: str):
 
     await aiosmtplib.send(
         msg,
-        hostname="smtp.gmail.com",
-        port=465,
+        hostname=SMTP_HOST,
+        port=SMTP_PORT,
         use_tls=True,
-        username=GMAIL_USER,
-        password=GMAIL_APP_PASSWORD,
+        username=SMTP_USER,
+        password=SMTP_PASSWORD,
     )
 
 
@@ -191,12 +195,12 @@ def create_reauth_code(email: str) -> str:
 
 
 async def send_reauth_code_email(email: str, code: str) -> None:
-    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+    if not SMTP_USER or not SMTP_PASSWORD:
         raise RuntimeError("Server email is not configured.")
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "JobClawd — Your verification code"
-    msg["From"] = f"JobClawd <{GMAIL_USER}>"
+    msg["From"] = f"JobClawd <{MAIL_FROM}>"
     msg["To"] = email
 
     html_body = f"""
@@ -234,8 +238,8 @@ async def send_reauth_code_email(email: str, code: str) -> None:
     """
     msg.attach(MIMEText(html_body, "html"))
     await aiosmtplib.send(
-        msg, hostname="smtp.gmail.com", port=465,
-        use_tls=True, username=GMAIL_USER, password=GMAIL_APP_PASSWORD,
+        msg, hostname=SMTP_HOST, port=SMTP_PORT,
+        use_tls=True, username=SMTP_USER, password=SMTP_PASSWORD,
     )
 
 
@@ -290,14 +294,14 @@ def create_email_change_request(old_email: str, new_email: str, otp: str) -> str
 
 async def send_email_change_verification(new_email: str, old_email: str, token: str) -> None:
     """Send the verification link to the NEW address."""
-    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+    if not SMTP_USER or not SMTP_PASSWORD:
         raise RuntimeError("Server email is not configured.")
 
     verify_url = f"{FRONTEND_URL}/auth/verify-email-change?token={token}"
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "JobClawd — Verify your new email address"
-    msg["From"] = f"JobClawd <{GMAIL_USER}>"
+    msg["From"] = f"JobClawd <{MAIL_FROM}>"
     msg["To"] = new_email
 
     html_body = f"""
@@ -343,21 +347,21 @@ async def send_email_change_verification(new_email: str, old_email: str, token: 
     """
     msg.attach(MIMEText(html_body, "html"))
     await aiosmtplib.send(
-        msg, hostname="smtp.gmail.com", port=465,
-        use_tls=True, username=GMAIL_USER, password=GMAIL_APP_PASSWORD,
+        msg, hostname=SMTP_HOST, port=SMTP_PORT,
+        use_tls=True, username=SMTP_USER, password=SMTP_PASSWORD,
     )
 
 
 async def send_email_change_notification(old_email: str, new_email: str, revert_token: str) -> None:
     """Notify the OLD address that the email changed, with a revert link (best-effort)."""
-    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+    if not SMTP_USER or not SMTP_PASSWORD:
         return
 
     revert_url = f"{FRONTEND_URL}/auth/revert-email-change?token={revert_token}"
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "JobClawd — Your email address has been changed"
-    msg["From"] = f"JobClawd <{GMAIL_USER}>"
+    msg["From"] = f"JobClawd <{MAIL_FROM}>"
     msg["To"] = old_email
 
     html_body = f"""
@@ -402,8 +406,8 @@ async def send_email_change_notification(old_email: str, new_email: str, revert_
     msg.attach(MIMEText(html_body, "html"))
     try:
         await aiosmtplib.send(
-            msg, hostname="smtp.gmail.com", port=465,
-            use_tls=True, username=GMAIL_USER, password=GMAIL_APP_PASSWORD,
+            msg, hostname=SMTP_HOST, port=SMTP_PORT,
+            use_tls=True, username=SMTP_USER, password=SMTP_PASSWORD,
         )
     except Exception:
         pass  # best-effort

@@ -167,7 +167,7 @@ export default function AppSidebar() {
       {/* Mobile backdrop — click to close */}
       {isMobile && open && (
         <div
-          className="fixed inset-0 bg-black/40 z-55 md:hidden animate-in fade-in duration-150"
+          className="fixed inset-0 bg-black/40 z-80 md:hidden animate-in fade-in duration-150"
           onClick={close}
           aria-hidden
         />
@@ -176,8 +176,9 @@ export default function AppSidebar() {
       <aside
         className={cn(
           "flex flex-col h-screen shrink-0 border-r border-sidebar-border overflow-hidden bg-sidebar",
-          // Mobile: fixed drawer that slides in/out (above TopBar's z-50)
-          "fixed inset-y-0 left-0 z-60 w-64 transition-transform duration-200 ease-in-out",
+          // Mobile: fixed drawer that slides in/out — top interactive layer (above TopBar z-50,
+          // tour z-60/70, and the cookie banner) so the close button is never intercepted.
+          "fixed inset-y-0 left-0 z-90 w-64 transition-transform duration-200 ease-in-out",
           open ? "translate-x-0" : "-translate-x-full",
           // Desktop: sticky, transitions width instead of transform
           "md:sticky md:top-0 md:z-auto md:translate-x-0 md:transition-[width] md:duration-200",

@@ -185,8 +185,25 @@ must name which gap this addresses.
 TRUTHFULNESS
 • Never invent experience, tools, companies, or metrics not in cv_text.
 • Reframing real experience into stronger language is allowed.
-• For hard gaps: write a template with [brackets] the candidate fills in.
-• Flag in description when a template requires real experience to verify first.
+
+NO FILL-IN-THE-BLANK TEMPLATES (applies to every suggested_text)
+suggested_text must always be a finished, realistic sentence the candidate could
+paste as-is — never a template with [brackets] to fill in. Banned: "[X]%",
+"[issuing agency]", "[services]", "[roles]", "[project/context]", "[domain]",
+"[month/year]", or any [bracketed] slot. Write the real sentence instead, grounded
+in cv_text:
+  • Build the sentence from what the CV actually shows — the candidate's real
+    companies, roles, technologies, stack, and durations. e.g. don't write
+    "[X] years of cumulative experience across [roles] in [domain]" — write
+    "Frontend developer with 2+ years across SaaS, GRC, and dashboard products
+    using React and TypeScript", using the real roles/stack from cv_text.
+  • If a precise specific genuinely isn't in the CV (an exact percentage, an
+    agency name, a date), DO NOT invent it and DO NOT leave a blank — phrase the
+    achievement qualitatively around what is known (scope, tools, outcome) so the
+    sentence reads naturally and truthfully without that specific.
+  • When a suggestion proposes something the candidate must confirm (a verify item),
+    still write the concrete sentence they would use if it's true — and say in the
+    description that they should only apply it if it genuinely reflects their work.
 
 SECTION INTEGRITY (every suggestion lands in the section it belongs to)
 A suggestion is only correct if its content goes into the RIGHT CV section. Never \
@@ -227,8 +244,9 @@ rewrite_bullets
   Replace a specific weak bullet with a quantified, keyword-aligned version.
   specific_text: the exact bullet from cv_text.
   suggested_text: one sentence, strong action verb, ≤15 words, includes a metric \
-or outcome. If no metric exists in cv_text, use a conservative estimate and flag \
-it in description.
+or outcome. If no real metric exists in cv_text, describe the concrete outcome \
+qualitatively (scope, tools, result) — never invent a number and never leave a \
+"[X]%" placeholder. A clear qualitative achievement beats a fake or blank metric.
   KEYWORD RULE: the rewrite must contain every job-relevant term from the original \
 bullet, plus introduce additional job keywords where natural. A rewrite that \
 removes job keywords lowers the score even if it reads stronger.
@@ -371,9 +389,14 @@ Rules for stretch suggestions:
       "in progress" status, can be stated.
     – Seniority gap: surface leadership/ownership signals already in the CV that \
       legitimately argue for the level.
-• suggested_text: an honest, bracketed template the candidate may use ONLY if it \
-  is true (e.g. "[X] years of cumulative experience across [roles] in [domain]"), \
-  or null for pure advice. Never a fabricated claim.
+• suggested_text: usually null — a stretch item is advice, not paste-ready text. \
+  Only include suggested_text when you can write a concrete, realistic sentence the \
+  candidate could truthfully use once the gap is genuinely met, grounded in their \
+  real experience and stack — never a [bracketed] fill-in template and never a \
+  fabricated claim. e.g. instead of "[X] years across [roles] in [domain]", and \
+  only if it reflects reality, "Frontend developer with 2+ years building React/\
+  TypeScript apps across SaaS and dashboard products". If you cannot write it \
+  truthfully and concretely, leave it null and keep the guidance in the description.
 • priority: high if the shortfall is a stated dealbreaker; otherwise medium.
 • category: use the closest matching section category (address_gaps, \
   elevate_experience, add_keywords, …). The "stretch" flag — not the category — \
@@ -422,6 +445,9 @@ Remove any suggestion that:
 • is generic ("add more details", "highlight your skills")
 • has suggested_text containing instructions, meta-language, or \
   "add X here" — must be paste-ready final text
+• has suggested_text containing ANY [bracketed] placeholder or fill-in slot \
+  ("[X]%", "[issuing agency]", "[domain]", "[roles]", …) — rewrite it as a finished, \
+  realistic sentence grounded in cv_text, or drop the metric/specific entirely
 • duplicates another suggestion in substance
 • is a fourth (or more) suggestion adding new bullets to experience — \
   only 3 such suggestions (address_gaps + elevate_experience combined) are allowed; \
