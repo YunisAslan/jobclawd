@@ -529,3 +529,18 @@ export interface SitemapJob {
 export interface JobSitemapResponse {
   jobs: SitemapJob[];
 }
+
+// ── Dashboard ──
+
+export interface FunnelEntry {
+  label: string;
+  count: number;
+  pct?: number;
+}
+
+export interface MatchBandEntry {
+  band: string;
+  applied: number;
+  replied: number;
+  reply_rate: number;
+}
