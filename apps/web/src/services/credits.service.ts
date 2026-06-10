@@ -27,6 +27,10 @@ export interface PurchaseResult extends CreditBalance {
   plan: string;
 }
 
+export interface WaitlistResult {
+  already_registered: boolean;
+}
+
 class CreditsService extends APIService {
   constructor() {
     super(API_BASE_URL);
@@ -45,6 +49,13 @@ class CreditsService extends APIService {
       ENDPOINTS.CREDITS_PURCHASE,
       { plan_id: planId },
       { headers: getAuthHeader() },
+    ).then((r) => r.data);
+  }
+
+  joinWaitlist(email: string): Promise<WaitlistResult> {
+    return this.post(
+      ENDPOINTS.CREDITS_WAITLIST,
+      { email },
     ).then((r) => r.data);
   }
 }

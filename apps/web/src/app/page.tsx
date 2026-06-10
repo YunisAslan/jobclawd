@@ -40,9 +40,11 @@ import {
   Clock,
   Globe2,
   Monitor,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/Accordion";
+import { CreditComingSoonModal } from "@/components/credits/CreditComingSoonModal";
 import LandingFooter from "@/components/layout/LandingFooter";
 import { Marquee } from "@/registry/magicui/marquee";
 import CVStructuredEditor from "@/components/feed/vacancy/CVStructuredEditor";
@@ -581,7 +583,7 @@ function CVEditorWorkspace() {
 }
 
 
-function HeroInteractiveDemo() {
+function HeroInteractiveDemo({ onOpenWaitlist }: { onOpenWaitlist?: () => void }) {
   const [sceneIdx, setSceneIdx] = useState(0);
   const [phase, setPhase] = useState<AnimPhase>("display");
   const [cursorPos, setCursorPos] = useState({ x: 700, y: 360 });
@@ -744,7 +746,12 @@ function HeroInteractiveDemo() {
                 <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                   <div className="h-full w-4/5 rounded-full bg-primary" />
                 </div>
-                <p className="text-xs text-primary/70 cursor-pointer hover:text-primary">+ Get more credits</p>
+                <p
+                  className="text-xs text-primary/70 cursor-pointer hover:text-primary"
+                  onClick={onOpenWaitlist}
+                >
+                  + Get more credits
+                </p>
               </div>
             </div>
           )}
@@ -1417,7 +1424,7 @@ function planCapabilities(credits: number) {
   ];
 }
 
-function Pricing({ onGetStarted }: { onGetStarted: () => void }) {
+function Pricing({ onGetStarted, onOpenWaitlist }: { onGetStarted: () => void; onOpenWaitlist: () => void }) {
   return (
     <section id="pricing" className="py-24 px-6 bg-muted/10 border-y border-border/40">
       <div className="max-w-5xl mx-auto">
@@ -1490,11 +1497,18 @@ function Pricing({ onGetStarted }: { onGetStarted: () => void }) {
                 </ul>
 
                 <Button
-                  onClick={onGetStarted}
+                  onClick={plan.free ? onGetStarted : onOpenWaitlist}
                   variant={plan.popular ? "default" : plan.free ? "default" : "outline"}
                   className={cn("w-full h-10 text-sm font-medium", plan.popular && "shadow-sm")}
                 >
-                  {plan.free ? "Get Started Free" : "Get credits"}
+                  {plan.free ? (
+                    "Get Started Free"
+                  ) : (
+                    <span className="flex items-center justify-center gap-1.5">
+                      <Bell className="size-3.5 shrink-0" />
+                      Notify me
+                    </span>
+                  )}
                 </Button>
               </div>
             );
@@ -1627,6 +1641,7 @@ export default function LandingPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [scrolled, setScrolled] = useState(false);
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -1639,6 +1654,12 @@ export default function LandingPage() {
   }
 
   return (
+    <>
+      <CreditComingSoonModal
+        open={waitlistOpen}
+        onOpenChange={setWaitlistOpen}
+        defaultEmail={user?.email ?? ""}
+      />
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       {/* ── Nav ── */}
       <header
@@ -1756,7 +1777,7 @@ export default function LandingPage() {
 
         <div className="relative max-w-7xl mx-auto mt-14 hidden md:block" style={{ animation: "fade-up 0.6s ease 0.15s both" }}>
           <div className="absolute -inset-6 rounded-3xl bg-primary/5 blur-2xl pointer-events-none" />
-          <HeroInteractiveDemo />
+          <HeroInteractiveDemo onOpenWaitlist={() => setWaitlistOpen(true)} />
         </div>
       </section>
 
@@ -1773,7 +1794,7 @@ export default function LandingPage() {
       <Stats />
 
       {/* ── Pricing ── */}
-      <Pricing onGetStarted={handleGetStarted} />
+      <Pricing onGetStarted={handleGetStarted} onOpenWaitlist={() => setWaitlistOpen(true)} />
 
       {/* ── FAQs ── */}
       <FAQs />
@@ -1784,5 +1805,6 @@ export default function LandingPage() {
       {/* ── Footer ── */}
       <LandingFooter />
     </div>
+    </>
   );
 }

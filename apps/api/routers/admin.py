@@ -18,6 +18,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 from repositories.admin_logs_repo import get_logs, get_sources
+from repositories.waitlist_repo import get_waitlist, get_waitlist_count
 
 router = APIRouter()
 _bearer = HTTPBearer(auto_error=False)
@@ -86,3 +87,16 @@ def admin_log_sources(
 ):
     _verify_token(credentials)
     return {"sources": get_sources()}
+
+
+@router.get("/admin/waitlist")
+def admin_waitlist(
+    limit: int = Query(500, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
+):
+    _verify_token(credentials)
+    return {
+        "entries": get_waitlist(limit=limit, offset=offset),
+        "total": get_waitlist_count(),
+    }

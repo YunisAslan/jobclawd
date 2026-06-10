@@ -17,6 +17,7 @@ import {
   ShieldAlert,
   Zap,
 } from "lucide-react";
+import Link from "next/link";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -223,12 +224,12 @@ function LogRow({ log, prevDate }: { log: AdminLog; prevDate: string | null }) {
       )}
       <div
         className={cn(
-          "group flex items-start gap-3 px-4 py-2.5 border-b border-zinc-900 hover:bg-white/[0.02] transition-colors",
+          "group flex items-start gap-3 px-4 py-2.5 border-b border-zinc-900 hover:bg-white/2 transition-colors",
           log.level === "CRITICAL" && "bg-rose-950/10 hover:bg-rose-950/15",
         )}
       >
         {/* Level badge */}
-        <div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1 border text-[10px] font-bold shrink-0 w-[62px] justify-center", cfg.bg, cfg.text, cfg.border)}>
+        <div className={cn("flex items-center gap-1.5 rounded-md px-2 py-1 border text-[10px] font-bold shrink-0 w-15.5 justify-center", cfg.bg, cfg.text, cfg.border)}>
           <Icon className="size-2.5" />
           {cfg.label}
         </div>
@@ -348,7 +349,19 @@ function Dashboard({ token, onLogout }: { token: string; onLogout: () => void })
             <span className="font-semibold text-sm">JobClawd Admin</span>
           </div>
           <div className="h-4 w-px bg-zinc-800" />
-          <span className="text-xs text-zinc-500">System Monitor</span>
+
+          {/* Nav tabs */}
+          <nav className="flex items-center gap-1">
+            <span className="text-xs px-3 py-1.5 rounded-md bg-primary/10 text-primary font-semibold border border-primary/20">
+              System Logs
+            </span>
+            <Link
+              href="/admin/dash/waitlist"
+              className="text-xs px-3 py-1.5 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors"
+            >
+              Waitlist
+            </Link>
+          </nav>
 
           <div className="ml-auto flex items-center gap-3">
             {lastRefresh && (
