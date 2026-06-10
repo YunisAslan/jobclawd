@@ -1,8 +1,13 @@
-"""Router: credit balance, available plans, and fake purchase."""
+"""Router: credit balance, available plans, and waitlist (payment coming soon)."""
+import re
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from repositories.credits_repo import add_credits, get_credits
+_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+
+from repositories.credits_repo import get_credits
+from repositories.waitlist_repo import add_to_waitlist
 from utils.auth_utils import get_current_email
 
 router = APIRouter(tags=["credits"])
@@ -39,6 +44,10 @@ class PurchaseRequest(BaseModel):
     plan_id: str
 
 
+class WaitlistRequest(BaseModel):
+    email: str
+
+
 @router.get("/credits")
 async def get_user_credits(email: str = Depends(get_current_email)):
     return get_credits(email)
@@ -54,13 +63,16 @@ async def purchase_credits(
     body: PurchaseRequest,
     email: str = Depends(get_current_email),
 ):
-    plan = next((p for p in _PLANS if p["id"] == body.plan_id), None)
-    if not plan:
-        raise HTTPException(status_code=400, detail="Invalid plan.")
-    result = add_credits(email, plan["credits"])
-    return {
-        "credits": result["credits"],
-        "max_credits": result["max_credits"],
-        "added": plan["credits"],
-        "plan": plan["name"],
-    }
+    raise HTTPException(
+        status_code=503,
+        detail="Payment processing is not yet available. Join the waitlist to be notified when it launches.",
+    )
+
+
+@router.post("/credits/waitlist")
+async def join_waitlist(body: WaitlistRequest):
+    email = body.email.strip().lower()
+    if not _EMAIL_RE.match(email):
+        raise HTTPException(status_code=422, detail="Invalid email address.")
+    already_on_list = not add_to_waitlist(email)
+    return {"already_registered": already_on_list}

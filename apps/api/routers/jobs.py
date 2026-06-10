@@ -40,6 +40,7 @@ _ALLOWED_HOSTS = [
     "dice.com",
     "jobgether.com",
     "weworkremotely.com",
+    "jobicy.com",
 ]
 
 
@@ -235,7 +236,7 @@ async def get_job_details(request: JobDetailRequest):
     if not any(host in request.url for host in _ALLOWED_HOSTS):
         raise HTTPException(
             status_code=400,
-            detail="Only jobsearch.az, LinkedIn, and Indeed URLs are accepted.",
+            detail="This job board is not supported. Please use a URL from a supported source.",
         )
     try:
         return await get_enhanced_job_detail(request.url)

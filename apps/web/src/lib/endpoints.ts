@@ -32,6 +32,7 @@ export const ENDPOINTS = {
   CREDITS: "/api/credits",
   CREDITS_PLANS: "/api/credits/plans",
   CREDITS_PURCHASE: "/api/credits/purchase",
+  CREDITS_WAITLIST: "/api/credits/waitlist",
 
   // Profile
   PROFILE: "/api/profile",
@@ -77,4 +78,5 @@ export const ENDPOINTS = {
   ADMIN_LOGIN: "/api/admin/login",
   ADMIN_LOGS: "/api/admin/logs",
   ADMIN_LOGS_SOURCES: "/api/admin/logs/sources",
+  ADMIN_WAITLIST: "/api/admin/waitlist",
 } as const;

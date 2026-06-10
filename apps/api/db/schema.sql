@@ -263,6 +263,15 @@ CREATE TABLE IF NOT EXISTS email_revert_tokens (
 );
 CREATE INDEX IF NOT EXISTS idx_revert_tokens_token ON email_revert_tokens (token);
 
+-- Credit purchase waitlist (payment not yet live)
+CREATE TABLE IF NOT EXISTS credit_waitlist (
+  id         SERIAL PRIMARY KEY,
+  email      TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_credit_waitlist_created ON credit_waitlist (created_at DESC);
+
 -- Admin system logs (self-healing monitor)
 CREATE TABLE IF NOT EXISTS admin_logs (
   id         SERIAL PRIMARY KEY,

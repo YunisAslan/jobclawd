@@ -223,25 +223,32 @@ export default function AppSidebar() {
         {/* Credits + Upgrade */}
         <div className="px-2 pb-2 space-y-1">
           {/* Credit widget — expanded */}
-          {!collapsed && !isLoading && hasCredits && (
+          {!collapsed && (
             <div className="px-3 py-2.5 rounded-lg bg-muted/40">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-1.5">
                   <Zap className={cn("size-3.5 shrink-0", isLow ? "text-destructive" : "text-primary")} />
                   <span className="text-xs font-medium text-foreground">Credits</span>
                 </div>
-                <span className={cn("text-xs font-semibold tabular-nums", isLow ? "text-destructive" : "text-foreground")}>
-                  {credits}
-                  {maxCredits ? <span className="text-muted-foreground font-normal"> / {maxCredits}</span> : null}
-                </span>
+                {isLoading ? (
+                  <span className="h-3.5 w-8 rounded bg-muted animate-pulse" />
+                ) : (
+                  <span className={cn("text-xs font-semibold tabular-nums", isLow ? "text-destructive" : "text-foreground")}>
+                    {credits ?? 10}
+                    {maxCredits ? <span className="text-muted-foreground font-normal"> / {maxCredits}</span> : null}
+                  </span>
+                )}
               </div>
-              <CreditBar credits={credits!} maxCredits={maxCredits ?? credits!} />
+              {!isLoading && hasCredits && (
+                <CreditBar credits={credits!} maxCredits={maxCredits ?? credits!} />
+              )}
+              {isLoading && <div className="h-1.5 rounded-full bg-muted animate-pulse" />}
               {isLow && <p className="text-xs text-destructive mt-1.5 font-medium">Running low</p>}
             </div>
           )}
 
           {/* Credit icon — collapsed */}
-          {collapsed && hasCredits && (
+          {collapsed && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link
@@ -257,7 +264,7 @@ export default function AppSidebar() {
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
-                {credits} credits remaining
+                {credits ?? 10} credits remaining
               </TooltipContent>
             </Tooltip>
           )}
