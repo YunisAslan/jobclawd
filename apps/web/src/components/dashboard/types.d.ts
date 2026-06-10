@@ -10,4 +10,7 @@ export type {
   CvAnalyzedEvent,
   SuggestionAppliedEvent,
   ImpactCheckedEvent,
+  ApplyClickEvent,
+  FunnelEntry,
+  MatchBandEntry,
 } from "@jobclawd/shared";

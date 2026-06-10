@@ -21,12 +21,14 @@ const sansFont = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
   display: "swap",
   weight: ["300", "400", "500", "600", "700", "800"],
+  adjustFontFallback: false,
 });
 
 const monoFont = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains",
   display: "swap",
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {

@@ -125,7 +125,7 @@ export default function SourceBreakdown({ data }: SourceBreakdownProps) {
           ))}
         </Pie>
         <ChartLegend
-          content={<ChartLegendContent nameKey="source" />}
+          content={({ payload }) => <ChartLegendContent payload={payload} nameKey="source" />}
           verticalAlign="bottom"
         />
       </PieChart>
