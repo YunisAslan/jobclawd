@@ -368,23 +368,29 @@ function HowItWorks() {
   const steps = [
     {
       num: "01",
+      label: "Discover",
       icon: Search,
-      title: "Search across every platform",
-      desc: "Enter a job title, skills, or location. JobClawd searches 10+ platforms simultaneously — every result scored in real time against your CV so you see fit, not noise.",
+      title: "Search every job board in one place",
+      pain: "Instead of opening LinkedIn, Indeed, Glassdoor and 7 more tabs",
+      desc: "One search scans 10+ job boards in parallel and streams the results into a single feed — already ranked by how well each role fits you. The best matches rise to the top automatically.",
       preview: <StepSearchPreview />,
     },
     {
       num: "02",
-      icon: Zap,
-      title: "Upload once, scored forever",
-      desc: "Upload your CV once. Every vacancy gets a 0–100 breakdown across skills, experience, fit, and keywords — including which ATS keywords you're missing — so you know exactly where you stand before applying.",
+      label: "Evaluate",
+      icon: BarChart2,
+      title: "See your real fit before you apply",
+      pain: "Instead of guessing whether you're qualified",
+      desc: "Upload your CV once. Every vacancy gets a 0–100 Match Score broken down by skills, experience, fit and the exact ATS keywords you're missing — so you only spend effort on roles you can actually win.",
       preview: <StepScorePreview />,
     },
     {
       num: "03",
+      label: "Optimize",
       icon: TrendingUp,
-      title: "Fix your CV — then export ATS-ready",
-      desc: "Get 8–14 targeted suggestions per role: missing ATS keywords, weak bullets, wrong framing. Accept in one click, then export a PDF structured the way ATS software actually reads it — clean sections, keyword-matched, no parsing errors. More CVs that clear the filter means more interviews.",
+      title: "Tailor your CV to beat the ATS",
+      pain: "Instead of wondering why you never hear back",
+      desc: "Get targeted one-click fixes for each role and watch your score climb with Check Impact. Then export a clean PDF structured the way ATS software actually parses it — more CVs through the filter, more interviews.",
       preview: <StepSuggestPreview />,
     },
   ];
@@ -392,54 +398,80 @@ function HowItWorks() {
   return (
     <section id="how-it-works" className="py-24 px-6 max-w-5xl mx-auto w-full">
       {/* Header */}
-      <div className="text-center mb-20">
+      <div className="text-center mb-16 sm:mb-20 max-w-2xl mx-auto">
         <Badge variant="outline" className="mb-4 text-primary border-primary/30 bg-primary/5">
           How it works
         </Badge>
         <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
-          From search to interview, <GradientText>in three steps</GradientText>
+          From scattered search to <GradientText>interview-ready</GradientText>
         </h2>
-        <p className="mt-3 text-muted-foreground text-sm max-w-xs mx-auto leading-relaxed">
-          JobClawd eliminates the guesswork so you spend your time where it matters — in interviews.
+        <p className="mt-4 text-muted-foreground text-base leading-relaxed">
+          JobClawd takes over the tedious, uncertain parts of the hunt — finding roles, judging fit,
+          and fixing your CV — so your time goes where it counts.
         </p>
       </div>
 
-      {/* Steps */}
-      <div className="divide-y divide-border/40">
-        {steps.map(({ num, icon: Icon, title, desc, preview }) => (
-          <div
-            key={num}
-            className="grid grid-cols-1 lg:grid-cols-[1fr_256px] gap-6 lg:gap-14 py-12 items-center"
-          >
-            {/* Left: number + content */}
-            <div className="flex items-start gap-6 lg:gap-8">
-              {/* Outlined watermark number */}
-              <div className="hidden sm:flex shrink-0 w-12 pt-1 justify-end">
-                <span
-                  className="text-6xl font-black tabular-nums leading-none select-none"
-                  style={{ color: "transparent", WebkitTextStroke: "1.5px hsl(var(--border))" }}
-                >
-                  {num}
-                </span>
-              </div>
-              {/* Text */}
-              <div className="space-y-3 flex-1 min-w-0">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center size-9 rounded-xl bg-primary/10 border border-primary/20 shrink-0">
-                    <Icon className="size-4 text-primary" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground">{title}</h3>
-                </div>
-                <p className="text-muted-foreground leading-relaxed text-sm max-w-md">{desc}</p>
+      {/* Connected timeline */}
+      <div className="relative">
+        {steps.map(({ num, label, icon: Icon, title, pain, desc, preview }) => (
+          <div key={num} className="relative pl-16 sm:pl-20 pb-14">
+            {/* connector line down to the next node */}
+            <span
+              aria-hidden
+              className="absolute left-6 sm:left-8 top-12 bottom-0 w-px -translate-x-1/2 bg-linear-to-b from-primary/30 to-border"
+            />
+            {/* node */}
+            <div className="absolute left-6 sm:left-8 top-0 -translate-x-1/2 z-10">
+              <div className="flex items-center justify-center size-12 rounded-full border border-primary/25 bg-background text-primary shadow-sm ring-4 ring-background">
+                <Icon className="size-5" />
               </div>
             </div>
 
-            {/* Right: preview */}
-            <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
-              {preview}
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12 lg:items-center">
+              {/* Text */}
+              <div>
+                <div className="flex items-center gap-2.5 mb-2.5">
+                  <span className="text-xs font-bold uppercase tracking-widest text-primary">
+                    Step {num}
+                  </span>
+                  <span className="h-3 w-px bg-border" />
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    {label}
+                  </span>
+                </div>
+                <h3 className="text-xl font-semibold text-foreground">{title}</h3>
+                <p className="mt-2 text-sm font-medium text-foreground/55 line-through decoration-border decoration-1">
+                  {pain}
+                </p>
+                <p className="mt-2.5 text-sm text-muted-foreground leading-relaxed max-w-md">{desc}</p>
+              </div>
+
+              {/* Preview */}
+              <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+                {preview}
+              </div>
             </div>
           </div>
         ))}
+
+        {/* Outcome capstone */}
+        <div className="relative pl-16 sm:pl-20">
+          <div className="absolute left-6 sm:left-8 top-0 -translate-x-1/2 z-10">
+            <div className="flex items-center justify-center size-12 rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/25 ring-4 ring-background">
+              <CheckCircle2 className="size-5" />
+            </div>
+          </div>
+          <div className="pt-1">
+            <span className="text-xs font-bold uppercase tracking-widest text-primary">The result</span>
+            <h3 className="mt-2 text-xl font-semibold text-foreground">
+              More interviews, far less busywork
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground leading-relaxed max-w-md">
+              No more lost hours across job-board tabs or CVs that vanish into an ATS. Every step above
+              points at one outcome — getting you in front of recruiters faster.
+            </p>
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -963,7 +995,7 @@ export default function LandingPage() {
         <div className="relative max-w-5xl mx-auto text-center" style={{ animation: "fade-up 0.6s ease both" }}>
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium mb-8 border border-primary/20 bg-primary/8 text-primary">
             <span style={{ animation: "star-blink 2s ease-in-out infinite" }}>✦</span>
-            <span>AI that gets your CV past ATS — and into interviews</span>
+            <span>Stop jumping between job sites and guessing — find, match, get hired</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.08] mb-6">
@@ -972,9 +1004,9 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
-            Search 10+ job platforms at once, get AI match scores against your CV, and receive
-            targeted edits that produce ATS-friendly CVs — so more of your applications reach a
-            human and your chances of getting invited to interview go up.
+            Search 10+ job sites in one place, see how well each role fits your CV before you
+            apply, and get simple edits that help your application get past the screening software
+            companies use — and in front of a real person.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-7">
