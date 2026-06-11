@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Search,
   BarChart2,
@@ -21,25 +22,6 @@ import {
   GitCompare,
   LayoutGrid,
   ChevronRight,
-  MapPin,
-  Bookmark,
-  User,
-  Eye,
-  Sparkles,
-  ExternalLink,
-  PencilLine,
-  RefreshCw,
-  Copy,
-  Wand2,
-  GraduationCap,
-  Briefcase,
-  DollarSign,
-  CalendarDays,
-  ArrowUpDown,
-  RotateCcw,
-  Clock,
-  Globe2,
-  Monitor,
   Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -47,14 +29,70 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { CreditComingSoonModal } from "@/components/credits/CreditComingSoonModal";
 import LandingFooter from "@/components/layout/LandingFooter";
 import { Marquee } from "@/registry/magicui/marquee";
-import CVStructuredEditor from "@/components/feed/vacancy/CVStructuredEditor";
-import CVMiniPreview from "@/components/feed/vacancy/CVMiniPreview";
-import FeedJobCard from "@/components/feed/FeedJobCard";
-import VacancySummary from "@/components/feed/vacancy/VacancySummary";
-import MatchScoreBreakdown from "@/components/feed/vacancy/MatchScoreBreakdown";
-import CVSelector from "@/components/feed/vacancy/CVSelector";
-import SelectBox from "@/components/SelectBox";
-import type { CVData, JobListing, CVMatchAnalysis, JobDetail } from "@/types";
+
+/* ─── Hero product video — inline (muted/looped), click to expand ─ */
+function HeroVideo() {
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpanded(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [expanded]);
+
+  return (
+    <>
+      {/* Inline: autoplaying, muted, looped — no controls. Click to expand. */}
+      <Button
+        variant="ghost"
+        onClick={() => setExpanded(true)}
+        aria-label="Expand product walkthrough video"
+        className="group relative block w-full h-auto p-0 aspect-video overflow-hidden rounded-2xl border border-border bg-muted/20 cursor-zoom-in hover:bg-muted/20"
+      >
+        <video
+          src="/jobclawd-intro.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          className="size-full object-cover pointer-events-none"
+        />
+        <span className="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-200 group-hover:bg-black/10" />
+      </Button>
+
+      {/* Expanded: only the video, blurred backdrop, with controls.
+          Rendered via a portal to <body> so the fixed overlay isn't trapped
+          by the hero container's transform (the fade-up animation). */}
+      {expanded &&
+        createPortal(
+          <div
+            onClick={() => setExpanded(false)}
+            className="fixed inset-0 z-100 flex items-center justify-center p-4 sm:p-12 bg-background/70 backdrop-blur-xl animate-in fade-in duration-200"
+          >
+            <video
+              src="/jobclawd-intro.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              controls
+              onClick={(e) => e.stopPropagation()}
+              className="max-h-[82vh] w-auto max-w-[85vw] rounded-xl shadow-2xl animate-in zoom-in-95 duration-200"
+            />
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
 
 /* ─── Animated gradient headline ─────────────────────────────── */
 function GradientText({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -125,818 +163,6 @@ function NumberTicker({
     </span>
   );
 }
-
-/* ─── Interactive hero demo ───────────────────────────────────── */
-const DEMO_SCENES = ["feed", "detail", "improve", "analyzing", "suggestions"] as const;
-type DemoScene = (typeof DEMO_SCENES)[number];
-
-const SCENE_DURATIONS: Record<DemoScene, number> = {
-  feed:        2000,
-  detail:      2800,
-  improve:     1800,
-  analyzing:   2500,
-  suggestions: 4000,
-};
-
-const CURSOR_TARGETS: Record<DemoScene, { x: number; y: number }> = {
-  feed:        { x: 610,  y: 390 },
-  detail:      { x: 1400, y: 117 },
-  improve:     { x: 1300, y: 248 },
-  analyzing:   { x: 1178, y: 478 },
-  suggestions: { x: 198,  y: 305 },
-};
-
-const PHASE_DURATIONS = { cursorMove: 750, click: 500, fade: 480 } as const;
-type AnimPhase = "display" | "cursor-moving" | "clicking" | "fading";
-
-
-const DEMO_SELECTED_JOB: JobListing = {
-  title: "Senior Project Manager",
-  company: "Deloitte",
-  url: "https://linkedin.com/jobs/view/demo-123",
-  date_posted: "2025-04-28",
-  source: "linkedin",
-  match_score: 72,
-  match_level: "review",
-  match_flags: ["Work mode mismatch"],
-  location_str: "London, England, UK",
-  work_mode_str: "Hybrid",
-  salary_str: "£70,000 – £85,000/yr",
-  seniority_str: "Senior",
-  job_type_str: "Full-time",
-  description_snippet: "Deloitte is seeking a Senior Project Manager to lead digital transformation initiatives across financial services and retail sectors.",
-  skills_str: "Agile, Scrum, JIRA, Stakeholder Management, Risk Management, MS Project",
-};
-
-const DEMO_JOB_LISTINGS: JobListing[] = [
-  DEMO_SELECTED_JOB,
-  {
-    title: "IT Project Manager",
-    company: "Accenture",
-    url: "https://linkedin.com/jobs/view/demo-124",
-    date_posted: "2025-04-25",
-    source: "linkedin",
-    match_score: 68,
-    match_level: "review",
-    match_flags: [],
-    location_str: "Manchester, UK",
-    work_mode_str: "Hybrid",
-    seniority_str: "Senior",
-    job_type_str: "Full-time",
-  },
-  {
-    title: "Agile Project Manager",
-    company: "IBM",
-    url: "https://indeed.com/jobs/view/demo-125",
-    date_posted: "2025-05-01",
-    source: "indeed",
-    match_score: 60,
-    match_level: "review",
-    match_flags: [],
-    location_str: "Remote — Worldwide",
-    work_mode_str: "Remote",
-    job_type_str: "Contract",
-  },
-  {
-    title: "Digital Transformation PM",
-    company: "PwC",
-    url: "https://indeed.com/jobs/view/demo-126",
-    date_posted: "2025-04-18",
-    source: "indeed",
-    match_score: 55,
-    match_level: "review",
-    match_flags: [],
-    location_str: "Birmingham, UK",
-    work_mode_str: "Hybrid",
-    job_type_str: "Full-time",
-  },
-];
-
-const DEMO_CV_DATA: CVData = {
-  personal_info: {
-    full_name: "Alex Johnson",
-    email: "alex.johnson@email.com",
-    phone: "+44 7700 900 000",
-    location: "London, United Kingdom",
-    linkedin: "linkedin.com/in/alexjohnson",
-    portfolio: "",
-    summary: "Senior Project Manager with 5+ years delivering complex digital transformation projects across financial services and retail sectors.",
-  },
-  experience: [
-    {
-      id: "exp1",
-      company: "TechCorp Ltd",
-      title: "Senior Project Manager",
-      location: "London, UK",
-      start_date: "Jan 2020",
-      end_date: "Present",
-      bullets: [
-        "Managed multiple projects successfully across the portfolio",
-        "Led cross-functional teams of 8–12 people across 5 departments",
-        "Coordinated with key stakeholders to align project deliverables",
-      ],
-    },
-    {
-      id: "exp2",
-      company: "Accenture",
-      title: "Project Manager",
-      location: "Manchester, UK",
-      start_date: "Jun 2018",
-      end_date: "Dec 2019",
-      bullets: [
-        "Delivered digital transformation projects for FTSE 100 clients on schedule",
-        "Managed project budgets up to £500K with full financial accountability",
-      ],
-    },
-  ],
-  education: [
-    {
-      id: "edu1",
-      institution: "University of Manchester",
-      degree: "BSc (Hons)",
-      field_of_study: "Business Management",
-      start_date: "2014",
-      end_date: "2018",
-      details: ["First Class Honours"],
-    },
-  ],
-  skills: [
-    { category: "Project Management", items: ["Agile", "Scrum", "JIRA", "MS Project", "Stakeholder Management", "Risk Management"] },
-    { category: "Tools & Certifications", items: ["Confluence", "Trello", "Budget Planning"] },
-  ],
-  languages: [
-    { language: "English", level: "Native" },
-    { language: "French", level: "Conversational" },
-  ],
-  certifications: [],
-  additional_sections: {},
-};
-
-/* ─── Full-size demo layout constants ─────────────────────────── */
-const DEMO_FULL_W = 1600;
-const DEMO_FULL_H = 720;
-const DEMO_PANEL_W = 560;
-const DEMO_SIDEBAR_W = 260;
-
-/* CV editor ATS preview column */
-const EDITOR_PREVIEW_W = 280;
-const EDITOR_DOC_W = 600;
-const EDITOR_PREVIEW_SCALE = EDITOR_PREVIEW_W / EDITOR_DOC_W;
-
-/* ─── Demo mock detail + analysis data ────────────────────────── */
-const DEMO_CV_LINK = { name: "My_Resume_2024", url: "__demo__" };
-
-const DEMO_JOB_DETAIL: JobDetail = {
-  title: "Senior Project Manager",
-  company: "Deloitte",
-  description: "",
-  email: null,
-  email_found: false,
-  apply_url: null,
-  error_message: null,
-  resolved_apply_url: null,
-  apply_url_confidence: 0,
-  apply_requires_login: false,
-  fallback_urls: [],
-  requirements: [
-    "5+ years project management experience in financial services",
-    "PMP or Prince2 certification (preferred)",
-    "Strong Agile/Scrum delivery background",
-    "Excellent stakeholder management skills",
-    "Budget management experience up to £1M+",
-    "Experience leading cross-functional teams",
-  ],
-  nice_to_haves: [
-    "Exposure to digital transformation programmes",
-    "Familiarity with JIRA and Confluence",
-    "MBA or equivalent business qualification",
-  ],
-  required_skills: ["Agile", "Scrum", "JIRA", "Risk Management", "Stakeholder Management"],
-  job_summary: "Deloitte is seeking a Senior Project Manager to lead complex digital transformation programmes across financial services clients. You will own delivery end-to-end, manage senior stakeholders, and drive cross-functional teams.",
-};
-
-const DEMO_MATCH_ANALYSIS: CVMatchAnalysis = {
-  overall_score: 72,
-  match_level: "review",
-  categories: [
-    {
-      category: "Skills",
-      score: 78,
-      matched: ["Agile", "Scrum", "JIRA", "Stakeholder Management", "Risk Management"],
-      missing: ["PMP Certification", "Prince2"],
-      reasoning: "Strong Agile/Scrum foundation. Missing PMP certification mentioned in requirements.",
-    },
-    {
-      category: "Experience",
-      score: 75,
-      matched: ["5+ years PM experience", "Digital transformation", "Cross-functional teams"],
-      missing: ["Financial services background", "Budget >£1M"],
-      reasoning: "Solid PM experience. Lacks direct financial services and large-budget exposure.",
-    },
-    {
-      category: "Fit",
-      score: 80,
-      matched: ["Strong career trajectory", "Relevant seniority level"],
-      missing: [],
-      reasoning: "Overall profile and career progression aligns well with a senior PM role at a major consultancy.",
-    },
-    {
-      category: "Keywords",
-      score: 58,
-      matched: ["JIRA", "MS Project", "Stakeholder", "Risk Management"],
-      missing: ["PMP", "Prince2", "Agile certification"],
-      reasoning: "Key industry keywords partially present. Missing certifications reduce score.",
-    },
-  ],
-  summary: "Strong project management profile with solid Agile/Scrum experience. Key gaps are PMP certification and direct financial services background — both worth addressing to lift the score.",
-};
-
-function CVEditorWorkspace() {
-  const [cvData, setCvData] = useState<CVData>(DEMO_CV_DATA);
-  const [kwAccepted, setKwAccepted] = useState(false);
-  const [bulletApplied, setBulletApplied] = useState(false);
-
-  function acceptKeyword() {
-    setKwAccepted(true);
-    setCvData((prev) => ({
-      ...prev,
-      skills: prev.skills.map((g, i) =>
-        i === 1 ? { ...g, items: [...g.items, "PMP Certification"] } : g,
-      ),
-    }));
-  }
-
-  function acceptBullet() {
-    setBulletApplied(true);
-    setCvData((prev) => ({
-      ...prev,
-      experience: prev.experience.map((e, i) =>
-        i === 0
-          ? { ...e, bullets: ["Delivered 12 projects on time, saving £2M+ across budget", ...e.bullets.slice(1)] }
-          : e,
-      ),
-    }));
-  }
-
-  const pendingCount = (kwAccepted ? 0 : 1) + (bulletApplied ? 0 : 1) + 6;
-
-  return (
-    <div className="flex flex-col flex-1 min-w-0 h-full animate-in fade-in duration-300 overflow-hidden">
-
-      {/* ── Match Score Strip (mirrors real MatchScoreStrip) ─────── */}
-      <div className="px-6 py-3 border-b border-border/40 shrink-0 bg-muted/20 flex items-center gap-4">
-        <div className="flex flex-col items-center justify-center rounded-xl px-3 py-2 border shrink-0 bg-match-review/10 border-match-review/20">
-          <span className="text-xl font-bold leading-none tabular-nums text-match-review">72</span>
-          <span className="text-[9px] font-semibold uppercase tracking-wider mt-0.5 opacity-70 text-match-review">Match</span>
-        </div>
-        <div className="flex-1 min-w-0 space-y-1.5">
-          <div className="h-1.5 w-full rounded-full bg-border/40 overflow-hidden">
-            <div className="h-full rounded-full bg-match-review" style={{ width: "72%" }} />
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{DEMO_MATCH_ANALYSIS.summary}</p>
-        </div>
-        <div className="flex items-center gap-3 shrink-0 pl-2 border-l border-border/40">
-          {DEMO_MATCH_ANALYSIS.categories.map((cat) => {
-            const c = cat.score >= 75 ? "text-match-high" : "text-match-review";
-            const catShort: Record<string, string> = { Skills: "Skills", Experience: "Exp", Fit: "Fit", Keywords: "KW" };
-            return (
-              <div key={cat.category} className="flex flex-col items-center gap-0.5">
-                <span className={cn("text-sm font-bold tabular-nums leading-none", c)}>{cat.score}</span>
-                <span className="text-[9px] text-muted-foreground uppercase tracking-wide">{catShort[cat.category] ?? cat.category}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Body ─────────────────────────────────────────────────── */}
-      <div className="flex flex-1 min-w-0 min-h-0 overflow-hidden">
-
-        {/* Suggestions panel — mirrors WorkspaceSuggestions */}
-        <aside className="w-80 flex-none border-r border-border/50 flex flex-col overflow-hidden bg-muted/20">
-
-          {/* Header */}
-          <div className="px-4 pt-3.5 pb-3 border-b border-border/40 shrink-0 space-y-2.5 bg-background">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5">
-                <p className="text-xs font-semibold text-foreground">AI Suggestions</p>
-                <Badge variant="outline" className="text-[10px] font-medium">8</Badge>
-              </div>
-              <Button type="button" variant="ghost" size="icon" className="size-6 text-muted-foreground/60 hover:text-foreground">
-                <RefreshCw className="size-3.5" />
-              </Button>
-            </div>
-            {/* Apply all */}
-            <div className="flex items-center gap-1.5">
-              <Button type="button" size="sm" className="gap-1.5 h-7 text-[11px] px-2.5 flex-1">
-                <Wand2 className="size-3" /> Apply all ({pendingCount})
-              </Button>
-            </div>
-            {/* How-to pills */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-                <Wand2 className="size-2.5" /> Apply
-              </div>
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400">
-                <Copy className="size-2.5" /> Copy
-              </div>
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400">
-                <PencilLine className="size-2.5" /> Rewrite
-              </div>
-            </div>
-          </div>
-
-          {/* Stats row */}
-          <div className="px-4 py-1.5 shrink-0">
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-              {pendingCount} pending · {kwAccepted || bulletApplied ? (kwAccepted ? 1 : 0) + (bulletApplied ? 1 : 0) : 0} applied · 0 declined
-            </span>
-          </div>
-
-          {/* Suggestion list */}
-          <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-2">
-
-            {/* Suggestion 1 — Add PMP */}
-            <div className={cn("rounded-lg border p-3 space-y-2 transition-all", kwAccepted ? "border-success/30 bg-success/5" : "border-border/50")}>
-              <div className="flex items-start gap-1.5">
-                <span className="mt-1.5 size-1.5 rounded-full shrink-0 bg-destructive" />
-                <p className="text-xs font-semibold text-foreground leading-snug flex-1 min-w-0">Add &apos;PMP Certification&apos;</p>
-                {kwAccepted && (
-                  <Badge className="text-[9px] font-semibold px-1.5 py-0 bg-success/10 text-success border border-success/20 shrink-0">Applied</Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5 pl-3">
-                <ArrowRight className="size-3 text-primary/50" />
-                <span className="text-[10px] font-medium text-primary/70">Tools &amp; Certifications section</span>
-              </div>
-              <div className="pl-3">
-                <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">Adding PMP certification directly addresses the required qualification and significantly boosts your keyword score.</p>
-                <Button type="button" variant="link" size="sm" className="h-auto p-0 text-[10px] text-primary font-medium mt-0.5 gap-0.5">
-                  <ChevronRight className="size-3" /> Read more
-                </Button>
-              </div>
-              {!kwAccepted && (
-                <div className="rounded border overflow-hidden text-[11px] font-mono ml-3">
-                  <div className="flex gap-1.5 px-2 py-1.5 bg-success/5">
-                    <span className="text-success font-bold shrink-0">+</span>
-                    <span className="text-success/80 leading-normal flex-1 min-w-0">PMP Certification</span>
-                  </div>
-                </div>
-              )}
-              {!kwAccepted && (
-                <div className="flex gap-1.5 pl-3">
-                  <Button size="sm" className="flex-1 h-7 text-[11px] gap-1" onClick={acceptKeyword}>
-                    <Wand2 className="size-3" /> Apply to Skills
-                  </Button>
-                  <Button size="sm" variant="outline" className="h-7 text-[11px] px-2.5">Decline</Button>
-                </div>
-              )}
-            </div>
-
-            {/* Suggestion 2 — Quantify impact */}
-            <div className={cn("rounded-lg border p-3 space-y-2 transition-all", bulletApplied ? "border-success/30 bg-success/5" : "border-border/50")}>
-              <div className="flex items-start gap-1.5">
-                <span className="mt-1.5 size-1.5 rounded-full shrink-0 bg-warning" />
-                <p className="text-xs font-semibold text-foreground leading-snug flex-1 min-w-0">Quantify delivery impact</p>
-                {bulletApplied && (
-                  <Badge className="text-[9px] font-semibold px-1.5 py-0 bg-success/10 text-success border border-success/20 shrink-0">Applied</Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5 pl-3">
-                <ArrowRight className="size-3 text-primary/50" />
-                <span className="text-[10px] font-medium text-primary/70">Experience section</span>
-              </div>
-              <div className="pl-3">
-                <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">This bullet is currently framed generically. Adding specific metrics strengthens impact and ATS scoring.</p>
-              </div>
-              {!bulletApplied && (
-                <div className="rounded border border-border overflow-hidden text-[11px] font-mono ml-3">
-                  <div className="flex gap-1.5 px-2 py-1.5 bg-destructive/5 border-b border-destructive/10">
-                    <span className="text-destructive/60 font-bold shrink-0">−</span>
-                    <span className="text-destructive/50 line-through leading-normal flex-1">Managed multiple projects successfully</span>
-                  </div>
-                  <div className="flex gap-1 px-2 py-1.5 bg-success/5">
-                    <span className="text-success font-bold shrink-0 mt-px">+</span>
-                    <span className="text-success/80 leading-normal flex-1">Delivered 12 projects on time, saving £2M+</span>
-                  </div>
-                </div>
-              )}
-              {!bulletApplied && (
-                <div className="flex gap-1.5 pl-3">
-                  <Button size="sm" className="flex-1 h-7 text-[11px] gap-1" onClick={acceptBullet}>
-                    <Wand2 className="size-3" /> Apply to Experience
-                  </Button>
-                  <Button size="sm" variant="outline" className="h-7 text-[11px] px-2.5">Decline</Button>
-                </div>
-              )}
-            </div>
-
-            {/* Suggestion 3 — Address requirements (static preview) */}
-            <div className="rounded-lg border border-border/50 p-3 space-y-2">
-              <div className="flex items-start gap-1.5">
-                <span className="mt-1.5 size-1.5 rounded-full shrink-0 bg-warning" />
-                <p className="text-xs font-semibold text-foreground leading-snug flex-1 min-w-0">Highlight stakeholder experience</p>
-              </div>
-              <div className="flex items-center gap-1.5 pl-3">
-                <ArrowRight className="size-3 text-primary/50" />
-                <span className="text-[10px] font-medium text-primary/70">Summary section</span>
-              </div>
-              <div className="pl-3">
-                <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">The job requires senior stakeholder management. Make this more explicit in your headline and summary.</p>
-              </div>
-            </div>
-
-          </div>
-        </aside>
-
-        {/* Real CV Editor */}
-        <div className="flex-1 overflow-y-auto border-r border-border min-w-0">
-          <CVStructuredEditor data={cvData} onChange={setCvData} />
-        </div>
-
-        {/* ATS Preview — compact */}
-        <div className="shrink-0 flex flex-col bg-muted/5 border-l border-border/40" style={{ width: EDITOR_PREVIEW_W }}>
-          <div className="px-3 py-2 border-b border-border bg-card flex items-center justify-between shrink-0">
-            <span className="text-[11px] font-semibold text-muted-foreground">ATS Preview</span>
-            <span className="text-[10px] font-bold text-match-review bg-match-review/10 border border-match-review/20 rounded px-1.5 py-0.5">72%</span>
-          </div>
-          <div className="flex-1 overflow-hidden" style={{ width: EDITOR_PREVIEW_W }}>
-            <div
-              style={{
-                width: EDITOR_DOC_W,
-                transform: `scale(${EDITOR_PREVIEW_SCALE})`,
-                transformOrigin: "top left",
-                pointerEvents: "none",
-              }}
-            >
-              <CVMiniPreview data={cvData} originalData={DEMO_CV_DATA} />
-            </div>
-          </div>
-          <div className="px-3 py-2 border-t border-border/40 bg-card shrink-0">
-            <p className="text-[10px] text-muted-foreground text-center">Hover to magnify · updates live as you edit</p>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
-}
-
-
-function HeroInteractiveDemo({ onOpenWaitlist }: { onOpenWaitlist?: () => void }) {
-  const [sceneIdx, setSceneIdx] = useState(0);
-  const [phase, setPhase] = useState<AnimPhase>("display");
-  const [cursorPos, setCursorPos] = useState({ x: 700, y: 360 });
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
-
-  const scene = DEMO_SCENES[sceneIdx];
-  const showPanel = scene !== "feed" && scene !== "suggestions";
-  const scaledH = Math.round(DEMO_FULL_H * scale);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const update = () => setScale(el.offsetWidth / DEMO_FULL_W);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const s = DEMO_SCENES[sceneIdx];
-    const target = CURSOR_TARGETS[s];
-    const { cursorMove, click, fade } = PHASE_DURATIONS;
-    const hold = SCENE_DURATIONS[s];
-    const timers: ReturnType<typeof setTimeout>[] = [];
-
-    timers.push(setTimeout(() => {
-      setPhase("cursor-moving");
-      setCursorPos(target);
-    }, hold));
-
-    timers.push(setTimeout(() => {
-      setPhase("clicking");
-    }, hold + cursorMove));
-
-    timers.push(setTimeout(() => {
-      setPhase("fading");
-    }, hold + cursorMove + click));
-
-    timers.push(setTimeout(() => {
-      setSceneIdx((i) => (i + 1) % DEMO_SCENES.length);
-      setPhase("display");
-    }, hold + cursorMove + click + fade));
-
-    return () => timers.forEach(clearTimeout);
-  }, [sceneIdx]);
-
-  const isFading = phase === "fading";
-  const isClicking = phase === "clicking";
-  const isCursorMoving = phase === "cursor-moving";
-
-  return (
-    <div
-      ref={containerRef}
-      className="w-full rounded-2xl overflow-hidden border border-border/60 shadow-2xl shadow-black/12 ring-1 ring-border/30 bg-background pointer-events-none select-none"
-    >
-      {/* Browser chrome */}
-      <div className="flex items-center gap-1.5 px-3 h-8 bg-card border-b border-border shrink-0">
-        <span className="size-2 rounded-full bg-red-400/80" />
-        <span className="size-2 rounded-full bg-amber-400/80" />
-        <span className="size-2 rounded-full bg-green-400/80" />
-        <div className="flex-1 mx-3 h-5 rounded bg-muted/50 flex items-center px-2.5">
-          <span className="text-[10px] text-muted-foreground/60">app.jobclawd.com/dashboard/feed</span>
-        </div>
-      </div>
-
-      {/* Scaled app layout */}
-      <div style={{ height: scaledH, overflow: "hidden" }}>
-        <div
-          style={{
-            width: DEMO_FULL_W,
-            height: DEMO_FULL_H,
-            transform: `scale(${scale})`,
-            transformOrigin: "top left",
-            display: "flex",
-            position: "relative",
-            opacity: isFading ? 0 : 1,
-            transition: isFading
-              ? "opacity 0.48s cubic-bezier(0.4,0,0.6,1)"
-              : "opacity 0.52s cubic-bezier(0.0,0,0.2,1)",
-          }}
-        >
-          {/* ── Fake cursor ─────────────────────────────────────── */}
-          <div
-            className="absolute z-50 pointer-events-none"
-            style={{
-              left: cursorPos.x,
-              top: cursorPos.y,
-              transform: "translate(-2px, -1px)",
-              opacity: phase === "display" ? 0 : 1,
-              transition: isCursorMoving
-                ? "left 0.75s cubic-bezier(0.25,0.46,0.45,0.94), top 0.75s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.22s ease"
-                : "opacity 0.3s ease",
-              filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.4))",
-            }}
-          >
-            {/* Click ripple rings */}
-            {isClicking && (
-              <>
-                <div
-                  className="absolute rounded-full border-2 border-primary"
-                  style={{
-                    width: 48, height: 48, left: -24, top: -24,
-                    opacity: 0.7,
-                    animation: "ping 0.5s cubic-bezier(0,0,0.2,1) 1 forwards",
-                  }}
-                />
-                <div
-                  className="absolute rounded-full bg-primary/25"
-                  style={{
-                    width: 30, height: 30, left: -15, top: -15,
-                    animation: "ping 0.38s cubic-bezier(0,0,0.2,1) 0.07s 1 forwards",
-                  }}
-                />
-              </>
-            )}
-            {/* Cursor SVG — standard arrow pointer */}
-            <svg width="18" height="22" viewBox="0 0 18 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M2.5 1.5L2.5 16.5L6.5 12.5L9.2 19.5L11.6 18.6L8.9 11.5H15.5L2.5 1.5Z"
-                fill="white"
-                stroke="#18181b"
-                strokeWidth="1.6"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-
-          {/* Sidebar */}
-          {scene !== "suggestions" && (
-            <div
-              className="border-r border-border bg-sidebar flex flex-col shrink-0"
-              style={{ width: DEMO_SIDEBAR_W }}
-            >
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-                <JobClawdLogo size={13} className="text-foreground opacity-80" />
-              </div>
-              <nav className="flex-1 py-2 px-2 space-y-0.5">
-                {([
-                  { icon: LayoutGrid, label: "Job Feed",   active: true  },
-                  { icon: Bookmark,   label: "Saved Jobs", active: false },
-                  { icon: BarChart2,  label: "Analytics",  active: false },
-                  { icon: User,       label: "Profile",    active: false },
-                ] as const).map(({ icon: Icon, label, active }) => (
-                  <div key={label} className={cn(
-                    "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors",
-                    active ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:text-foreground hover:bg-accent",
-                  )}>
-                    <Icon className="size-4 shrink-0" />{label}
-                  </div>
-                ))}
-              </nav>
-              <div className="px-4 py-3 border-t border-border space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Credits</span>
-                  <span className="font-medium">438</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full w-4/5 rounded-full bg-primary" />
-                </div>
-                <p
-                  className="text-xs text-primary/70 cursor-pointer hover:text-primary"
-                  onClick={onOpenWaitlist}
-                >
-                  + Get more credits
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Main content */}
-          {scene === "suggestions" ? (
-            <CVEditorWorkspace />
-          ) : (
-            <>
-              {/* Feed column */}
-              <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                <div className="flex items-center gap-2 px-4 h-11 border-b border-border bg-background shrink-0">
-                  <span className="text-sm font-semibold flex-1">Job Feed</span>
-                  <div className="size-7 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-primary-foreground">A</div>
-                </div>
-                {/* Search bar */}
-                <div className="px-4 pt-2.5 pb-2 border-b border-border space-y-2 shrink-0">
-                  <div className="flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-muted/20">
-                    <Search className="size-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm text-foreground flex-1">project manager</span>
-                    <button className="flex items-center gap-1 text-xs text-muted-foreground shrink-0 mr-1">
-                      <Sparkles className="size-3" /> Fill from profile
-                    </button>
-                    <Button size="sm" className="h-6 px-2.5 text-xs shrink-0">Search</Button>
-                  </div>
-                  <div className="grid grid-cols-5 gap-1.5 pointer-events-none">
-                    <SelectBox icon={<Globe2 className="size-4 text-muted-foreground" />} placeholder="Source" options={[]} mode="multiple" />
-                    <SelectBox icon={<Monitor className="size-4 text-muted-foreground" />} placeholder="Work mode" options={[]} mode="multiple" />
-                    <SelectBox icon={<MapPin className="size-4 text-muted-foreground" />} placeholder="Country/City" options={[]} />
-                    <SelectBox icon={<GraduationCap className="size-4 text-muted-foreground" />} placeholder="Experience" options={[]} mode="multiple" />
-                    <SelectBox icon={<Briefcase className="size-4 text-muted-foreground" />} placeholder="Job type" options={[]} mode="multiple" />
-                  </div>
-                  <div className="grid grid-cols-5 gap-1.5 pointer-events-none">
-                    <div className="col-span-3 flex items-center gap-2 rounded-md border border-input bg-transparent dark:bg-input/30 px-3 py-0 h-9 text-sm shadow-xs">
-                      <DollarSign className="size-4 text-muted-foreground shrink-0" />
-                      <span className="text-muted-foreground text-sm">Minimum salary</span>
-                    </div>
-                    <SelectBox icon={<CalendarDays className="size-4 text-muted-foreground" />} placeholder="Date posted" options={[]} />
-                    <SelectBox icon={<ArrowUpDown className="size-4 text-muted-foreground" />} placeholder="Sort by" options={[]} />
-                  </div>
-                </div>
-                {/* Results bar */}
-                <div className="flex items-center gap-2 px-4 py-1.5 border-b border-border bg-muted/10 text-xs shrink-0 flex-wrap">
-                  <span className="text-muted-foreground flex-1">5 positions found</span>
-                  <button className="flex items-center gap-1 text-muted-foreground">
-                    <RotateCcw className="size-3" /> Refresh <span className="text-foreground font-medium">· 1 credit</span>
-                  </button>
-                  <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-600">
-                    <Clock className="size-3" /> Cached · refreshes in 2h 3m
-                  </span>
-                  <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-600">
-                    438/500 credits
-                  </span>
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="size-2 rounded-full bg-match-review shrink-0" />
-                    <span className="text-sm font-semibold text-muted-foreground">Needs Review</span>
-                    <span className="text-xs text-muted-foreground/50">4</span>
-                  </div>
-                  {DEMO_JOB_LISTINGS.map((job, idx) => (
-                    <FeedJobCard
-                      key={idx}
-                      job={job}
-                      saved={false}
-                      onToggleSave={() => {}}
-                      onDetails={() => {}}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Detail panel */}
-              {showPanel && (
-                <div
-                  className="border-l border-border flex flex-col bg-background shrink-0 overflow-hidden"
-                  style={{ width: DEMO_PANEL_W }}
-                >
-                  <div className="px-5 pt-4 pb-4 border-b border-border/50 shrink-0">
-                    <div className="flex items-start gap-2">
-                      <p className="text-sm leading-snug line-clamp-2 flex-1 min-w-0 pt-0.5 font-semibold">Senior Project Manager</p>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <div className="flex items-center gap-1 rounded-lg px-2 py-1 border bg-match-review/10 border-match-review/20">
-                          <span className="text-xs font-bold tabular-nums leading-none text-match-review">72</span>
-                          <span className="text-[9px] font-medium opacity-70 text-match-review">match</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-xs flex items-center gap-2 mt-0.5 text-muted-foreground">
-                      <span>Deloitte</span>
-                      <span className="text-[10px] px-1.5 py-px rounded border border-blue-500/30 bg-blue-500/10 text-blue-500 font-medium uppercase tracking-wide">LinkedIn</span>
-                    </div>
-                  </div>
-
-                  <div className="px-5 pt-3 pb-0 shrink-0">
-                    <div className="inline-flex w-full h-9 items-center justify-center rounded-lg bg-muted p-[3px] text-muted-foreground">
-                      <button className={cn(
-                        "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-all",
-                        scene === "detail"
-                          ? "bg-background text-foreground shadow-sm dark:bg-input/30 dark:text-foreground dark:border-input"
-                          : "text-foreground/60",
-                      )}>
-                        <Eye className="size-3.5" /> Overview
-                      </button>
-                      <button className={cn(
-                        "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-all",
-                        (scene === "improve" || scene === "analyzing")
-                          ? "bg-background text-foreground shadow-sm dark:bg-input/30 dark:text-foreground dark:border-input"
-                          : "text-foreground/60",
-                      )}>
-                        <Sparkles className="size-3.5" /> Improve CV
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto">
-                    {scene === "detail" && (
-                      <div className="px-5 py-5 space-y-5">
-                        <VacancySummary job={DEMO_SELECTED_JOB} detail={DEMO_JOB_DETAIL} loadingDetail={false} />
-                        <MatchScoreBreakdown job={DEMO_SELECTED_JOB} />
-                      </div>
-                    )}
-                    {scene === "improve" && (
-                      <div className="px-5 py-5 space-y-4">
-                        <CVSelector cvLinks={[DEMO_CV_LINK]} selectedCV={DEMO_CV_LINK} onChange={() => {}} />
-                        <Button className="w-full gap-2">Analyze CV</Button>
-                      </div>
-                    )}
-                    {scene === "analyzing" && (
-                      <div className="px-5 py-5 space-y-4">
-                        <CVSelector cvLinks={[DEMO_CV_LINK]} selectedCV={DEMO_CV_LINK} onChange={() => {}} />
-                        <Button className="w-full gap-2">Analyze CV</Button>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <TrendingUp className="size-3 text-muted-foreground" />
-                            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Results · 1 CV</span>
-                          </div>
-                          <div className="relative rounded-xl border bg-card p-3 space-y-2 border-match-review/20">
-                            <div className="flex items-center gap-2.5 pr-6">
-                              <span className="text-[10px] font-bold text-muted-foreground/60 tabular-nums w-4 shrink-0">#1</span>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-medium text-foreground truncate">My_Resume_2024</p>
-                              </div>
-                              <div className="flex items-baseline gap-0.5 shrink-0 px-2 py-0.5 rounded-lg border mr-2 bg-match-review/10 border-match-review/20">
-                                <span className="text-sm font-bold tabular-nums leading-none text-match-review">72</span>
-                              </div>
-                            </div>
-                            <div className="h-1.5 w-full rounded-full bg-muted/50 overflow-hidden">
-                              <div className="h-full rounded-full bg-match-review" style={{ width: "72%" }} />
-                            </div>
-                            <p className="text-[11px] text-muted-foreground line-clamp-2">Strong PM profile with solid Agile/Scrum experience. Key gaps: PMP certification and direct financial services background.</p>
-                            <div className="flex gap-2 pt-0.5">
-                              <Button className="flex-1 h-8 gap-1.5 text-xs">
-                                <PencilLine className="size-3.5" /> Edit CV
-                              </Button>
-                              <Button variant="outline" size="icon" className="size-8 shrink-0">
-                                <RefreshCw className="size-3.5" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="px-5 py-4 border-t border-border/50 flex gap-2 shrink-0">
-                    <Button variant="outline" className="gap-2 shrink-0">
-                      <Bookmark className="size-3.5" /> Save
-                    </Button>
-                    <Button className="flex-1 gap-2">
-                      <ExternalLink className="size-3.5" /> Open &amp; apply
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-
 
 /* ─── Sources marquee ─────────────────────────────────────────── */
 const PLATFORM_ROWS: { name: string; accent: string }[][] = [
@@ -1142,23 +368,29 @@ function HowItWorks() {
   const steps = [
     {
       num: "01",
+      label: "Discover",
       icon: Search,
-      title: "Search across every platform",
-      desc: "Enter a job title, skills, or location. JobClawd searches 10+ platforms simultaneously — every result scored in real time against your CV so you see fit, not noise.",
+      title: "Search every job board in one place",
+      pain: "Instead of opening LinkedIn, Indeed, Glassdoor and 7 more tabs",
+      desc: "One search scans 10+ job boards in parallel and streams the results into a single feed — already ranked by how well each role fits you. The best matches rise to the top automatically.",
       preview: <StepSearchPreview />,
     },
     {
       num: "02",
-      icon: Zap,
-      title: "Upload once, scored forever",
-      desc: "Upload your CV once. Every vacancy gets a 0–100 breakdown across skills, experience, fit, and keywords — including which ATS keywords you're missing — so you know exactly where you stand before applying.",
+      label: "Evaluate",
+      icon: BarChart2,
+      title: "See your real fit before you apply",
+      pain: "Instead of guessing whether you're qualified",
+      desc: "Upload your CV once. Every vacancy gets a 0–100 Match Score broken down by skills, experience, fit and the exact ATS keywords you're missing — so you only spend effort on roles you can actually win.",
       preview: <StepScorePreview />,
     },
     {
       num: "03",
+      label: "Optimize",
       icon: TrendingUp,
-      title: "Fix your CV — then export ATS-ready",
-      desc: "Get 8–14 targeted suggestions per role: missing ATS keywords, weak bullets, wrong framing. Accept in one click, then export a PDF structured the way ATS software actually reads it — clean sections, keyword-matched, no parsing errors. More CVs that clear the filter means more interviews.",
+      title: "Tailor your CV to beat the ATS",
+      pain: "Instead of wondering why you never hear back",
+      desc: "Get targeted one-click fixes for each role and watch your score climb with Check Impact. Then export a clean PDF structured the way ATS software actually parses it — more CVs through the filter, more interviews.",
       preview: <StepSuggestPreview />,
     },
   ];
@@ -1166,54 +398,80 @@ function HowItWorks() {
   return (
     <section id="how-it-works" className="py-24 px-6 max-w-5xl mx-auto w-full">
       {/* Header */}
-      <div className="text-center mb-20">
+      <div className="text-center mb-16 sm:mb-20 max-w-2xl mx-auto">
         <Badge variant="outline" className="mb-4 text-primary border-primary/30 bg-primary/5">
           How it works
         </Badge>
         <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
-          From search to interview, <GradientText>in three steps</GradientText>
+          From scattered search to <GradientText>interview-ready</GradientText>
         </h2>
-        <p className="mt-3 text-muted-foreground text-sm max-w-xs mx-auto leading-relaxed">
-          JobClawd eliminates the guesswork so you spend your time where it matters — in interviews.
+        <p className="mt-4 text-muted-foreground text-base leading-relaxed">
+          JobClawd takes over the tedious, uncertain parts of the hunt — finding roles, judging fit,
+          and fixing your CV — so your time goes where it counts.
         </p>
       </div>
 
-      {/* Steps */}
-      <div className="divide-y divide-border/40">
-        {steps.map(({ num, icon: Icon, title, desc, preview }) => (
-          <div
-            key={num}
-            className="grid grid-cols-1 lg:grid-cols-[1fr_256px] gap-6 lg:gap-14 py-12 items-center"
-          >
-            {/* Left: number + content */}
-            <div className="flex items-start gap-6 lg:gap-8">
-              {/* Outlined watermark number */}
-              <div className="hidden sm:flex shrink-0 w-12 pt-1 justify-end">
-                <span
-                  className="text-6xl font-black tabular-nums leading-none select-none"
-                  style={{ color: "transparent", WebkitTextStroke: "1.5px hsl(var(--border))" }}
-                >
-                  {num}
-                </span>
-              </div>
-              {/* Text */}
-              <div className="space-y-3 flex-1 min-w-0">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center size-9 rounded-xl bg-primary/10 border border-primary/20 shrink-0">
-                    <Icon className="size-4 text-primary" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground">{title}</h3>
-                </div>
-                <p className="text-muted-foreground leading-relaxed text-sm max-w-md">{desc}</p>
+      {/* Connected timeline */}
+      <div className="relative">
+        {steps.map(({ num, label, icon: Icon, title, pain, desc, preview }) => (
+          <div key={num} className="relative pl-16 sm:pl-20 pb-14">
+            {/* connector line down to the next node */}
+            <span
+              aria-hidden
+              className="absolute left-6 sm:left-8 top-12 bottom-0 w-px -translate-x-1/2 bg-linear-to-b from-primary/30 to-border"
+            />
+            {/* node */}
+            <div className="absolute left-6 sm:left-8 top-0 -translate-x-1/2 z-10">
+              <div className="flex items-center justify-center size-12 rounded-full border border-primary/25 bg-background text-primary shadow-sm ring-4 ring-background">
+                <Icon className="size-5" />
               </div>
             </div>
 
-            {/* Right: preview */}
-            <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
-              {preview}
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12 lg:items-center">
+              {/* Text */}
+              <div>
+                <div className="flex items-center gap-2.5 mb-2.5">
+                  <span className="text-xs font-bold uppercase tracking-widest text-primary">
+                    Step {num}
+                  </span>
+                  <span className="h-3 w-px bg-border" />
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    {label}
+                  </span>
+                </div>
+                <h3 className="text-xl font-semibold text-foreground">{title}</h3>
+                <p className="mt-2 text-sm font-medium text-foreground/55 line-through decoration-border decoration-1">
+                  {pain}
+                </p>
+                <p className="mt-2.5 text-sm text-muted-foreground leading-relaxed max-w-md">{desc}</p>
+              </div>
+
+              {/* Preview */}
+              <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+                {preview}
+              </div>
             </div>
           </div>
         ))}
+
+        {/* Outcome capstone */}
+        <div className="relative pl-16 sm:pl-20">
+          <div className="absolute left-6 sm:left-8 top-0 -translate-x-1/2 z-10">
+            <div className="flex items-center justify-center size-12 rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/25 ring-4 ring-background">
+              <CheckCircle2 className="size-5" />
+            </div>
+          </div>
+          <div className="pt-1">
+            <span className="text-xs font-bold uppercase tracking-widest text-primary">The result</span>
+            <h3 className="mt-2 text-xl font-semibold text-foreground">
+              More interviews, far less busywork
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground leading-relaxed max-w-md">
+              No more lost hours across job-board tabs or CVs that vanish into an ATS. Every step above
+              points at one outcome — getting you in front of recruiters faster.
+            </p>
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -1737,7 +995,7 @@ export default function LandingPage() {
         <div className="relative max-w-5xl mx-auto text-center" style={{ animation: "fade-up 0.6s ease both" }}>
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium mb-8 border border-primary/20 bg-primary/8 text-primary">
             <span style={{ animation: "star-blink 2s ease-in-out infinite" }}>✦</span>
-            <span>AI that gets your CV past ATS — and into interviews</span>
+            <span>Stop jumping between job sites and guessing — find, match, get hired</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.08] mb-6">
@@ -1746,9 +1004,9 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
-            Search 10+ job platforms at once, get AI match scores against your CV, and receive
-            targeted edits that produce ATS-friendly CVs — so more of your applications reach a
-            human and your chances of getting invited to interview go up.
+            Search 10+ job sites in one place, see how well each role fits your CV before you
+            apply, and get simple edits that help your application get past the screening software
+            companies use — and in front of a real person.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-7">
@@ -1775,9 +1033,10 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="relative max-w-7xl mx-auto mt-14 hidden md:block" style={{ animation: "fade-up 0.6s ease 0.15s both" }}>
+        <div className="relative max-w-7xl mx-auto mt-14" style={{ animation: "fade-up 0.6s ease 0.15s both" }}>
           <div className="absolute -inset-6 rounded-3xl bg-primary/5 blur-2xl pointer-events-none" />
-          <HeroInteractiveDemo onOpenWaitlist={() => setWaitlistOpen(true)} />
+          {/* Product walkthrough video */}
+          <HeroVideo />
         </div>
       </section>
 
