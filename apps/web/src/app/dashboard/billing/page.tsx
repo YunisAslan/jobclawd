@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Zap, Sparkles, CreditCard, Check, Bell } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -208,7 +209,10 @@ export default function BillingPage() {
             )}
 
             <p className="text-center text-xs text-muted-foreground mt-5">
-              All prices in USD · Credits never expire · No recurring charges
+              All prices in USD · Credits never expire · No recurring charges ·{" "}
+              <Link href="/refund" className="underline hover:text-foreground transition-colors">
+                Refund Policy
+              </Link>
             </p>
           </section>
 
