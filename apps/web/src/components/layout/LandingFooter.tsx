@@ -75,6 +75,7 @@ export default function LandingFooter() {
               {[
                 { label: "Privacy Policy", href: "/privacy" },
                 { label: "Terms of Service", href: "/terms" },
+                { label: "Refund Policy", href: "/refund" },
               ].map(({ label, href }) => (
                 <li key={label}>
                   <Link href={href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -101,6 +102,7 @@ export default function LandingFooter() {
           <div className="flex items-center gap-5">
             <Link href="/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</Link>
             <Link href="/terms" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Terms of Service</Link>
+            <Link href="/refund" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Refund Policy</Link>
             <button
               type="button"
               onClick={() => setFeedbackOpen(true)}
