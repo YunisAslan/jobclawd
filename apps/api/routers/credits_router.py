@@ -1,16 +1,24 @@
-"""Router: credit balance, available plans, and waitlist (payment coming soon)."""
+"""Router: credit balance, available plans, waitlist, and the Gumroad purchase webhook."""
 import re
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 from repositories.credits_repo import get_credits
 from repositories.waitlist_repo import add_to_waitlist
+from services.gumroad_service import process_ping
 from utils.auth_utils import get_current_email
 
 router = APIRouter(tags=["credits"])
+
+# Gumroad checkout links per plan (base URL — the frontend appends email + wanted=true).
+_CHECKOUT = {
+    "starter": "https://jobclawd.gumroad.com/l/jobclawd-value-20",
+    "value": "https://jobclawd.gumroad.com/l/jobclawd-value-60",
+    "power": "https://jobclawd.gumroad.com/l/jobclawd-power-150",
+}
 
 _PLANS = [
     {
@@ -20,6 +28,7 @@ _PLANS = [
         "price_usd": 1.99,
         "popular": False,
         "description": "Good for a short job hunt",
+        "checkout_url": _CHECKOUT["starter"],
     },
     {
         "id": "value",
@@ -28,6 +37,7 @@ _PLANS = [
         "price_usd": 4.99,
         "popular": True,
         "description": "Most popular for active seekers",
+        "checkout_url": _CHECKOUT["value"],
     },
     {
         "id": "power",
@@ -36,12 +46,9 @@ _PLANS = [
         "price_usd": 10.99,
         "popular": False,
         "description": "For serious, full-time job hunting",
+        "checkout_url": _CHECKOUT["power"],
     },
 ]
-
-
-class PurchaseRequest(BaseModel):
-    plan_id: str
 
 
 class WaitlistRequest(BaseModel):
@@ -58,17 +65,6 @@ async def get_plans():
     return {"plans": _PLANS}
 
 
-@router.post("/credits/purchase")
-async def purchase_credits(
-    body: PurchaseRequest,
-    email: str = Depends(get_current_email),
-):
-    raise HTTPException(
-        status_code=503,
-        detail="Payment processing is not yet available. Join the waitlist to be notified when it launches.",
-    )
-
-
 @router.post("/credits/waitlist")
 async def join_waitlist(body: WaitlistRequest):
     email = body.email.strip().lower()
@@ -76,3 +72,14 @@ async def join_waitlist(body: WaitlistRequest):
         raise HTTPException(status_code=422, detail="Invalid email address.")
     already_on_list = not add_to_waitlist(email)
     return {"already_registered": already_on_list}
+
+
+@router.post("/credits/gumroad-webhook")
+async def gumroad_webhook(request: Request):
+    """Receive Gumroad sale Pings (form-encoded). Verifies each sale against the
+    Gumroad API and grants credits to the buyer's email exactly once."""
+    form = dict(await request.form())
+    result = await process_ping(form)
+    if result.get("status") == "rejected":
+        raise HTTPException(status_code=403, detail=result.get("reason", "rejected"))
+    return result
