@@ -66,7 +66,7 @@ export default function RefundPage() {
           <Section title="3. Eligibility for a Refund">
             <p>You may request a full refund of a credit purchase if all of the following apply:</p>
             <ul className="list-disc pl-5 space-y-1.5">
-              <li>The request is made within <strong className="text-foreground">14 days</strong> of the purchase date.</li>
+              <li>The request is made within <strong className="text-foreground">30 days</strong> of the purchase date.</li>
               <li>
                 The credits from that purchase are <strong className="text-foreground">unused</strong> — none
                 of the credits in the purchased pack have been spent on an AI feature.
@@ -82,7 +82,7 @@ export default function RefundPage() {
                 The credits have already been used, in whole or in part. Once a credit is spent on an AI
                 feature, that value has been delivered and cannot be returned.
               </li>
-              <li>More than 14 days have passed since the purchase.</li>
+              <li>More than 30 days have passed since the purchase.</li>
               <li>
                 The free starter credits granted on sign-up are involved — these are provided at no cost
                 and carry no monetary value.

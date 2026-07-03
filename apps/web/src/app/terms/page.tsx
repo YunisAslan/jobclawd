@@ -94,10 +94,16 @@ export default function TermsPage() {
               of credits. Additional credits may be purchased in one-time packs.
             </p>
             <ul className="list-disc pl-5 space-y-1.5">
-              <li>Credits are non-refundable once purchased, except as required by applicable law.</li>
+              <li>
+                Purchases may be eligible for a refund as described in our{" "}
+                <Link href="/refund" className="text-primary hover:underline">Refund Policy</Link>.
+              </li>
               <li>Credits do not expire and carry over indefinitely.</li>
               <li>We reserve the right to adjust credit pricing with reasonable notice.</li>
-              <li>In the current demo phase, no real payment is processed.</li>
+              <li>
+                Payments are processed by our third-party payment provider. We do not store your full
+                card details.
+              </li>
             </ul>
           </Section>
 

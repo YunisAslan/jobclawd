@@ -22,11 +22,11 @@ import {
   GitCompare,
   LayoutGrid,
   ChevronRight,
-  Bell,
+  ShoppingCart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/Accordion";
-import { CreditComingSoonModal } from "@/components/credits/CreditComingSoonModal";
+import { gumroadCheckoutUrl } from "@/lib/gumroad";
 import LandingFooter from "@/components/layout/LandingFooter";
 import { Marquee } from "@/registry/magicui/marquee";
 
@@ -682,7 +682,7 @@ function planCapabilities(credits: number) {
   ];
 }
 
-function Pricing({ onGetStarted, onOpenWaitlist }: { onGetStarted: () => void; onOpenWaitlist: () => void }) {
+function Pricing({ onGetStarted, email }: { onGetStarted: () => void; email: string }) {
   return (
     <section id="pricing" className="py-24 px-6 bg-muted/10 border-y border-border/40">
       <div className="max-w-5xl mx-auto">
@@ -754,20 +754,28 @@ function Pricing({ onGetStarted, onOpenWaitlist }: { onGetStarted: () => void; o
                   ))}
                 </ul>
 
-                <Button
-                  onClick={plan.free ? onGetStarted : onOpenWaitlist}
-                  variant={plan.popular ? "default" : plan.free ? "default" : "outline"}
-                  className={cn("w-full h-10 text-sm font-medium", plan.popular && "shadow-sm")}
-                >
-                  {plan.free ? (
-                    "Get Started Free"
-                  ) : (
-                    <span className="flex items-center justify-center gap-1.5">
-                      <Bell className="size-3.5 shrink-0" />
-                      Notify me
-                    </span>
-                  )}
-                </Button>
+                {plan.free ? (
+                  <Button
+                    onClick={onGetStarted}
+                    variant="default"
+                    className="w-full h-10 text-sm font-medium"
+                  >
+                    Get Started Free
+                  </Button>
+                ) : (
+                  <Button
+                    asChild
+                    variant={plan.popular ? "default" : "outline"}
+                    className={cn("w-full h-10 text-sm font-medium", plan.popular && "shadow-sm")}
+                  >
+                    <a href={gumroadCheckoutUrl(plan.id, email)} target="_blank" rel="noopener noreferrer">
+                      <span className="flex items-center justify-center gap-1.5">
+                        <ShoppingCart className="size-3.5 shrink-0" />
+                        Buy {plan.credits} credits
+                      </span>
+                    </a>
+                  </Button>
+                )}
               </div>
             );
           })}
@@ -899,7 +907,6 @@ export default function LandingPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [scrolled, setScrolled] = useState(false);
-  const [waitlistOpen, setWaitlistOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -912,12 +919,6 @@ export default function LandingPage() {
   }
 
   return (
-    <>
-      <CreditComingSoonModal
-        open={waitlistOpen}
-        onOpenChange={setWaitlistOpen}
-        defaultEmail={user?.email ?? ""}
-      />
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       {/* ── Nav ── */}
       <header
@@ -1053,7 +1054,7 @@ export default function LandingPage() {
       <Stats />
 
       {/* ── Pricing ── */}
-      <Pricing onGetStarted={handleGetStarted} onOpenWaitlist={() => setWaitlistOpen(true)} />
+      <Pricing onGetStarted={handleGetStarted} email={user?.email ?? ""} />
 
       {/* ── FAQs ── */}
       <FAQs />
@@ -1064,6 +1065,5 @@ export default function LandingPage() {
       {/* ── Footer ── */}
       <LandingFooter />
     </div>
-    </>
   );
 }

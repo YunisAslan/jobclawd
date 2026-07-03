@@ -31,7 +31,6 @@ export const ENDPOINTS = {
   // Credits
   CREDITS: "/api/credits",
   CREDITS_PLANS: "/api/credits/plans",
-  CREDITS_PURCHASE: "/api/credits/purchase",
   CREDITS_WAITLIST: "/api/credits/waitlist",
 
   // Profile

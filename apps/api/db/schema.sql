@@ -272,6 +272,17 @@ CREATE TABLE IF NOT EXISTS credit_waitlist (
 
 CREATE INDEX IF NOT EXISTS idx_credit_waitlist_created ON credit_waitlist (created_at DESC);
 
+-- Gumroad purchase ledger — idempotency guard so a retried Ping never double-credits.
+CREATE TABLE IF NOT EXISTS gumroad_purchases (
+  sale_id    TEXT PRIMARY KEY,
+  email      TEXT NOT NULL,
+  permalink  TEXT,
+  credits    INTEGER NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_gumroad_purchases_email ON gumroad_purchases (email);
+
 -- Admin system logs (self-healing monitor)
 CREATE TABLE IF NOT EXISTS admin_logs (
   id         SERIAL PRIMARY KEY,

@@ -20,11 +20,7 @@ export interface CreditPlan {
   price_usd: number;
   popular: boolean;
   description: string;
-}
-
-export interface PurchaseResult extends CreditBalance {
-  added: number;
-  plan: string;
+  checkout_url?: string;
 }
 
 export interface WaitlistResult {
@@ -42,14 +38,6 @@ class CreditsService extends APIService {
 
   getPlans(): Promise<{ plans: CreditPlan[] }> {
     return this.get(ENDPOINTS.CREDITS_PLANS, {}, { headers: getAuthHeader() }).then((r) => r.data);
-  }
-
-  purchase(planId: string): Promise<PurchaseResult> {
-    return this.post(
-      ENDPOINTS.CREDITS_PURCHASE,
-      { plan_id: planId },
-      { headers: getAuthHeader() },
-    ).then((r) => r.data);
   }
 
   joinWaitlist(email: string): Promise<WaitlistResult> {
