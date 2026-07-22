@@ -33,3 +33,5 @@ def delete_account(email: str) -> None:
         db.execute("DELETE FROM profiles WHERE email = %s", (email,))
         # Delete per-user settings (for example stored OAuth tokens).
         db.execute("DELETE FROM settings WHERE key LIKE %s", (f"%_{email}",))
+        # Delete the user's stored OpenAI API key.
+        db.execute("DELETE FROM user_api_keys WHERE email = %s", (email,))

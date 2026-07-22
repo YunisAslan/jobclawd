@@ -147,7 +147,8 @@ def get_analytics(email: str) -> AnalyticsResponse:
             (email,),
         ).fetchall()
         raw_title_counts = [(r["job_title"], r["cnt"]) for r in title_rows]
-        title_counts = normalize_titles(raw_title_counts)[:8]
+        from services.api_keys_service import get_key
+        title_counts = normalize_titles(raw_title_counts, get_key(email) or "")[:8]
 
         # ── Source breakdown (derived from job_url) ───────────────────────
         source_rows = conn.execute(

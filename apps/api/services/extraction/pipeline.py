@@ -43,6 +43,7 @@ PARSER_VERSION = "2.0.0"
 async def process_jobs(
     jobs: list[dict],
     *,
+    api_key: str = "",
     progress_cb=None,
     skip_ai: bool = False,
 ) -> list[dict]:
@@ -121,7 +122,7 @@ async def process_jobs(
         reports[url] = report
 
     # ── Step 4: Selective AI enrichment ──────────────────────────────
-    if not skip_ai and ai_metadata_enabled():
+    if not skip_ai and ai_metadata_enabled(api_key):
         jobs_needing_ai = [
             (job, reports[job.get("url", "")])
             for job in jobs
@@ -150,6 +151,7 @@ async def process_jobs(
                             ai_inputs,
                             source="pipeline",
                             context="vacancy-intelligence",
+                            api_key=api_key,
                             progress_cb=None,
                         )
 

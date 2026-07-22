@@ -395,7 +395,7 @@ async def _fetch_browser_batch(urls: list[str]) -> dict[str, tuple[str, str]]:
 # ── Public API ──────────────────────────────────────────────────────
 
 async def fetch_metadata_for_urls(
-    urls: list[str], *, progress_cb=None,
+    urls: list[str], *, api_key: str = "", progress_cb=None,
 ) -> dict[str, Optional[dict]]:
     """
     Fetch metadata for URLs. Fast path: httpx → regex → AI batch → browser fallback.
@@ -461,6 +461,7 @@ async def fetch_metadata_for_urls(
                 ai_inputs,
                 source="detail-page",
                 context="httpx-fetch",
+                api_key=api_key,
                 progress_cb=progress_cb,
             )
             for url, meta in ai_results.items():
@@ -509,6 +510,7 @@ async def fetch_metadata_for_urls(
                     browser_ai_inputs,
                     source="detail-page",
                     context="browser-fallback",
+                    api_key=api_key,
                 )
                 for url, meta in ai_results.items():
                     if not meta:
@@ -541,7 +543,7 @@ async def fetch_metadata_for_urls(
     return results
 
 
-async def enrich_jobs(jobs: list[dict]) -> None:
+async def enrich_jobs(jobs: list[dict], api_key: str = "") -> None:
     """Background task: enrich jobs missing metadata and persist to DB."""
     urls_to_enrich = []
     for job in jobs:
@@ -569,7 +571,7 @@ async def enrich_jobs(jobs: list[dict]) -> None:
 
     print(f"[Enrichment] Background: enriching {len(urls_to_fetch)} jobs...")
 
-    enriched_results = await fetch_metadata_for_urls(urls_to_fetch)
+    enriched_results = await fetch_metadata_for_urls(urls_to_fetch, api_key=api_key)
     enriched = 0
     for url, meta in enriched_results.items():
         if meta:

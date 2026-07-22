@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
+import { emitNoApiKey, isNoApiKeyError } from "@/lib/api-key-events";
 
 export abstract class APIService {
   protected baseURL: string;
@@ -13,7 +14,11 @@ export abstract class APIService {
   private setUpInterceptors() {
     this.axiosInstance.interceptors.response.use(
       (response) => response,
-      (error) => Promise.reject(error),
+      (error) => {
+        // Any AI call made without a stored OpenAI key → prompt the user for one.
+        if (isNoApiKeyError(error)) emitNoApiKey();
+        return Promise.reject(error);
+      },
     );
   }
 
@@ -23,6 +28,10 @@ export abstract class APIService {
 
   post(url: string, data = {}, config: AxiosRequestConfig = {}) {
     return this.axiosInstance.post(url, data, config);
+  }
+
+  put(url: string, data = {}, config: AxiosRequestConfig = {}) {
+    return this.axiosInstance.put(url, data, config);
   }
 
   patch(url: string, data = {}, config: AxiosRequestConfig = {}) {

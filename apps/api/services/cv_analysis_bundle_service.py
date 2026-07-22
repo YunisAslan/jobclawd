@@ -8,7 +8,7 @@ from services.cv_document_service import infer_cv_filename
 from services.cv_match_service import compute_cv_match_from_data
 
 
-async def analyze_cv_bundle(job_url: str, cv_url: str, email: str = "", cv_name: str = "") -> dict:
+async def analyze_cv_bundle(job_url: str, cv_url: str, api_key: str, email: str = "", cv_name: str = "") -> dict:
     cv_name = cv_name.strip() or infer_cv_filename(cv_url)
 
     # ── Cache lookup ──────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ async def analyze_cv_bundle(job_url: str, cv_url: str, email: str = "", cv_name:
             "error_draft": reason,
         }
 
-    analysis = await compute_cv_match_from_data(job_context, cv_text, deterministic=True)
+    analysis = await compute_cv_match_from_data(job_context, cv_text, api_key, deterministic=True)
 
     job_title = job_context.get("title", "")
     job_company = job_context.get("company", "")

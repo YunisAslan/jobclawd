@@ -152,7 +152,7 @@ def _job_has_core_metadata(job: JobListing) -> bool:
     ])
 
 
-async def _sync_enrich_top_linkedin_jobs(jobs: list[JobListing]) -> None:
+async def _sync_enrich_top_linkedin_jobs(jobs: list[JobListing], api_key: str = "") -> None:
     candidates = [
         job.url
         for job in jobs
@@ -163,7 +163,7 @@ async def _sync_enrich_top_linkedin_jobs(jobs: list[JobListing]) -> None:
         return
 
     print(f"[Search] Sync enriching top {len(candidates)} LinkedIn jobs before response")
-    fetched = await fetch_metadata_for_urls(candidates)
+    fetched = await fetch_metadata_for_urls(candidates, api_key=api_key)
     for url, meta in fetched.items():
         if not meta:
             continue
@@ -242,6 +242,7 @@ async def run_search(
     force_refresh: bool = False,
     progress_cb=None,
     event_cb=None,
+    api_key: str = "",
 ) -> SearchResponse:
     """
     1. Build a deterministic cache key from all filters.
@@ -310,6 +311,7 @@ async def run_search(
                 progress_cb=progress_cb,
                 profile=profile,
                 event_cb=event_cb,
+                api_key=api_key,
             )
         )
         _INFLIGHT_SEARCHES[cache_key] = task
@@ -371,6 +373,7 @@ async def _run_uncached_search(
     progress_cb=None,
     profile: Optional[UserProfile],
     event_cb=None,
+    api_key: str = "",
 ) -> SearchResponse:
     """Run the shared search pipeline and return an unpersonalized base response."""
     from services.admin_log_service import log_cache_miss, log_ai_filter
@@ -629,7 +632,7 @@ async def _run_uncached_search(
             await progress_cb("analyzing", "Extracting metadata...", 0, 0)
 
         # Run the extraction pipeline (deterministic + selective AI)
-        all_job_dicts = await process_jobs(all_job_dicts, progress_cb=progress_cb)
+        all_job_dicts = await process_jobs(all_job_dicts, api_key=api_key, progress_cb=progress_cb)
         timings["pipeline"] = time.perf_counter() - t0
 
         t0 = time.perf_counter()
@@ -643,7 +646,7 @@ async def _run_uncached_search(
     # Sync-enrich top LinkedIn jobs BEFORE filtering so the filter has rich metadata
     try:
         t0 = time.perf_counter()
-        await _sync_enrich_top_linkedin_jobs(all_jobs)
+        await _sync_enrich_top_linkedin_jobs(all_jobs, api_key)
         # Re-merge DB metadata so all_jobs gets the enriched values
         try:
             enriched_dicts = _jobs_to_dicts(all_jobs)
@@ -728,7 +731,7 @@ async def _run_uncached_search(
     # ── Background enrichment: fetch full descriptions for jobs missing metadata
     try:
         job_dicts_for_enrich = _jobs_to_dicts(merged_jobs)
-        asyncio.create_task(enrich_jobs(job_dicts_for_enrich))
+        asyncio.create_task(enrich_jobs(job_dicts_for_enrich, api_key))
     except Exception as e:
         print(f"[Search] Enrichment launch error (non-fatal): {e}")
 

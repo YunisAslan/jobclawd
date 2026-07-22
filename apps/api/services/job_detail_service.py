@@ -13,7 +13,6 @@ import httpx
 from models.schemas import JobDetailResponse
 from scraper.detail import scrape_job_detail
 
-_OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 _OPENAI_MODEL = os.getenv("OPENAI_METADATA_MODEL", "gpt-5.4-nano").strip()
 _OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 _TIMEOUT = 30.0
@@ -37,15 +36,18 @@ Return JSON only:
 }"""
 
 
-async def get_enhanced_job_detail(url: str) -> JobDetailResponse:
-    """Fetch job detail via scraper, then enhance with AI-extracted structure."""
+async def get_enhanced_job_detail(url: str, api_key: str = "") -> JobDetailResponse:
+    """Fetch job detail via scraper, then enhance with AI-extracted structure.
+
+    AI enhancement runs only when the caller supplies their own OpenAI key;
+    otherwise the scraped detail is returned as-is (graceful degradation)."""
     detail = await scrape_job_detail(url)
 
-    # Only attempt AI enhancement if we have meaningful description text
-    if detail.description and len(detail.description) > 100 and _OPENAI_API_KEY:
+    # Only attempt AI enhancement if we have meaningful description text AND a key
+    if detail.description and len(detail.description) > 100 and api_key:
         try:
             structured = await _extract_structured_requirements(
-                detail.title, detail.company, detail.description
+                detail.title, detail.company, detail.description, api_key
             )
             if structured:
                 detail = JobDetailResponse(
@@ -61,7 +63,7 @@ async def get_enhanced_job_detail(url: str) -> JobDetailResponse:
 
 
 async def _extract_structured_requirements(
-    title: str, company: str, description: str
+    title: str, company: str, description: str, api_key: str
 ) -> Optional[dict]:
     """Call AI to extract structured requirements from job description."""
     user_message = json.dumps({
@@ -71,7 +73,7 @@ async def _extract_structured_requirements(
     }, ensure_ascii=False)
 
     headers = {
-        "Authorization": f"Bearer {_OPENAI_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
     payload = {

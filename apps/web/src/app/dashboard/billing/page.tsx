@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Zap, Sparkles, CreditCard, Check, ShoppingCart } from "lucide-react";
@@ -8,8 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import TopBar from "@/components/layout/TopBar";
 import { creditsService, type CreditPlan } from "@/services/credits.service";
 import { useCredits } from "@/contexts/CreditsContext";
-import { useAuth } from "@/contexts/AuthContext";
-import { gumroadCheckoutUrl } from "@/lib/gumroad";
+import { PaymentInfoModal } from "@/components/credits/PaymentInfoModal";
 import { cn } from "@/lib/utils";
 
 function planCapabilities(credits: number) {
@@ -40,14 +40,13 @@ function CreditBar({ credits, maxCredits }: { credits: number; maxCredits: numbe
 
 function PlanCard({
   plan,
-  email,
+  onSelect,
 }: {
   plan: CreditPlan;
-  email: string;
+  onSelect: () => void;
 }) {
   const perCredit = (plan.price_usd / plan.credits).toFixed(3);
   const capabilities = planCapabilities(plan.credits);
-  const checkoutUrl = gumroadCheckoutUrl(plan.id, email);
 
   return (
     <div
@@ -98,16 +97,14 @@ function PlanCard({
       </ul>
 
       <Button
-        asChild
+        onClick={onSelect}
         variant={plan.popular ? "default" : "outline"}
         className={cn("w-full h-10 text-sm font-medium", plan.popular && "shadow-sm")}
       >
-        <a href={checkoutUrl} target="_blank" rel="noopener noreferrer">
-          <span className="flex items-center justify-center gap-1.5">
-            <ShoppingCart className="size-3.5 shrink-0" />
-            Buy {plan.credits} credits
-          </span>
-        </a>
+        <span className="flex items-center justify-center gap-1.5">
+          <ShoppingCart className="size-3.5 shrink-0" />
+          Buy {plan.credits} credits
+        </span>
       </Button>
     </div>
   );
@@ -115,7 +112,7 @@ function PlanCard({
 
 export default function BillingPage() {
   const { credits, maxCredits, isLoading: creditsLoading } = useCredits();
-  const { user } = useAuth();
+  const [infoOpen, setInfoOpen] = useState(false);
 
   const { data: plansData, isLoading: plansLoading } = useQuery({
     queryKey: ["credit-plans"],
@@ -130,6 +127,8 @@ export default function BillingPage() {
 
   return (
     <>
+      <PaymentInfoModal open={infoOpen} onOpenChange={setInfoOpen} />
+
       <div className="flex flex-col h-full">
         <TopBar title="Billing & Credits" />
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
@@ -197,7 +196,7 @@ export default function BillingPage() {
                   <PlanCard
                     key={plan.id}
                     plan={plan}
-                    email={user?.email ?? ""}
+                    onSelect={() => setInfoOpen(true)}
                   />
                 ))}
               </div>

@@ -33,6 +33,9 @@ export const ENDPOINTS = {
   CREDITS_PLANS: "/api/credits/plans",
   CREDITS_WAITLIST: "/api/credits/waitlist",
 
+  // OpenAI API key (bring-your-own-key)
+  OPENAI_KEY: "/api/settings/openai-key",
+
   // Profile
   PROFILE: "/api/profile",
   CV_UPLOAD: "/api/profile/cv/upload",

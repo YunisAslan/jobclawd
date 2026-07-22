@@ -13,7 +13,6 @@ import httpx
 from models.schemas import MatchLevel
 from services.cv_analysis_shared import prepare_cv_analysis_inputs
 
-_OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 _OPENAI_MODEL = os.getenv("OPENAI_METADATA_MODEL", "gpt-5.4-nano").strip()
 _OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 _TIMEOUT = 120.0
@@ -112,7 +111,7 @@ Return JSON only:
 }"""
 
 
-async def compute_cv_match(job_url: str, cv_url: str) -> dict:
+async def compute_cv_match(job_url: str, cv_url: str, api_key: str) -> dict:
     """
     Analyze how well a CV matches a specific job.
     Returns a dict matching CVMatchResponse shape.
@@ -121,13 +120,13 @@ async def compute_cv_match(job_url: str, cv_url: str) -> dict:
     if error or not cv_text or not job_context:
         return _empty_result(error or "Could not prepare analysis inputs.")
 
-    return await compute_cv_match_from_data(job_context, cv_text, deterministic=True)
+    return await compute_cv_match_from_data(job_context, cv_text, api_key, deterministic=True)
 
 
-async def compute_cv_match_from_data(job_context: dict, cv_text: str, deterministic: bool = False) -> dict:
+async def compute_cv_match_from_data(job_context: dict, cv_text: str, api_key: str, deterministic: bool = False) -> dict:
     """Analyze CV match using already prepared job context and CV text."""
 
-    if not _OPENAI_API_KEY:
+    if not api_key:
         return _empty_result("AI analysis unavailable — no API key configured.")
 
     user_message = json.dumps({
@@ -140,7 +139,7 @@ async def compute_cv_match_from_data(job_context: dict, cv_text: str, determinis
     }, ensure_ascii=False)
 
     headers = {
-        "Authorization": f"Bearer {_OPENAI_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
     payload = {

@@ -10,7 +10,6 @@ import os
 
 import httpx
 
-_OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 _OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 _MODEL = os.getenv("OPENAI_METADATA_MODEL", "gpt-4o-mini")
 
@@ -35,12 +34,13 @@ Return ONLY the JSON object — no explanation, no markdown fences.\
 """
 
 
-def normalize_titles(raw_counts: list[tuple[str, int]]) -> list[tuple[str, int]]:
+def normalize_titles(raw_counts: list[tuple[str, int]], api_key: str = "") -> list[tuple[str, int]]:
     """
     Accept [(title, count), ...] and return a merged list with canonical titles.
-    If normalization fails, the original list is returned unchanged.
+    Uses the caller's OpenAI key; if none is provided or normalization fails,
+    the original list is returned unchanged.
     """
-    if not raw_counts:
+    if not raw_counts or not api_key:
         return raw_counts
 
     original_titles = [t for t, _ in raw_counts]
@@ -52,7 +52,7 @@ def normalize_titles(raw_counts: list[tuple[str, int]]) -> list[tuple[str, int]]
         resp = httpx.post(
             f"{_OPENAI_BASE_URL}/chat/completions",
             headers={
-                "Authorization": f"Bearer {_OPENAI_API_KEY}",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
             json={

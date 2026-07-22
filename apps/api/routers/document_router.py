@@ -50,6 +50,7 @@ async def parse_cv_endpoint(
 ):
     """Parse a PDF/DOCX CV into structured CVData JSON using LLM extraction."""
     from services.cv_parser_service import parse_cv
+    from services.api_keys_service import get_key, NO_KEY_DETAIL
     from repositories.cv_parse_cache_repo import get_cv_parse, set_cv_parse
 
     if request.demo:
@@ -76,8 +77,12 @@ async def parse_cv_endpoint(
     except Exception:
         pass
 
-    # ── Parse ─────────────────────────────────────────────────────────────────
-    data = await parse_cv(filepath)
+    # ── Parse (LLM) — requires the user's own OpenAI key ────────────────────────
+    api_key = get_key(email) or ""
+    if not api_key:
+        raise HTTPException(status_code=403, detail=NO_KEY_DETAIL)
+
+    data = await parse_cv(filepath, api_key)
     if not data:
         raise HTTPException(status_code=400, detail="Could not parse CV content.")
 

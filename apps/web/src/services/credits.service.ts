@@ -20,7 +20,6 @@ export interface CreditPlan {
   price_usd: number;
   popular: boolean;
   description: string;
-  checkout_url?: string;
 }
 
 export interface WaitlistResult {
