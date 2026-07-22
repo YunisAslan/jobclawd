@@ -19,6 +19,7 @@ from models.schemas import (
 )
 from services.job_detail_service import get_enhanced_job_detail
 from services.search_service import run_search, get_search_page
+from services.api_keys_service import get_key
 from services.enrichment_service import merge_metadata_into_jobs
 from repositories import profile_repo
 from repositories.credits_repo import get_credits, use_credit
@@ -80,6 +81,7 @@ async def search_jobs(request: SearchRequest, email: Optional[str] = Depends(get
         except Exception:
             profile = None
 
+    api_key = (get_key(email) or "") if email else ""
     try:
         result = await run_search(
             query=request.query,
@@ -93,6 +95,7 @@ async def search_jobs(request: SearchRequest, email: Optional[str] = Depends(get
             sort_by=request.sortBy,
             profile=profile,
             force_refresh=request.forceRefresh,
+            api_key=api_key,
         )
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Search error: {e}")
@@ -160,6 +163,8 @@ async def search_jobs_stream(request: SearchRequest, email: Optional[str] = Depe
     async def event_cb(event: dict):
         await progress_queue.put(event)
 
+    api_key = (get_key(email) or "") if email else ""
+
     async def run_and_signal():
         try:
             result = await run_search(
@@ -176,6 +181,7 @@ async def search_jobs_stream(request: SearchRequest, email: Optional[str] = Depe
                 force_refresh=request.forceRefresh,
                 progress_cb=progress_cb,
                 event_cb=event_cb,
+                api_key=api_key,
             )
             # Deduct credit and record search event on cache miss
             if email and not result.cached:
@@ -232,14 +238,20 @@ async def get_jobs_page(request: SearchPageRequest, email: Optional[str] = Depen
 
 
 @router.post("/job-details", response_model=JobDetailResponse)
-async def get_job_details(request: JobDetailRequest):
+async def get_job_details(
+    request: JobDetailRequest,
+    email: Optional[str] = Depends(get_optional_email),
+):
     if not any(host in request.url for host in _ALLOWED_HOSTS):
         raise HTTPException(
             status_code=400,
             detail="This job board is not supported. Please use a URL from a supported source.",
         )
+    # AI enhancement uses the signed-in user's own key when available; otherwise
+    # the raw scraped detail is returned (no AI structuring).
+    api_key = get_key(email) if email else None
     try:
-        return await get_enhanced_job_detail(request.url)
+        return await get_enhanced_job_detail(request.url, api_key or "")
     except TimeoutError:
         raise HTTPException(
             status_code=504,

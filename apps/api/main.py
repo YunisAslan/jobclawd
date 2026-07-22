@@ -26,6 +26,7 @@ from routers import analytics_events_router
 from routers import credits_router
 from routers import admin as admin_router
 from routers import feedback_router
+from routers import api_keys_router
 from scraper import shutdown_browser
 from db.database import init_db
 
@@ -59,13 +60,11 @@ async def _cache_cleanup_loop() -> None:
 async def lifespan(app: FastAPI):
     init_db()
 
-    # ── AI metadata status ──
-    from services.ai_metadata_extractor import ai_metadata_enabled, _OPENAI_MODEL, _OPENAI_BASE_URL
-    if ai_metadata_enabled():
-        print(f"[AIMetadata] ENABLED — model={_OPENAI_MODEL} base_url={_OPENAI_BASE_URL}")
-    else:
-        print("[AIMetadata] DISABLED — OPENAI_API_KEY is missing or empty. "
-              "Job metadata extraction will use regex fallback only.")
+    # ── AI config ──
+    # AI now runs on each user's own OpenAI key (BYOK) — there is no global key.
+    from services.ai_metadata_extractor import _OPENAI_MODEL, _OPENAI_BASE_URL
+    print(f"[AIMetadata] BYOK mode — model={_OPENAI_MODEL} base_url={_OPENAI_BASE_URL} "
+          "(each user supplies their own OpenAI key)")
 
     cleanup_task = asyncio.create_task(_cache_cleanup_loop())
     yield
@@ -101,6 +100,7 @@ app.include_router(cv_analysis_router.router, prefix="/api")
 app.include_router(document_router.router, prefix="/api")
 app.include_router(analytics_events_router.router, prefix="/api")
 app.include_router(credits_router.router, prefix="/api")
+app.include_router(api_keys_router.router, prefix="/api")
 app.include_router(admin_router.router, prefix="/api")
 app.include_router(feedback_router.router, prefix="/api")
 

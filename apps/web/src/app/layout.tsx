@@ -12,6 +12,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { TooltipProvider } from "@/components/ui/Tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CreditsProvider } from "@/contexts/CreditsContext";
+import { ApiKeyProvider } from "@/contexts/ApiKeyContext";
 import QueryProvider from "@/components/providers/QueryProvider";
 import { Toaster } from "sonner";
 import { generateOrganizationSchema, generateWebSiteSchema, BASE_URL } from "@/lib/seo";
@@ -126,15 +127,17 @@ export default function RootLayout({
               <ThemeProvider>
                 <TooltipProvider delayDuration={200}>
                   <CreditsProvider>
-                    <ProfileProvider>
-                      <SidebarShellProvider>
-                        <FeedUrlProvider>
-                          <AppShell>{children}</AppShell>
-                        </FeedUrlProvider>
-                        <Toaster position="top-center" richColors />
-                        <FeedbackButton />
-                      </SidebarShellProvider>
-                    </ProfileProvider>
+                    <ApiKeyProvider>
+                      <ProfileProvider>
+                        <SidebarShellProvider>
+                          <FeedUrlProvider>
+                            <AppShell>{children}</AppShell>
+                          </FeedUrlProvider>
+                          <Toaster position="top-center" richColors />
+                          <FeedbackButton />
+                        </SidebarShellProvider>
+                      </ProfileProvider>
+                    </ApiKeyProvider>
                   </CreditsProvider>
                 </TooltipProvider>
               </ThemeProvider>

@@ -32,7 +32,6 @@ from models.cv_schema import (
 
 # ── LLM config (reuses the same env vars as other AI services) ──────────────
 
-_OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 _OPENAI_MODEL = os.getenv("OPENAI_METADATA_MODEL", "gpt-5.4-nano").strip()
 _OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 _TIMEOUT = 60.0
@@ -172,20 +171,20 @@ the URL on the matching `*_link` / `link` field. Never invent a URL.
 
 # ── Public API ───────────────────────────────────────────────────────────────
 
-async def parse_cv(filepath: Path) -> Optional[CVData]:
+async def parse_cv(filepath: Path, api_key: str) -> Optional[CVData]:
     """Parse a PDF or DOCX file into structured CVData using LLM extraction."""
     text = _extract_text(filepath)
     if not text or len(text.strip()) < 30:
         return None
 
-    raw_json = await _llm_extract(text)
+    raw_json = await _llm_extract(text, api_key)
     if not raw_json:
         return None
 
     return _json_to_cv_data(raw_json)
 
 
-def parse_cv_sync(filepath: Path) -> Optional[CVData]:
+def parse_cv_sync(filepath: Path, api_key: str) -> Optional[CVData]:
     """Synchronous wrapper — extracts text and calls LLM.
 
     For use in contexts where async isn't available.
@@ -199,9 +198,9 @@ def parse_cv_sync(filepath: Path) -> Optional[CVData]:
             # Already in async context — can't use run_until_complete
             # Fall back to basic extraction
             return _fallback_parse(filepath)
-        return loop.run_until_complete(parse_cv(filepath))
+        return loop.run_until_complete(parse_cv(filepath, api_key))
     except RuntimeError:
-        return asyncio.run(parse_cv(filepath))
+        return asyncio.run(parse_cv(filepath, api_key))
 
 
 # ── Text extraction (reuses pdfplumber / python-docx) ────────────────────────
@@ -431,16 +430,16 @@ def _extract_doc_text(filepath: Path) -> Optional[str]:
 
 # ── LLM extraction ───────────────────────────────────────────────────────────
 
-async def _llm_extract(cv_text: str) -> Optional[dict]:
+async def _llm_extract(cv_text: str, api_key: str) -> Optional[dict]:
     """Send CV text to LLM and get structured JSON back."""
-    if not _OPENAI_API_KEY:
+    if not api_key:
         return None
 
     # Truncate very long CVs to stay within token limits
     truncated = cv_text[:8000]
 
     headers = {
-        "Authorization": f"Bearer {_OPENAI_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
     payload = {

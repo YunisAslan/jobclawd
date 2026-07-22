@@ -2,7 +2,8 @@ import TopBar from "@/components/layout/TopBar";
 import ChangeEmailSection from "@/components/settings/ChangeEmailSection";
 import DeleteAccountSection from "@/components/settings/DeleteAccountSection";
 import TourSettingsSection from "@/components/settings/TourSettingsSection";
-import { Mail, ShieldAlert, Compass } from "lucide-react";
+import OpenAIKeySection from "@/components/settings/OpenAIKeySection";
+import { Mail, ShieldAlert, Compass, KeyRound } from "lucide-react";
 
 export default function SettingsPage() {
   return (
@@ -26,6 +27,15 @@ export default function SettingsPage() {
             description="Take the interactive walkthrough to learn how JobClawd works."
           >
             <TourSettingsSection />
+          </SettingsSection>
+
+          {/* ── OpenAI API key ── */}
+          <SettingsSection
+            icon={<KeyRound className="size-4" />}
+            title="OpenAI API key"
+            description="AI features run on your own OpenAI key. It's validated, stored encrypted, and used only for your requests."
+          >
+            <OpenAIKeySection />
           </SettingsSection>
 
           {/* ── Email address ── */}

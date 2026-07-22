@@ -14,7 +14,6 @@ import httpx
 
 from services.cv_analysis_shared import prepare_cv_analysis_inputs
 
-_OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 _OPENAI_MODEL = os.getenv("OPENAI_SUGGESTIONS_MODEL", os.getenv("OPENAI_METADATA_MODEL", "gpt-5.4-nano")).strip()
 _OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 _TIMEOUT = 90.0
@@ -495,7 +494,7 @@ OUTPUT — JSON only, no text outside it
 }"""
 
 
-async def generate_cv_suggestions(job_url: str, cv_url: str, analysis: Optional[dict] = None) -> dict:
+async def generate_cv_suggestions(job_url: str, cv_url: str, api_key: str, analysis: Optional[dict] = None) -> dict:
     """
     Generate prioritised CV optimisation suggestions for a specific job.
     Returns a dict matching CVSuggestionsResponse shape.
@@ -504,17 +503,17 @@ async def generate_cv_suggestions(job_url: str, cv_url: str, analysis: Optional[
     if error or not cv_text or not job_context:
         return _empty_result(error or "Could not prepare suggestion inputs.")
 
-    return await generate_cv_suggestions_from_data(job_context, cv_text, analysis=analysis)
+    return await generate_cv_suggestions_from_data(job_context, cv_text, api_key, analysis=analysis)
 
 
-async def generate_cv_suggestions_from_data(job_context: dict, cv_text: str, analysis: Optional[dict] = None) -> dict:
+async def generate_cv_suggestions_from_data(job_context: dict, cv_text: str, api_key: str, analysis: Optional[dict] = None) -> dict:
     """Generate suggestions using already-prepared job context and CV text.
 
     Pass `analysis` (the result of compute_cv_match_from_data) to enable
     score-driven targeting — suggestions will directly address identified gaps.
     """
 
-    if not _OPENAI_API_KEY:
+    if not api_key:
         return _empty_result("AI suggestions unavailable — no API key configured.")
 
     user_payload: dict = {
@@ -543,7 +542,7 @@ async def generate_cv_suggestions_from_data(job_context: dict, cv_text: str, ana
     user_message = json.dumps(user_payload, ensure_ascii=False)
 
     headers = {
-        "Authorization": f"Bearer {_OPENAI_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
     payload = {

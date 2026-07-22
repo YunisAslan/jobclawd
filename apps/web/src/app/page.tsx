@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/Accordion";
-import { gumroadCheckoutUrl } from "@/lib/gumroad";
+import { PaymentInfoModal } from "@/components/credits/PaymentInfoModal";
 import LandingFooter from "@/components/layout/LandingFooter";
 import { Marquee } from "@/registry/magicui/marquee";
 
@@ -682,7 +682,7 @@ function planCapabilities(credits: number) {
   ];
 }
 
-function Pricing({ onGetStarted, email }: { onGetStarted: () => void; email: string }) {
+function Pricing({ onGetStarted, onBuy }: { onGetStarted: () => void; onBuy: () => void }) {
   return (
     <section id="pricing" className="py-24 px-6 bg-muted/10 border-y border-border/40">
       <div className="max-w-5xl mx-auto">
@@ -764,16 +764,14 @@ function Pricing({ onGetStarted, email }: { onGetStarted: () => void; email: str
                   </Button>
                 ) : (
                   <Button
-                    asChild
+                    onClick={onBuy}
                     variant={plan.popular ? "default" : "outline"}
                     className={cn("w-full h-10 text-sm font-medium", plan.popular && "shadow-sm")}
                   >
-                    <a href={gumroadCheckoutUrl(plan.id, email)} target="_blank" rel="noopener noreferrer">
-                      <span className="flex items-center justify-center gap-1.5">
-                        <ShoppingCart className="size-3.5 shrink-0" />
-                        Buy {plan.credits} credits
-                      </span>
-                    </a>
+                    <span className="flex items-center justify-center gap-1.5">
+                      <ShoppingCart className="size-3.5 shrink-0" />
+                      Buy {plan.credits} credits
+                    </span>
                   </Button>
                 )}
               </div>
@@ -907,6 +905,7 @@ export default function LandingPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [scrolled, setScrolled] = useState(false);
+  const [payInfoOpen, setPayInfoOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -919,6 +918,8 @@ export default function LandingPage() {
   }
 
   return (
+    <>
+    <PaymentInfoModal open={payInfoOpen} onOpenChange={setPayInfoOpen} />
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       {/* ── Nav ── */}
       <header
@@ -1054,7 +1055,7 @@ export default function LandingPage() {
       <Stats />
 
       {/* ── Pricing ── */}
-      <Pricing onGetStarted={handleGetStarted} email={user?.email ?? ""} />
+      <Pricing onGetStarted={handleGetStarted} onBuy={() => setPayInfoOpen(true)} />
 
       {/* ── FAQs ── */}
       <FAQs />
@@ -1065,5 +1066,6 @@ export default function LandingPage() {
       {/* ── Footer ── */}
       <LandingFooter />
     </div>
+    </>
   );
 }

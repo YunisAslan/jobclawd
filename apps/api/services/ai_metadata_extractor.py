@@ -14,7 +14,6 @@ from utils.job_meta_extractor import (
     primary_experience_value,
 )
 
-_OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 _OPENAI_MODEL = os.getenv("OPENAI_METADATA_MODEL", "gpt-5.4-nano").strip()
 _OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 
@@ -144,8 +143,8 @@ def _chunk(items: list[dict], size: int) -> list[list[dict]]:
     return [items[i : i + size] for i in range(0, len(items), size)]
 
 
-def ai_metadata_enabled() -> bool:
-    return bool(_OPENAI_API_KEY)
+def ai_metadata_enabled(api_key: str = "") -> bool:
+    return bool(api_key)
 
 
 def _build_user_message(batch: list[dict]) -> str:
@@ -192,17 +191,17 @@ def _build_user_message(batch: list[dict]) -> str:
 
 
 async def extract_metadata_ai_batch(
-    items: list[dict], *, source: str, context: str,
+    items: list[dict], *, source: str, context: str, api_key: str = "",
     progress_cb: Optional[object] = None,
 ) -> dict[str, dict]:
     """
-    Extract metadata via OpenAI for a batch of jobs.
+    Extract metadata via OpenAI for a batch of jobs, using the caller's own key.
     Each item: {"id", "title", "company", "location_str", "snippet", "detail_text"}
     Returns: {"id": {"salary_str", "job_type_str", "seniority_str", "experience_years_str", "work_mode_str"}}
     """
-    if not ai_metadata_enabled():
+    if not api_key:
         print(
-            f"[AIMetadata] Skipped — no API key "
+            f"[AIMetadata] Skipped — no user API key "
             f"(source={source} context={context} jobs={len(items)})"
         )
         return {}
@@ -216,7 +215,7 @@ async def extract_metadata_ai_batch(
 
     results: dict[str, dict] = {}
     headers = {
-        "Authorization": f"Bearer {_OPENAI_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
 
